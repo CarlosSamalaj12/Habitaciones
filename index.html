@@ -1,0 +1,240 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/png" href="./Oficial_JDL_blanco.png?v=1">
+  <link rel="shortcut icon" href="./Oficial_JDL_blanco.png?v=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gestion Habitaciones</title>
+
+  <link rel="stylesheet" href="./styles.css?v=20260213d" />
+</head>
+<body>
+
+  <!-- Toast -->
+  <div id="toastStack" class="toastStack"></div>
+
+  <!-- LOGIN overlay (solo logo + pass) -->
+  <div id="loginOverlay" class="loginOverlay hidden">
+    <div class="loginCard">
+      <div class="loginTop">
+        <img class="loginLogo" src="./Oficial_JDL_blanco.png" alt="Logo" />
+        <div>
+          <div class="loginTitle">Inicio de sesion - Gestion de Habitaciones</div>
+          <div class="loginSub">Ingresa la contrasena para continuar</div>
+        </div>
+      </div>
+
+      <div class="loginBody">
+        <label class="loginLabel" for="loginUser">Usuario</label>
+        <select id="loginUser" class="loginInput loginSelect">
+          <option value="">Seleccionar...</option>
+        </select>
+
+        <label class="loginLabel" for="loginPass">Contrasena</label>
+
+        <div class="loginPassRow">
+          <input id="loginPass" class="loginInput" type="password" placeholder="********" autocomplete="off" />
+          <button id="btnLogin" class="loginBtn" type="button">Entrar</button>
+        </div>
+
+        <div id="loginErr" class="loginErr hidden">Contrasena incorrecta</div>
+        <div class="loginHint" id="loginHint">Se bloqueara tras 1 hora sin actividad.</div>
+
+        <div class="loginTableWrap hidden"></div>
+      </div>
+
+      <div class="loginFooter">
+        <div class="creatorNote">Created By - Carlos S - Cel: 502-56325547</div>
+        <div style="color:rgba(234,240,255,.70); font-size:12px;">Hotel Jardines Del Lago</div>
+      </div>
+    </div>
+  </div>
+  <!-- TOP -->
+  <div class="top">
+    <div class="brand">
+      <div class="logoBox">
+        <img class="logoImg" src="./Oficial_JDL_blanco.png" alt="Logo" />
+        <img class="logoImg" src="./cronografo.png" alt="Logo" />
+      </div>
+      <div class="brandText">
+        <div class="t1">Gestion de Habitaciones</div>
+        <div class="t2">Recepcion / Camareria - Control de limpieza</div>
+        <div class="summaryBar" id="summaryBar">
+          <div class="summaryPill sucias"><span>Ocupadas</span><b id="sumSucias">0</b></div>
+          <div class="summaryPill limpieza"><span>En limpieza</span><b id="sumLimpieza">0</b></div>
+          <div class="summaryPill lista"><span>Lista para limpiar</span><b id="sumLista">0</b></div>
+          <div class="summaryPill limpias"><span>Libres</span><b id="sumLimpias">0</b></div>
+          <div class="summaryPill mantenimiento"><span>Mantenimiento</span><b id="sumMant">0</b></div>
+          <div class="summaryPill prioridad"><span>Prioridad</span><b id="sumPrio">0</b></div>
+          <div class="summaryPill repaso"><span>Repaso</span><b id="sumRepaso">0</b></div>
+          <div class="summaryProgress">
+            <div class="summaryProgTop">
+              <span>Progreso de limpieza</span>
+              <b id="sumProgText">0%</b>
+            </div>
+            <div class="summaryProgTrack">
+              <div class="summaryProgFill" id="sumProgFill"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="summaryProgress" id="summaryProgressAll">
+          <div class="summaryProgTop">
+            <span>Cantidad de Habitaciones Sucias</span>
+            <b id="sumProgTextAll">0%</b>
+          </div>
+          <div class="summaryProgTrack">
+            <div class="summaryProgFill" id="sumProgFillAll"></div>
+          </div>
+        </div>
+
+        <div class="t2" id="activeUserLabel">Usuario: -</div>
+      </div>
+    </div>
+
+    <div class="rightTop">
+      <button id="btnLock" class="btnGhost" type="button">BLOQUEAR</button>
+      <button id="btnConfig" class="btnGhost hidden" type="button">CONFIGURAR</button>
+    </div>
+  </div>
+
+  <!-- MODULES -->
+  <div class="modulesBar">
+    <div id="modulesRow" class="modulesRow"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="headRow">
+      <h2>Habitaciones</h2>
+      <div class="headActions">
+        <button id="btnDecorada" class="btnDecoradaHead hidden" type="button">Decorada</button>
+        <div class="selected" id="selectedInfo">Modulo: <b id="selModule">-</b></div>
+      </div>
+    </div>
+
+    <div id="roomsGrid" class="roomsGrid"></div>
+      <div class="creatorNote creatorNotePage">Created By - Carlos S - Cel: 502-56325547</div>
+  </div>
+
+  <!-- Modal ocupacion -->
+  <div id="modalOverlay" class="modalOverlay hidden">
+    <div class="modalCard">
+      <div class="modalHeader">
+        <div>
+          <div class="modalTitle">Ocupacion</div>
+          <div class="modalSub" id="modalSub">-</div>
+        </div>
+        <button id="modalClose" class="iconBtn" type="button">X</button>
+      </div>
+
+      <div class="modalBody">
+        <div class="fieldRow">
+          <div class="fieldLabel">Adultos</div>
+          <div class="stepper">
+            <button id="adultsMinus" class="stepBtn" type="button">-</button>
+            <input id="adultsInput" class="stepInput" value="0" inputmode="numeric" />
+            <button id="adultsPlus" class="stepBtn" type="button">+</button>
+          </div>
+        </div>
+
+        <div class="fieldRow">
+          <div class="fieldLabel">Ninos</div>
+          <div class="stepper">
+            <button id="kidsMinus" class="stepBtn" type="button">-</button>
+            <input id="kidsInput" class="stepInput" value="0" inputmode="numeric" />
+            <button id="kidsPlus" class="stepBtn" type="button">+</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="hint">Observaciones</div>
+        <textarea id="obsInput" class="textArea" placeholder="Observaciones..."></textarea>
+      </div>
+
+      <div class="modalFooter">
+        <button id="modalCancel" class="btnModal" type="button">Cancelar</button>
+        <button id="modalSave" class="btnModal primary" type="button">Guardar</button>
+      </div>
+    </div>
+  </div>
+  <!-- Modal confirmacion liberar -->
+  <div id="confirmOverlay" class="modalOverlay hidden">
+    <div class="confirmCard">
+      <div class="confirmIcon">&#9888;</div>
+      <div class="confirmTitle">Confirmacion</div>
+      <div class="confirmMsg" id="confirmMsg">Seguro de liberar la habitacion?</div>
+      <div class="confirmActions">
+        <button id="confirmCancel" class="btnModal" type="button">Cancelar</button>
+        <button id="confirmOk" class="btnModal danger" type="button">Si, liberar</button>
+      </div>
+    </div>
+  </div>
+  <!-- Modal observaciones -->
+  <div id="obsOverlay" class="modalOverlay hidden">
+    <div class="modalCard obsModalCard">
+      <div class="modalHeader">
+        <div>
+          <div class="modalTitle">Observaciones</div>
+          <div class="modalSub" id="obsRoomSub">Habitacion: -</div>
+        </div>
+        <button id="obsClose" class="iconBtn" type="button">X</button>
+      </div>
+      <div class="modalBody">
+        <div id="obsTextBody" class="obsTextBody">Sin observaciones</div>
+      </div>
+      <div class="modalFooter">
+        <button id="obsOk" class="btnModal primary" type="button">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+<!-- Modal configuracion (solo admin) -->
+<div id="configOverlay" class="modalOverlay hidden">
+  <div class="modalCard">
+    <div class="modalHeader">
+      <div>
+        <div class="modalTitle">Configuracion</div>
+        <div class="modalSub">Crear usuario</div>
+      </div>
+      <button id="configClose" class="iconBtn" type="button">X</button>
+    </div>
+
+    <div class="modalBody">
+      <div class="configForm">
+        <label class="loginLabel" for="cfgName">Nombre</label>
+        <input id="cfgName" class="loginInput" type="text" placeholder="Nombre completo" autocomplete="off" />
+
+        <label class="loginLabel" for="cfgDept">Rol / Departamento</label>
+        <select id="cfgDept" class="loginInput loginSelect">
+          <option value="RECEPCION">Recepcion</option>
+          <option value="CAMARERIA">Camareria</option>
+          <option value="GERENCIA">Gerencia</option>
+          <option value="ADMINISTRADOR">Administrador</option>
+        </select>
+
+        <label class="loginLabel" for="cfgPass">Contrasena</label>
+        <input id="cfgPass" class="loginInput" type="password" placeholder="********" autocomplete="new-password" />
+
+        <label class="loginLabel" for="cfgPass2">Confirmar contrasena</label>
+        <input id="cfgPass2" class="loginInput" type="password" placeholder="********" autocomplete="new-password" />
+
+        <div class="loginHint">La contrasena se guarda encriptada (hash).</div>
+        <div id="cfgErr" class="loginErr hidden">Error</div>
+      </div>
+    </div>
+
+    <div class="modalFooter">
+      <button id="configCancel" class="btnModal" type="button">Cancelar</button>
+      <button id="configSave" class="btnModal primary" type="button">Crear usuario</button>
+    </div>
+  </div>
+</div>
+
+  <script src="./socket.io/socket.io.js"></script>
+  <script src="./app.js?v=20260213e"></script>
+</body>
+</html>
+

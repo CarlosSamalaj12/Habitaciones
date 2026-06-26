@@ -1,0 +1,11 @@
+RewriteEngine On
+
+# Proxy de API hacia Node.js (localhost:3000)
+RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/$1 [P,L]
+
+# Socket.IO (WebSocket)
+RewriteCond %{HTTP:Upgrade} =websocket [NC]
+RewriteRule ^socket\.io/(.*)$ ws://127.0.0.1:3000/socket.io/$1 [P,L]
+
+# Socket.IO (HTTP polling + archivo socket.io.js)
+RewriteRule ^socket\.io/(.*)$ http://127.0.0.1:3000/socket.io/$1 [P,L]

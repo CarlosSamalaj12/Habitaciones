@@ -1,0 +1,1973 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/png" href="./Oficial_JDL_blanco.png?v=1">
+  <link rel="shortcut icon" href="./Oficial_JDL_blanco.png?v=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Inspeccion de Habitacion</title>
+  <style>
+    :root {
+      --bg0: #070A12;
+      --bg1: #0B1024;
+      --card: rgba(255, 255, 255, .06);
+      --stroke: rgba(255, 255, 255, .10);
+      --text: #EAF0FF;
+      --muted: #A9B3D0;
+
+      --accent: #7C3AED;
+      --accent2: #22D3EE;
+      --ok: #2EE59D;
+      --bad: #FF4D6D;
+      --na: #FFB020;
+      --none: #9AA6C6;
+
+      --shadow: 0 18px 60px rgba(0, 0, 0, .45);
+      --r: 18px;
+      --r2: 14px;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 15% 10%, rgba(124, 58, 237, .22), transparent 55%),
+        radial-gradient(900px 600px at 85% 20%, rgba(34, 211, 238, .18), transparent 55%),
+        radial-gradient(900px 650px at 30% 85%, rgba(46, 229, 157, .10), transparent 60%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 22px auto;
+      padding: 0 14px;
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logoImg {
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      object-fit: contain;
+      box-shadow: 0 14px 40px rgba(124, 58, 237, .25);
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(255, 255, 255, .10);
+      padding: 6px;
+    }
+
+    h1 {
+      font-size: 18px;
+      margin: 0;
+      letter-spacing: .2px
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .03));
+      border-bottom: 1px solid rgba(255, 255, 255, .08);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    label {
+      display: block;
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 12.5px
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 12px;
+      border-radius: var(--r2);
+      border: 1px solid rgba(255, 255, 255, .10);
+      background: rgba(10, 14, 28, .55);
+      color: var(--text);
+      outline: none;
+      font-size: 14.5px;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: rgba(34, 211, 238, .45);
+      box-shadow: 0 0 0 4px rgba(34, 211, 238, .18);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 12px;
+    }
+
+    .btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px
+    }
+
+    button {
+      border: 1px solid rgba(255, 255, 255, .16);
+      background: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .06));
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-family: "Segoe UI", Tahoma, Verdana, sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      line-height: 1.25;
+      letter-spacing: .2px;
+      transition: transform .08s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, .35);
+    }
+
+    button:hover {
+      background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .08));
+      border-color: rgba(124, 58, 237, .35);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, .45), 0 0 0 4px rgba(124, 58, 237, .15);
+    }
+
+    button:active {
+      transform: translateY(1px)
+    }
+
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .primary {
+      border: 0;
+      background: linear-gradient(135deg, rgba(124, 58, 237, .95), rgba(34, 211, 238, .9));
+      color: #07101F;
+      box-shadow: 0 16px 38px rgba(34, 211, 238, .25), 0 0 0 1px rgba(255, 255, 255, .08) inset;
+    }
+
+    .primary:hover {
+      box-shadow: 0 18px 44px rgba(34, 211, 238, .30), 0 0 0 6px rgba(34, 211, 238, .18);
+    }
+
+    .submitWrap {
+      position: relative
+    }
+
+    .btnInner {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .btnSpinner {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid rgba(7, 16, 31, .22);
+      border-top-color: #07101F;
+      animation: spin .8s linear infinite;
+    }
+
+    .loadingBar {
+      margin-top: 10px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .10);
+      overflow: hidden;
+      opacity: 0;
+      transform: scaleY(.85);
+      transition: opacity .18s ease, transform .18s ease;
+      pointer-events: none;
+    }
+
+    .loadingBar.active {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+
+    .loadingBar::before {
+      content: "";
+      display: block;
+      width: 42%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(124, 58, 237, .15), rgba(34, 211, 238, .98), rgba(124, 58, 237, .15));
+      animation: loadingSlide 1s linear infinite;
+    }
+
+    .submitStatus {
+      margin-top: 8px;
+      min-height: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .submitStatus.warn {
+      color: #FFB020
+    }
+
+    .submitStatus.err {
+      color: #FF4D6D
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes loadingSlide {
+      from {
+        transform: translateX(-130%);
+      }
+
+      to {
+        transform: translateX(320%);
+      }
+    }
+
+    .toggleFamiliar.on {
+      border-color: rgba(255, 176, 32, .65);
+      background: linear-gradient(135deg, rgba(255, 176, 32, .92), rgba(255, 214, 102, .92));
+      color: #1f1700;
+    }
+
+    .btnNA {
+      border-color: #FFB020;
+      background: #FFB020;
+      color: #1a1206;
+      text-shadow: none;
+    }
+
+    .btnNA:hover {
+      border-color: #ffbf4f;
+      background: #ffbf4f;
+      box-shadow: 0 14px 34px rgba(0, 0, 0, .45), 0 0 0 4px rgba(255, 176, 32, .18);
+    }
+
+    .legend {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(255, 255, 255, .10);
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px
+    }
+
+    .dot.ok {
+      background: var(--ok)
+    }
+
+    .dot.bad {
+      background: var(--bad)
+    }
+
+    .dot.na {
+      background: var(--na)
+    }
+
+    .dot.none {
+      background: var(--none)
+    }
+
+    .content {
+      padding: 14px
+    }
+
+    details {
+      border: 1px solid rgba(255, 255, 255, .10);
+      border-radius: var(--r);
+      background: rgba(255, 255, 255, .04);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 12px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      user-select: none;
+      background: rgba(255, 255, 255, .04);
+      border-bottom: 1px solid rgba(255, 255, 255, .06);
+    }
+
+    summary::-webkit-details-marker {
+      display: none
+    }
+
+    .secLeft {
+      display: flex;
+      flex-direction: column;
+      gap: 2px
+    }
+
+    .secLeft b {
+      font-size: 14px
+    }
+
+    .secLeft span {
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .secRight {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end
+    }
+
+    .mini {
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .items {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .item {
+      border: 1px solid rgba(255, 255, 255, .10);
+      background: rgba(10, 14, 28, .45);
+      border-radius: 16px;
+      padding: 10px 10px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: transform .06s ease, border-color .15s ease, background .15s ease;
+    }
+
+    .item:hover {
+      background: rgba(255, 255, 255, .06)
+    }
+
+    .item:active {
+      transform: translateY(1px)
+    }
+
+    .itemName {
+      font-weight: 800;
+      font-size: 13.5px;
+      line-height: 1.2;
+      margin: 0;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      font-size: 18px;
+      font-weight: 900;
+      border: 1px solid rgba(255, 255, 255, .20);
+      background: rgba(255, 255, 255, .10);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, .25);
+      user-select: none;
+      color: #EAF0FF;
+      text-shadow: 0 1px 10px rgba(0, 0, 0, .35);
+    }
+
+    .s-ok {
+      border-color: #2EE59D;
+      background: #2EE59D;
+      color: #071a13;
+      text-shadow: none;
+    }
+
+    .s-bad {
+      border-color: #FF4D6D;
+      background: #FF4D6D;
+      color: #1a0b10;
+      text-shadow: none;
+    }
+
+    .s-na {
+      border-color: #FFB020;
+      background: #FFB020;
+      color: #1a1206;
+      text-shadow: none;
+    }
+
+    .s-none {
+      border-color: #9AA6C6;
+      background: #9AA6C6;
+      color: #0b1022;
+    }
+
+    .item.ok {
+      border-color: rgba(46, 229, 157, .28)
+    }
+
+    .item.bad {
+      border-color: rgba(255, 77, 109, .28)
+    }
+
+    .item.na {
+      border-color: rgba(255, 176, 32, .28)
+    }
+
+    .item.none {
+      border-color: rgba(154, 166, 198, .28)
+    }
+
+    .footer {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, .10);
+      border-radius: var(--r);
+      background: rgba(255, 255, 255, .04);
+    }
+
+    .footerGrid {
+      display: grid;
+      grid-template-columns: 1.6fr .8fr;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .footer small {
+      color: var(--muted)
+    }
+
+    .fieldErr {
+      border-color: rgba(255, 77, 109, .75) !important;
+      box-shadow: 0 0 0 4px rgba(255, 77, 109, .18),
+        0 0 0 1px rgba(255, 77, 109, .22) inset !important;
+    }
+
+    .shake {
+      animation: shake .22s ease;
+    }
+
+    @keyframes shake {
+      0% {
+        transform: translateX(0)
+      }
+
+      25% {
+        transform: translateX(-6px)
+      }
+
+      50% {
+        transform: translateX(6px)
+      }
+
+      75% {
+        transform: translateX(-4px)
+      }
+
+      100% {
+        transform: translateX(0)
+      }
+    }
+
+    .toasts {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(520px, calc(100vw - 22px));
+      display: grid;
+      gap: 10px;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: auto;
+      border-radius: 22px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .14);
+      background: rgba(12, 16, 34, .62);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 26px 80px rgba(0, 0, 0, .55);
+      transform: translateY(-14px) scale(.98);
+      opacity: 0;
+      animation: toastIn .26s ease forwards;
+    }
+
+    .toast .bar {
+      height: 3px;
+      background: linear-gradient(90deg, rgba(124, 58, 237, .95), rgba(34, 211, 238, .9), rgba(46, 229, 157, .9));
+      opacity: .9;
+    }
+
+    .toast.err .bar {
+      background: linear-gradient(90deg, rgba(255, 77, 109, .95), rgba(255, 176, 32, .9));
+    }
+
+    .toast .inner {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 12px 12px;
+    }
+
+    .toast .ico {
+      width: 42px;
+      height: 42px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, .10);
+      border: 1px solid rgba(255, 255, 255, .14);
+      box-shadow: 0 12px 25px rgba(0, 0, 0, .30);
+      font-size: 18px;
+      flex: 0 0 auto;
+    }
+
+    .toast .txt b {
+      display: block;
+      font-size: 13.5px;
+      letter-spacing: .1px
+    }
+
+    .toast .txt span {
+      display: block;
+      font-size: 12.8px;
+      color: rgba(234, 240, 255, .82);
+      line-height: 1.35;
+      margin-top: 2px
+    }
+
+    .toast .close {
+      margin-left: auto;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(255, 255, 255, .10);
+      transition: transform .08s ease, background .15s ease;
+      flex: 0 0 auto;
+    }
+
+    .toast .close:hover {
+      background: rgba(255, 255, 255, .10)
+    }
+
+    .toast .close:active {
+      transform: translateY(1px)
+    }
+
+    @keyframes toastIn {
+      to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+      }
+    }
+
+    @media (max-width: 920px) {
+      .grid {
+        grid-template-columns: 1fr
+      }
+
+      .items {
+        grid-template-columns: 1fr
+      }
+
+      .footerGrid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    @media (max-width: 560px) {
+      h1 {
+        font-size: 20px
+      }
+
+      .hint {
+        font-size: 13px
+      }
+
+      label {
+        font-size: 13.5px
+      }
+
+      input,
+      select,
+      textarea {
+        padding: 14px;
+        font-size: 16px;
+      }
+
+      .toolbar {
+        gap: 12px
+      }
+
+      button {
+        padding: 12px 14px;
+        font-size: 14.5px;
+        border-radius: 16px;
+      }
+
+      .primary {
+        font-size: 15px;
+      }
+
+      .itemName {
+        font-size: 14.5px
+      }
+
+      .status {
+        min-width: 48px;
+        height: 48px;
+        font-size: 20px
+      }
+
+      .legend {
+        font-size: 12.5px
+      }
+
+      .footer small {
+        font-size: 12.5px
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="toasts" id="toasts"></div>
+
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <img class="logoImg" src="Oficial_JDL_blanco.png" alt="Jardines del Lago" />
+        <div>
+          <h1 id="titleRoom">Inspeccion de Habitacion</h1>
+          <div class="hint" id="hintUser">Tip: toca una tarjeta para cambiar . -> OK -> X -> NA</div>
+        </div>
+      </div>
+      <div class="legend">
+        <span class="tag"><span class="dot none"></span> Sin seleccionar</span>
+        <span class="tag"><span class="dot ok"></span> Cumple</span>
+        <span class="tag"><span class="dot bad"></span> No Cumple</span>
+        <span class="tag"><span class="dot na"></span> No Aplica</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="header">
+        <div class="grid">
+          <div id="boxModulo">
+            <label>Modulo</label>
+            <input id="moduloTxt" type="text" readonly />
+          </div>
+
+          <div id="boxHabitacion">
+            <label>Habitacion</label>
+            <input id="habitacionTxt" type="text" readonly />
+          </div>
+
+          <div>
+            <label>Fecha</label>
+            <input id="fecha" type="date" />
+          </div>
+
+          <div>
+            <label>Camarera (quien limpia)</label>
+            <select id="camarera">
+              <option value="">Seleccionar...</option>
+              <option value="Carolina De La Vega">Carolina De La Vega</option>
+              <option value="Aracely Julajuj">Aracely Julajuj</option>
+              <option value="Yerly Rodriguez">Yerly Rodriguez</option>
+              <option value="Yessica Xep">Yessica Xep</option>
+              <option value="Reyna Saminez">Reyna Saminez</option>
+              <option value="Ester Baran">Ester Baran</option>
+              <option value="Yojana Aju">Yojana Aju</option>
+              <option value="Carlos Samalaj">Carlos Samalaj</option>
+              <option value="Nelly Palacios">Nelly Palacios</option>
+              <option value="Jennifer Raxtun">Jennifer Raxtun</option>
+              <option value="Marilyn Lopic">Marilyn Lopic</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Tipo de limpieza</label>
+            <select id="tipoLimpieza">
+              <option value="">Seleccionar...</option>
+              <option value="Estadia">Estadia</option>
+              <option value="Media Estadia">Media Estadia</option>
+              <option value="Limpieza Profunda">Limpieza Profunda</option>
+              <option value="Cliente no Quiere Limpieza">Cliente no Quiere Limpieza</option>
+              <option value="Salida">Salida</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Inspector (login)</label>
+            <input id="inspectorTxt" type="text" readonly />
+          </div>
+        </div>
+
+        <input type="hidden" id="inpModulo">
+        <input type="hidden" id="inpHabitacion">
+        <input type="hidden" id="inpUsuario">
+        <input type="hidden" id="inpDept">
+
+        <div class="toolbar">
+          <div class="btns">
+            <button class="primary" id="btnStart">Empezar limpieza</button>
+            <button id="btnEnd" disabled>Terminar limpieza</button>
+            <button id="btnFamiliar" class="toggleFamiliar" type="button" hidden>Familiar</button>
+            <button id="btnAllNA" class="btnNA" type="button" hidden>Poner todos NA</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div id="sections"></div>
+
+        <div class="footer">
+          <div class="footerGrid">
+            <div>
+              <label>Observaciones generales</label>
+              <textarea id="obsGeneral" rows="4"
+                placeholder="Escribi aqui cualquier observacion general (opcional)..."></textarea>
+              <small>Observaciones NO son obligatorias.</small>
+            </div>
+            <div class="submitWrap">
+              <button class="primary" id="btnGuardar" style="width:100%;height:48px;" type="button" aria-busy="false">
+                <span class="btnInner">
+                  <span class="btnLabel">Guardar y Enviar a monday</span>
+                  <span class="btnSpinner" id="btnGuardarSpinner" hidden aria-hidden="true"></span>
+                </span>
+              </button>
+              <div class="loadingBar" id="guardarLoadingBar" aria-hidden="true"></div>
+              <div class="submitStatus" id="guardarStatus" aria-live="polite"></div>
+              <button id="btnBack" style="width:100%;height:44px;margin-top:10px;">Regresar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    /* =========================
+       CONTEXTO DESDE INDEX (m, r, u, d)
+    ========================= */
+    function getCtx() {
+      const qs = new URLSearchParams(window.location.search);
+      const modulo = (qs.get("m") || "").trim();
+      const habitacion = (qs.get("r") || "").trim();
+
+      let usuario = (qs.get("u") || "").trim();
+      let dept = (qs.get("d") || "").trim();
+
+      if (!usuario || !dept) {
+        try {
+          const sess = JSON.parse(localStorage.getItem("hk_session_v3") || "null");
+          if (sess?.name && !usuario) usuario = sess.name;
+          if (sess?.dept && !dept) dept = sess.dept;
+        } catch { }
+      }
+
+      return { modulo, habitacion, usuario, dept };
+    }
+
+    const CTX = getCtx();
+    const FAMILIAR_ROOMS = new Set(["02", "06"]);
+    let useFamiliarArea = false;
+    let isSavingInspection = false;
+
+    function setGuardarStatus(message, type = "") {
+      const el = $("guardarStatus");
+      if (!el) return;
+      el.textContent = message || "";
+      el.classList.toggle("warn", type === "warn");
+      el.classList.toggle("err", type === "err");
+    }
+
+    function setGuardarLoading(isLoading, message) {
+      const btn = $("btnGuardar");
+      const spinner = $("btnGuardarSpinner");
+      const label = btn?.querySelector(".btnLabel");
+      const bar = $("guardarLoadingBar");
+      if (!btn) return;
+      btn.disabled = isLoading;
+      btn.setAttribute("aria-busy", isLoading ? "true" : "false");
+      if (label) label.textContent = isLoading ? "Enviando checklist..." : "Guardar y Enviar a monday";
+      if (spinner) spinner.hidden = !isLoading;
+      if (bar) bar.classList.toggle("active", isLoading);
+      if (isLoading) {
+        setGuardarStatus(message || "Enviando checklist, espera un momento...");
+      } else if (message !== undefined) {
+        setGuardarStatus(message || "");
+      }
+    }
+
+    function applyReadOnlyIfGerencia() {
+      if (!isGerencia()) return;
+      ["camarera", "tipoLimpieza", "fecha", "obsGeneral"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = true;
+      });
+      ["btnStart", "btnEnd", "btnGuardar", "btnFamiliar", "btnAllNA"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = true;
+      });
+      const hintUser = document.getElementById("hintUser");
+      if (hintUser) hintUser.textContent = `Inspector (login): ${CTX.usuario}${CTX.dept ? " - " + CTX.dept : ""}  -  Tip: toca una tarjeta . -> OK -> X -> NA`;
+    }
+
+    function isGerencia() {
+      const d = String(CTX?.dept || "").toLowerCase();
+      return d.includes("gerencia");
+    }
+    localStorage.setItem("hk_inspeccion_ctx", JSON.stringify({ ...CTX, at: Date.now() }));
+
+    const HK_ROOM_KEY = `${CTX.modulo}::${CTX.habitacion}`;
+    localStorage.setItem("hk_last_room_key", HK_ROOM_KEY);
+    const PENDING_SUBMIT_KEY = `insp_pending_submit_v1::${HK_ROOM_KEY}`;
+
+    if (CTX.usuario) localStorage.setItem("hk_logged_user_name", CTX.usuario);
+    if (CTX.dept) localStorage.setItem("hk_logged_user_dept", CTX.dept);
+
+    // Mostrar nombre de Modulo si viene en la URL (?mn=Nombre)
+    const CTX_MOD_NAME = (new URLSearchParams(window.location.search).get("mn") || "").trim();
+    document.getElementById("moduloTxt").value = CTX_MOD_NAME || CTX.modulo || "-";
+    document.getElementById("habitacionTxt").value = CTX.habitacion || "-";
+
+    document.getElementById("inpModulo").value = CTX.modulo || "";
+    document.getElementById("inpHabitacion").value = CTX.habitacion || "";
+    document.getElementById("inpUsuario").value = CTX.usuario || "";
+    document.getElementById("inpDept").value = CTX.dept || "";
+
+    applyReadOnlyIfGerencia();
+    document.getElementById("inspectorTxt").value = CTX.usuario ? `${CTX.usuario}${CTX.dept ? " - " + CTX.dept : ""}` : "-";
+
+    const titleRoom = document.getElementById("titleRoom");
+    const hintUser = document.getElementById("hintUser");
+    if (CTX.modulo && CTX.habitacion) {
+      titleRoom.textContent = `Inspeccion - ${CTX.habitacion}`;
+    }
+    if (CTX.usuario) {
+      hintUser.textContent = `Inspector (login): ${CTX.usuario}${CTX.dept ? " - " + CTX.dept : ""}  -  Tip: toca una tarjeta . -> OK -> X -> NA`;
+    }
+
+    // ===== CONFIG MONDAY + API =====
+    const BOARD_ID = "18398162991";
+    const APP_BASE = window.location.pathname
+      .replace(/\/[^/]*$/, "/")
+      .replace(/\/+$/, "");
+    const API_BASE = `${window.location.origin}${APP_BASE}`;
+    const API_URL = `${API_BASE}/api/enviar-inspeccion`;
+
+    const COL_AREA_DROPDOWN = "dropdown_mkzw93qc"; // Area
+    const COL_CAMARERA_DROPDOWN = "camarera__1";       // Camarera (dropdown)
+    const COL_FECHA = "fecha3";            // Fecha
+    const COL_TEXTO_LARGO = "texto_largo2";      // Observaciones
+
+    const COL_ESTADO_CAMARERA = "estado7";           // Supervisor / inspector (login)
+    const COL_ESTADO_LIMPIEZA = "estado17";          // Tipo
+
+    const COL_HORA_INICIO = "hour_mm05xfcc";     // Hora Limp Inicio
+    const COL_HORA_FIN = "hour_mm05y6f1";     // Hora Limp Fin
+    const COL_HORA_FIN_CHECK = "hour_mm05bza8";     // Hora Fin Check
+
+    // ===== API MariaDB (habitaciones) =====
+
+    async function apiPOST(path, body) {
+      const r = await fetch(`${API_BASE}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body || {})
+      });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j) throw new Error(j?.error || `POST ${path} failed`);
+      if (j.ok === false) throw new Error(j.error || `POST ${path} failed`);
+      return j;
+    }
+
+    function getActor() {
+      try {
+        const s = JSON.parse(localStorage.getItem("hk_session_v3") || "null");
+        if (s?.name) return { id: s.id || null, name: s.name, dept: s.dept || "" };
+      } catch { }
+      return null;
+    }
+
+    async function updateRoomDB(modulo_id, etiqueta, patch) {
+      const resp = await apiPOST("/api/room/update", { modulo_id, etiqueta, patch, actor: getActor(), source: "inspeccion" });
+      return resp?.data || resp;
+    }
+
+    function isBrowserOffline() {
+      return typeof navigator !== "undefined" && navigator.onLine === false;
+    }
+
+    function getPendingInspectionSubmit() {
+      try {
+        return JSON.parse(localStorage.getItem(PENDING_SUBMIT_KEY) || "null");
+      } catch {
+        return null;
+      }
+    }
+
+    function setPendingInspectionSubmit(data) {
+      localStorage.setItem(PENDING_SUBMIT_KEY, JSON.stringify({
+        ...data,
+        savedAt: Date.now()
+      }));
+    }
+
+    function clearPendingInspectionSubmit() {
+      localStorage.removeItem(PENDING_SUBMIT_KEY);
+    }
+
+    const AREA_LABELS_EXISTENTES = new Set([
+      "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12",
+      "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "113", "114", "115",
+      "201", "202", "203", "204", "205", "206", "207", "208", "209", "210", "211", "212", "213", "214", "215",
+      "1001", "1002", "1003", "1004",
+      "01 Santa Isabel", "02 Santa Isabel", "Casa Amarilla", "Casa Celeste", "Casa Blanca",
+      "02 Familiar", "06 Familiar",
+      "116", "117", "118", "119", "120", "121", "216", "217", "218", "219", "220", "221", "316", "317", "318", "319", "320", "321",
+      "1005", "1006", "2005", "2006", "2007", "2008",
+      "RG1", "RG2", "RG3", "RG4", "RG5", "RGCOCINA", "RGSALA",
+      "109", "107", "110", "104", "111", "112", "113", "114", "105", "115", "106", "103", "102", "108", "101"
+    ]);
+    const CAMARERA_LABELS_VALIDAS = new Set([
+      "Carolina De La Vega",
+      "Yerly Rodriguez",
+      "Yessica Xep",
+      "Reyna Saminez",
+      "Ester Baran",
+      "Nelly Palacios",
+      "Yojana Aju",
+      "Carlos Samalaj",
+      "Aracely Julajuj",
+      "Marilyn Lopic",
+      "Jennifer Raxtun"
+    ]);
+
+    function normalizeLabel(s) {
+      return String(s || "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+    const AREA_LABELS_EXISTENTES_NORM = new Set(
+      Array.from(AREA_LABELS_EXISTENTES).map(normalizeLabel)
+    );
+
+    const CAMARERA_LABELS_VALIDAS_NORM = new Set(
+      Array.from(CAMARERA_LABELS_VALIDAS).map(normalizeLabel)
+    );
+
+    function buildCamareraAllowedFromDOM() {
+      const sel = document.getElementById("camarera");
+      if (!sel) return new Set();
+      return new Set(
+        Array.from(sel.options || []).map(o => normalizeLabel(o.value || o.textContent))
+      );
+    }
+
+    const CAMARERA_LABELS_DOM_NORM = buildCamareraAllowedFromDOM();
+
+    function isCamareraValida(label) {
+      const n = normalizeLabel(label);
+      return CAMARERA_LABELS_VALIDAS_NORM.has(n) || CAMARERA_LABELS_DOM_NORM.has(n);
+    }
+
+
+    // ===== UI helpers =====
+    const $ = (id) => document.getElementById(id);
+
+    // ===== TIME SYNC (server) =====
+    let TIME_OFFSET_MS = 0; // server - client
+    function nowServerMs() {
+      return Date.now() + TIME_OFFSET_MS;
+    }
+    async function syncServerTime() {
+      try {
+        const r = await fetch(`${API_BASE}/api/time`, { method: "GET", cache: "no-store" });
+        const j = await r.json().catch(() => null);
+        const serverMs = Number(j?.serverMs);
+        if (Number.isFinite(serverMs)) {
+          TIME_OFFSET_MS = serverMs - Date.now();
+        }
+      } catch (e) {
+        // no bloquear si falla
+      }
+    }
+
+    // Toast
+    const toasts = $("toasts");
+    function toast(title, body, ok = true, ms = 3200) {
+      const t = document.createElement("div");
+      t.className = "toast " + (ok ? "ok" : "err");
+      t.innerHTML = `
+        <div class="bar"></div>
+        <div class="inner">
+          <div class="ico">${ok ? "OK" : "!"}</div>
+          <div class="txt">
+            <b>${title}</b>
+            <span>${body}</span>
+          </div>
+          <div class="close" title="Cerrar">x</div>
+        </div>
+      `;
+      t.querySelector(".close").addEventListener("click", () => t.remove());
+      toasts.appendChild(t);
+      if (ms) setTimeout(() => { if (t.isConnected) t.remove(); }, ms);
+      if (navigator.vibrate) navigator.vibrate(25);
+    }
+
+    function highlightAndFocus(id) {
+      const el = $(id);
+      if (!el) return;
+      el.classList.add("fieldErr", "shake");
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => el.focus(), 220);
+      setTimeout(() => el.classList.remove("shake"), 260);
+    }
+
+    function clearFieldErrors() {
+      ["fecha", "camarera", "tipoLimpieza"].forEach(id => {
+        const el = $(id);
+        if (el) el.classList.remove("fieldErr", "shake");
+      });
+    }
+
+    function setToday() {
+      const now = new Date(nowServerMs());
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      $("fecha").value = `${yyyy}-${mm}-${dd}`;
+    }
+    function todayYMD() {
+      const now = new Date(nowServerMs());
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    syncServerTime().then(setToday);
+    setInterval(syncServerTime, 5 * 60 * 1000);
+
+    // ===== Enviar ISO (UTC) para que backend convierta a Guatemala =====
+    function nowLocalMySQL() {
+      return new Date(nowServerMs()).toISOString();
+    }
+
+    function gtPartsFromMySQL(mysqlDT) {
+      if (!mysqlDT) return null;
+      const s = String(mysqlDT).trim();
+
+      // ISO (con o sin Z)
+      if (s.includes("T")) {
+        const d = new Date(s);
+        if (Number.isNaN(d.getTime())) return null;
+        const parts = new Intl.DateTimeFormat("es-GT", {
+          timeZone: "America/Guatemala",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false
+        }).formatToParts(d);
+        const get = (t) => parts.find(p => p.type === t)?.value;
+        return { hour: Number(get("hour")), minute: Number(get("minute")), label: `${get("hour")}:${get("minute")}` };
+      }
+
+      // MySQL DATETIME: "YYYY-MM-DD HH:MM:SS"
+      const [datePart, timePart] = s.split(" ");
+      if (!datePart || !timePart) return null;
+
+      const [Y, M, D] = datePart.split("-").map(Number);
+      const [h, m, sec] = timePart.split(":").map(Number);
+      // Guatemala = UTC-6 (sin DST)
+      const d = new Date(Date.UTC(Y, M - 1, D, h + 6, m, sec || 0));
+
+      const parts = new Intl.DateTimeFormat("es-GT", {
+        timeZone: "America/Guatemala",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).formatToParts(d);
+
+      const get = (t) => parts.find(p => p.type === t)?.value;
+      return { hour: Number(get("hour")), minute: Number(get("minute")), label: `${get("hour")}:${get("minute")}` };
+    }
+
+    function fmtTimeFromMySQL(mysqlDT) {
+      const p = gtPartsFromMySQL(mysqlDT);
+      return p ? p.label : "-";
+    }
+
+    // Monday hour: {hour, minute}
+    function toMondayHourObjFromMySQL(mysqlDT) {
+      const p = gtPartsFromMySQL(mysqlDT);
+      if (!p) return null;
+      return { hour: p.hour, minute: p.minute };
+    }
+
+    function mapSupervisorLabel(loginName) {
+      const x = (loginName || "").trim().toLowerCase();
+      if (x === "carolina de la vega") return "Carolina De La Vega";
+      if (x === "Yerly rodriguez") return "Yerly Rodriguez";
+      if (x === "diana chavez") return "Diana Chavez";
+      return "ADMINISTRATIVO";
+    }
+
+    function toMondayLabelForColumn(columnId, estado) {
+      const base =
+        estado === "CUMPLE" ? "Cumple" :
+          estado === "NO_CUMPLE" ? "No Cumple" :
+            "No Aplica";
+
+      if (columnId === "luminarias" && base === "No Aplica") return "No APlica";
+      return base;
+    }
+
+    // ===== Persistencia local SOLO de la sesion del checklist (para continuar si vuelve) =====
+    const SESSION_KEY = "insp_session_v2"; // compat antigua
+    const SESSION_KEY_ROOM = (roomKey) => `insp_session_v2::${roomKey}`;
+    let startAtDT = null; // DATETIME local
+    let endAtDT = null;   // DATETIME local
+    let currentRoomObservaciones = "";
+
+    function normalizeRoom(r) {
+      const s = String(r || "").trim();
+      if (/^\d+$/.test(s) && s.length === 1) return s.padStart(2, "0");
+      return s;
+    }
+    function canUseFamiliarArea() {
+      return FAMILIAR_ROOMS.has(normalizeRoom(CTX.habitacion));
+    }
+    function getFamiliarAreaLabel() {
+      return `${normalizeRoom(CTX.habitacion)} Familiar`;
+    }
+    function getSelectedAreaLabel() {
+      if (canUseFamiliarArea() && useFamiliarArea) return getFamiliarAreaLabel();
+      return buildAreaLabel(CTX.habitacion);
+    }
+    function renderFamiliarUI() {
+      const btn = $("btnFamiliar");
+      const roomTxt = $("habitacionTxt");
+      if (!btn || !roomTxt) return;
+
+      const enabled = canUseFamiliarArea();
+      if (!enabled) {
+        useFamiliarArea = false;
+        btn.hidden = true;
+        roomTxt.value = CTX.habitacion || "-";
+        return;
+      }
+
+      const familiarLabel = getFamiliarAreaLabel();
+      btn.hidden = false;
+      btn.textContent = familiarLabel;
+      btn.classList.toggle("on", useFamiliarArea);
+      roomTxt.value = useFamiliarArea ? familiarLabel : (CTX.habitacion || "-");
+    }
+    function isTipoClienteNoQuiereLimpieza() {
+      return String($("tipoLimpieza")?.value || "").trim().toLowerCase() === "cliente no quiere limpieza";
+    }
+    function renderAllNABtn() {
+      const btn = $("btnAllNA");
+      if (!btn) return;
+      btn.hidden = !isTipoClienteNoQuiereLimpieza();
+    }
+    function actorDisplay() {
+      const u = String(CTX?.usuario || "").trim();
+      const d = String(CTX?.dept || "").trim();
+      if (!u) return "Sistema";
+      return d ? `${u} - ${d}` : u;
+    }
+    function fmtObsStamp(dtValue) {
+      const d = dtValue ? new Date(dtValue) : new Date(nowServerMs());
+      if (Number.isNaN(d.getTime())) return "0000-00-00 00:00:00";
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/Guatemala",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+      }).formatToParts(d);
+      const get = (type) => parts.find(p => p.type === type)?.value || "00";
+      return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}:${get("second")}`;
+    }
+    function appendObsLog(prev, action, dtValue, detail) {
+      const base = String(prev || "").trim();
+      const detailText = String(detail || "").trim();
+      const line = `[${fmtObsStamp(dtValue)}] ${action} por ${actorDisplay()}${detailText ? ` - ${detailText}` : ""}`;
+      return base ? `${base}\n${line}` : line;
+    }
+    function toEpochMsFromAnyDate(value) {
+      if (!value) return null;
+      const s = String(value).trim();
+      if (!s) return null;
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s)) {
+        const [datePart, timePart] = s.split(" ");
+        const [Y, M, D] = datePart.split("-").map(Number);
+        const [h, m, sec] = timePart.split(":").map(Number);
+        const d = new Date(Date.UTC(Y, M - 1, D, h + 6, m, sec || 0));
+        return Number.isNaN(d.getTime()) ? null : d.getTime();
+      }
+      const d = new Date(s);
+      return Number.isNaN(d.getTime()) ? null : d.getTime();
+    }
+
+    function saveSession() {
+      const payload = {
+        modulo: CTX.modulo,
+        habitacion: CTX.habitacion,
+        roomKey: HK_ROOM_KEY,
+        date: $("fecha").value,
+        startAtDT,
+        endAtDT,
+        useFamiliarArea,
+        camareraSel: $("camarera").value || "",
+        tipoSel: $("tipoLimpieza").value || "",
+        obsGeneral: $("obsGeneral").value || ""
+      };
+      localStorage.setItem(SESSION_KEY_ROOM(HK_ROOM_KEY), JSON.stringify(payload));
+      // mantener compat por si hay sesiones antiguas
+      localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+    }
+
+    function restoreSession() {
+      try {
+        const s = JSON.parse(
+          localStorage.getItem(SESSION_KEY_ROOM(HK_ROOM_KEY)) ||
+          localStorage.getItem(SESSION_KEY) ||
+          "null"
+        );
+        if (!s) return;
+
+        const sMod = String(s.modulo || "").trim();
+        const sHab = normalizeRoom(s.habitacion);
+        const cMod = String(CTX.modulo || "").trim();
+        const cHab = normalizeRoom(CTX.habitacion);
+        const sameRoom =
+          (s.roomKey && s.roomKey === HK_ROOM_KEY) ||
+          (sMod === cMod && sHab === cHab);
+
+        if (sameRoom) {
+          const isTodaySession = String(s.date || "") === todayYMD();
+
+          if (isTodaySession) {
+            if (s.date) $("fecha").value = s.date;
+            startAtDT = s.startAtDT || null;
+            endAtDT = s.endAtDT || null;
+            useFamiliarArea = canUseFamiliarArea() && !!s.useFamiliarArea;
+            if (s.camareraSel) $("camarera").value = s.camareraSel;
+            if (s.tipoSel) $("tipoLimpieza").value = s.tipoSel;
+            if (s.obsGeneral) $("obsGeneral").value = s.obsGeneral;
+            renderFamiliarUI();
+            renderAllNABtn();
+          } else {
+            // Si la sesion es de otro dia, no arrastrar camarera/horas viejas.
+            startAtDT = null;
+            endAtDT = null;
+            useFamiliarArea = false;
+            localStorage.removeItem(SESSION_KEY_ROOM(HK_ROOM_KEY));
+            localStorage.removeItem(SESSION_KEY);
+          }
+        }
+      } catch { }
+    }
+
+    async function restoreFromDB() {
+      try {
+        if (!CTX.modulo || !CTX.habitacion) return;
+        const r = await fetch(`${API_BASE}/api/rooms?modulo_id=${encodeURIComponent(CTX.modulo)}`, { cache: "no-store" });
+        const j = await r.json().catch(() => null);
+        if (!r.ok || !j?.ok || !Array.isArray(j.data)) return;
+
+        const target = j.data.find(row => normalizeRoom(row?.etiqueta) === normalizeRoom(CTX.habitacion));
+        if (!target) return;
+
+        const estado = String(target.estado || "").trim().toLowerCase();
+        currentRoomObservaciones = String(target.observaciones || "");
+        if (estado === "limpieza") {
+          if (!startAtDT && target.inicio_limpieza) startAtDT = target.inicio_limpieza;
+          if (!endAtDT && target.fin_limpieza) {
+            const iniMs = toEpochMsFromAnyDate(target.inicio_limpieza);
+            const finMs = toEpochMsFromAnyDate(target.fin_limpieza);
+            if (iniMs != null && finMs != null && finMs >= iniMs) {
+              endAtDT = target.fin_limpieza;
+            }
+          }
+          if (!$("camarera").value && target.camarera_asignada) $("camarera").value = target.camarera_asignada;
+          if (!$("tipoLimpieza").value && target.tipo_limpieza) $("tipoLimpieza").value = target.tipo_limpieza;
+        } else {
+          // Para un nuevo ciclo (lista/ocupada limpia/etc), iniciar sin bloqueo de horas anteriores.
+          startAtDT = null;
+          endAtDT = null;
+        }
+
+        updateStartEndUI();
+        renderAllNABtn();
+        saveSession();
+      } catch { }
+    }
+
+    // ===== Start/End buttons =====
+    const btnStart = $("btnStart");
+    const btnEnd = $("btnEnd");
+
+    function updateStartEndUI() {
+      const started = !!startAtDT;
+      const ended = !!endAtDT;
+
+      btnStart.disabled = started;
+      btnEnd.disabled = !started || ended;
+
+      btnStart.textContent = started ? `Inici?: ${fmtTimeFromMySQL(startAtDT)}` : "Empezar limpieza";
+      btnEnd.textContent = ended ? `Termin?: ${fmtTimeFromMySQL(endAtDT)}` : "Terminar limpieza";
+    }
+
+    btnStart.addEventListener("click", async () => {
+      if (isGerencia()) {
+        toast("Restringido", "Gerencia solo puede visualizar.", false, 3200);
+        return;
+      }
+      const camareraSel = $("camarera").value;
+      const tipoSel = $("tipoLimpieza").value;
+
+      if (!camareraSel) {
+        toast("Falta Camarera", "Selecciona la camarera (quien limpia).", false, 4200);
+        return highlightAndFocus("camarera");
+      }
+      if (!isCamareraValida(camareraSel)) {
+        toast("Camarera invalida", `La camarera "${camareraSel}" no esta en la lista permitida.`, false, 5200);
+        return highlightAndFocus("camarera");
+      }
+
+      if (!tipoSel) {
+        toast("Falta Tipo de Limpieza", "Selecciona el tipo de limpieza antes de iniciar.", false, 4200);
+        return highlightAndFocus("tipoLimpieza");
+      }
+
+      if (!startAtDT) {
+        startAtDT = nowLocalMySQL(); // OK local
+        endAtDT = null;
+
+        saveSession();
+
+        try {
+          const nextObs = appendObsLog(
+            currentRoomObservaciones,
+            "INICIO LIMPIEZA",
+            startAtDT,
+            `Camarera encargada de limpieza: ${camareraSel}`
+          );
+          const updated = await updateRoomDB(CTX.modulo, CTX.habitacion, {
+            estado: "limpieza",
+            inicio_limpieza: startAtDT,         // OK DATETIME local
+            camarera_asignada: camareraSel,     // OK quien limpia
+            tipo_limpieza: tipoSel,             // OK tipo
+            inspector_asignado: CTX.usuario || null, // OK quien inspecciona (login)
+            observaciones: nextObs
+          });
+          currentRoomObservaciones = String(updated?.observaciones ?? nextObs);
+          endAtDT = null;
+        } catch (e) {
+          toast("Error BD", e.message || "No se pudo guardar inicio en MariaDB", false, 5200);
+          startAtDT = null;
+          saveSession();
+          return;
+        }
+
+        toast("Limpieza iniciada", `Hora inicio: ${fmtTimeFromMySQL(startAtDT)} (BD)`, true, 3200);
+        updateStartEndUI();
+      }
+    });
+
+    btnEnd.addEventListener("click", async () => {
+      if (isGerencia()) {
+        toast("Restringido", "Gerencia solo puede visualizar.", false, 3200);
+        return;
+      }
+      if (startAtDT && !endAtDT) {
+        endAtDT = nowLocalMySQL(); // OK local
+        saveSession();
+
+        try {
+          const nextObs = appendObsLog(
+            currentRoomObservaciones,
+            "FIN LIMPIEZA",
+            endAtDT,
+            `Camarera encargada de limpieza: ${$("camarera").value || "-"}`
+          );
+          const updated = await updateRoomDB(CTX.modulo, CTX.habitacion, {
+            estado: "limpieza",
+            fin_limpieza: endAtDT,                 // OK DATETIME local
+            camarera_asignada: $("camarera").value || null,
+            tipo_limpieza: $("tipoLimpieza").value || null,
+            inspector_asignado: CTX.usuario || null,
+            observaciones: nextObs
+          });
+          currentRoomObservaciones = String(updated?.observaciones ?? nextObs);
+        } catch (e) {
+          toast("Error BD", e.message || "No se pudo guardar fin en MariaDB", false, 5200);
+          endAtDT = null;
+          saveSession();
+          return;
+        }
+
+        toast("Limpieza terminada", `Hora fin: ${fmtTimeFromMySQL(endAtDT)} (BD)`, true, 3200);
+        updateStartEndUI();
+      }
+    });
+
+    restoreSession();
+    updateStartEndUI();
+    restoreFromDB();
+
+    // ===== Checklist =====
+    const CHECK_ITEMS = [
+      { id: "limpieza_y_desinfecci_n_de_puerta", label: "Alfombra Plastica Bano" },
+      { id: "limpieza_y_desinfecci_n_de_controles", label: "Amenidades Bano" },
+      { id: "limpieza_y_desinfecci_n_de_manijas", label: "Bano" },
+      { id: "dup__of_ba_o5", label: "Toallas de Mano" },
+      { id: "dup__of_toallas_de_mano2", label: "Toallas De Pies" },
+      { id: "dup__of_toallas_de_mano", label: "Toallas de Cuerpo" },
+      { id: "dup__of_ba_o", label: "Ciza" },
+      { id: "ducha_tina", label: "Closet" },
+      { id: "lavamanos", label: "Mesas" },
+      { id: "wc", label: "Camas" },
+      { id: "dup__of_camas", label: "Blancos De Cama" },
+      { id: "dup__of_blancos_de_cama", label: "Edredon y Almohadas Extra" },
+      { id: "ventana_ba_o", label: "TV y Control" },
+      { id: "puerta_ba_o", label: "Ventana y Puerta" },
+      { id: "luminarias", label: "Amenidades Habitacion" },
+      { id: "espejo", label: "Habitacion" },
+      { id: "color_mkr8bns6", label: "Cocineta" },
+    ];
+
+    const SECCIONES = [
+      { key: "bano", nombre: "Bano", ayuda: "Toallas y Bano", items: ["Alfombra Plastica Bano", "Amenidades Bano", "Bano", "Toallas de Mano", "Toallas De Pies", "Toallas de Cuerpo"] },
+      { key: "hab", nombre: "Habitacion", ayuda: "Muebles, camas, blancos", items: ["Ciza", "Closet", "Mesas", "Camas", "Blancos De Cama", "Edredon y Almohadas Extra", "TV y Control", "Ventana y Puerta", "Amenidades Habitacion", "Habitacion", "Cocineta"] },
+    ];
+
+    const state = {};
+    const cycle = ["SIN_SELECCION", "CUMPLE", "NO_CUMPLE", "NO_APLICA"];
+    const icon = (v) =>
+      v === "SIN_SELECCION" ? "." :
+        v === "CUMPLE" ? "OK" :
+          v === "NO_CUMPLE" ? "X" : "NA";
+
+    function ensure(label) {
+      if (!state[label]) state[label] = { estado: "SIN_SELECCION", touched: false };
+      return state[label];
+    }
+
+    function renderChecklist() {
+      const host = $("sections");
+      host.innerHTML = "";
+
+      SECCIONES.forEach((sec, idx) => {
+        const det = document.createElement("details");
+        det.open = (idx === 0);
+
+        const sum = document.createElement("summary");
+
+        const left = document.createElement("div");
+        left.className = "secLeft";
+        left.innerHTML = `<b>${sec.nombre}</b><span>${sec.ayuda}</span>`;
+
+        sum.appendChild(left);
+
+        const itemsWrap = document.createElement("div");
+        itemsWrap.className = "items";
+
+        sec.items.forEach(label => {
+          const st = ensure(label);
+
+          const card = document.createElement("div");
+          card.className = "item " + (
+            st.estado === "CUMPLE" ? "ok" :
+              st.estado === "NO_CUMPLE" ? "bad" :
+                st.estado === "NO_APLICA" ? "na" : "none"
+          );
+          card.dataset.label = label;
+
+          const name = document.createElement("div");
+          name.className = "itemName";
+          name.textContent = label;
+
+          const badge = document.createElement("div");
+          badge.className = "status " + (
+            st.estado === "CUMPLE" ? "s-ok" :
+              st.estado === "NO_CUMPLE" ? "s-bad" :
+                st.estado === "NO_APLICA" ? "s-na" : "s-none"
+          );
+          badge.textContent = icon(st.estado);
+
+          card.addEventListener("click", () => {
+            cycleItem(label);
+            saveSession();
+          });
+
+          card.appendChild(name);
+          card.appendChild(badge);
+          itemsWrap.appendChild(card);
+        });
+
+        det.appendChild(sum);
+        det.appendChild(itemsWrap);
+        host.appendChild(det);
+      });
+    }
+
+    function cycleItem(label) {
+      const st = ensure(label);
+      const i = cycle.indexOf(st.estado);
+      st.estado = cycle[(i + 1) % cycle.length];
+      st.touched = true;
+
+      const card = document.querySelector(`.item[data-label="${CSS.escape(label)}"]`);
+      if (card) {
+        card.classList.remove("ok", "bad", "na", "none");
+        card.classList.add(
+          st.estado === "CUMPLE" ? "ok" :
+            st.estado === "NO_CUMPLE" ? "bad" :
+              st.estado === "NO_APLICA" ? "na" : "none"
+        );
+        const s = card.querySelector(".status");
+        s.className = "status " + (
+          st.estado === "CUMPLE" ? "s-ok" :
+            st.estado === "NO_CUMPLE" ? "s-bad" :
+              st.estado === "NO_APLICA" ? "s-na" : "s-none"
+        );
+        s.textContent = icon(st.estado);
+      }
+    }
+    function setAllChecklistToNA() {
+      CHECK_ITEMS.forEach(it => {
+        const st = ensure(it.label);
+        st.estado = "NO_APLICA";
+        st.touched = true;
+      });
+      renderChecklist();
+      saveSession();
+    }
+
+
+    function resetAll() {
+      Object.keys(state).forEach(k => { state[k].estado = "SIN_SELECCION"; state[k].touched = false; });
+      setToday();
+      $("camarera").value = "";
+      $("tipoLimpieza").value = "";
+      $("obsGeneral").value = "";
+      startAtDT = null;
+      endAtDT = null;
+      useFamiliarArea = false;
+      currentRoomObservaciones = "";
+      localStorage.removeItem(SESSION_KEY_ROOM(HK_ROOM_KEY));
+      localStorage.removeItem(SESSION_KEY);
+      renderChecklist();
+      clearFieldErrors();
+      updateStartEndUI();
+      renderFamiliarUI();
+      renderAllNABtn();
+    }
+
+    renderChecklist();
+
+    function buildAreaLabel(habitacion) {
+      const raw = String(habitacion || "").trim();
+      if (/^\d+$/.test(raw) && raw.length === 1) return raw.padStart(2, "0");
+      return raw;
+    }
+
+    function checklistAllSelected() {
+      for (const it of CHECK_ITEMS) {
+        const st = ensure(it.label);
+        if (st.estado === "SIN_SELECCION") return false;
+      }
+      return true;
+    }
+
+    function buildObservacionesTexto(modulo, habitacion, fecha, camarera, tipoLimpieza, obsGeneral, inicioDT, finDT, checkDT) {
+      const lines = [];
+      lines.push(`Modulo: ${modulo}`);
+      lines.push(`Habitacion: ${habitacion}`);
+      lines.push(`Inspector (login): ${CTX.usuario || "-"}${CTX.dept ? " - " + CTX.dept : ""}`);
+      lines.push(`Camarera (quien limpia): ${camarera || "-"}`);
+      lines.push(`Fecha: ${fecha}`);
+      lines.push(`Tipo de limpieza: ${tipoLimpieza || "-"}`);
+      lines.push(`Hora inicio: ${inicioDT ? fmtTimeFromMySQL(inicioDT) : "-"}`);
+      lines.push(`Hora fin: ${finDT ? fmtTimeFromMySQL(finDT) : "-"}`);
+      lines.push(`Hora checklist: ${checkDT ? fmtTimeFromMySQL(checkDT) : "-"}`);
+      lines.push("");
+      lines.push("Observaciones generales:");
+      lines.push((obsGeneral || "").trim() || "-");
+      lines.push("");
+      lines.push("Checklist:");
+      CHECK_ITEMS.forEach(it => {
+        const st = ensure(it.label);
+        const val = st.estado === "SIN_SELECCION" ? "-" : toMondayLabelForColumn(it.id, st.estado);
+        lines.push(`- ${it.label}: ${val}`);
+      });
+      return lines.join("\n");
+    }
+
+
+    $("camarera").addEventListener("change", saveSession);
+    $("tipoLimpieza").addEventListener("change", () => {
+      renderAllNABtn();
+      saveSession();
+    });
+    $("fecha").addEventListener("change", saveSession);
+    $("obsGeneral").addEventListener("input", () => {
+      clearTimeout(window.__obsT);
+      window.__obsT = setTimeout(saveSession, 250);
+    });
+    window.addEventListener("beforeunload", saveSession);
+    window.addEventListener("pagehide", saveSession);
+
+    async function syncLimpiezaMeta() {
+      if (isGerencia()) return;
+      if (!startAtDT || endAtDT) return;
+      const camareraSel = $("camarera").value || null;
+      const tipoSel = $("tipoLimpieza").value || null;
+      if (!camareraSel && !tipoSel) return;
+      try {
+        await updateRoomDB(CTX.modulo, CTX.habitacion, {
+          estado: "limpieza",
+          camarera_asignada: camareraSel,
+          tipo_limpieza: tipoSel,
+          inspector_asignado: CTX.usuario || null
+        });
+      } catch { }
+    }
+
+    $("camarera").addEventListener("change", syncLimpiezaMeta);
+    $("tipoLimpieza").addEventListener("change", syncLimpiezaMeta);
+    $("btnAllNA").addEventListener("click", () => {
+      if (isGerencia()) {
+        toast("Restringido", "Gerencia solo puede visualizar.", false, 3200);
+        return;
+      }
+      if (!isTipoClienteNoQuiereLimpieza()) return;
+      setAllChecklistToNA();
+      toast("Listo", "Todos los checks quedaron en NA.", true, 2600);
+    });
+    $("btnFamiliar").addEventListener("click", () => {
+      if (isGerencia()) {
+        toast("Restringido", "Gerencia solo puede visualizar.", false, 3200);
+        return;
+      }
+      if (!canUseFamiliarArea()) return;
+      useFamiliarArea = !useFamiliarArea;
+      renderFamiliarUI();
+      saveSession();
+    });
+    window.addEventListener("offline", () => {
+      setGuardarStatus("Sin conexion. Espera a recuperar internet antes de enviar.", "err");
+      toast("Sin conexion", "No cierres la pantalla; vuelve a intentar cuando regrese la conexion.", false, 6200);
+    });
+    window.addEventListener("online", () => {
+      const pendingSubmit = getPendingInspectionSubmit();
+      setGuardarStatus(
+        pendingSubmit?.itemId
+          ? "Conexion recuperada. Presiona Guardar para liberar la habitacion pendiente."
+          : "Conexion recuperada. Ya puedes enviar el checklist.",
+        pendingSubmit?.itemId ? "warn" : ""
+      );
+      toast("Conexion recuperada", pendingSubmit?.itemId ? "Puedes reintentar liberar la habitacion." : "Ya puedes enviar el checklist.", true, 4200);
+    });
+    renderFamiliarUI();
+    renderAllNABtn();
+    $("btnBack").addEventListener("click", () => {
+      saveSession();
+      window.location.href = "./index.html";
+    });
+
+    $("btnGuardar").addEventListener("click", async () => {
+      if (isGerencia()) {
+        toast("Restringido", "Gerencia solo puede visualizar.", false, 3200);
+        return;
+      }
+      if (isSavingInspection) {
+        toast("En proceso", "Ya se esta enviando el checklist. Espera a que termine.", false, 3200);
+        return;
+      }
+      if (isBrowserOffline()) {
+        setGuardarStatus("Sin conexion. Espera a recuperar internet antes de enviar.", "err");
+        toast("Sin conexion", "No se enviara el checklist hasta que vuelva la conexion.", false, 5200);
+        return;
+      }
+      clearFieldErrors();
+
+      const modulo = CTX.modulo;
+      const habitacion = CTX.habitacion;
+
+      const fecha = $("fecha").value;
+      const camareraSel = $("camarera").value;     // quien limpia
+      const tipoSel = $("tipoLimpieza").value;     // tipo
+      const obsGeneral = $("obsGeneral").value;
+
+      if (!modulo || !habitacion) {
+        toast("Falta contexto", "No llego Modulo/Habitacion desde index.html.", false, 5200);
+        return;
+      }
+
+      if (!fecha) { toast("Falta Fecha", "Elige la fecha de la limpieza.", false); return highlightAndFocus("fecha"); }
+      if (!camareraSel) { toast("Falta Camarera", "Selecciona la camarera (quien limpia).", false); return highlightAndFocus("camarera"); }
+      if (!isCamareraValida(camareraSel)) {
+        toast("Camarera invalida", `La camarera "${camareraSel}" no esta en la lista permitida.`, false, 5200);
+        return highlightAndFocus("camarera");
+      }
+      if (!tipoSel) { toast("Falta Tipo de Limpieza", "Selecciona Estadia / Media Estadia / etc.", false); return highlightAndFocus("tipoLimpieza"); }
+
+      if (!startAtDT) {
+        toast("Falta iniciar", "Presiona \"Empezar limpieza\" antes de guardar.", false, 4200);
+        return;
+      }
+      if (!endAtDT) {
+        toast("Falta terminar", "Presiona \"Terminar limpieza\" antes de guardar.", false, 4200);
+        return;
+      }
+
+      if (!checklistAllSelected()) {
+        toast("Checklist incompleto", "Hay items en . (sin seleccionar). Revisalos antes de guardar.", false, 4200);
+        const first = document.querySelector("details");
+        if (first) first.open = true;
+        $("sections").scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+
+      const areaLabel = getSelectedAreaLabel();
+      if (!AREA_LABELS_EXISTENTES_NORM.has(normalizeLabel(areaLabel))) {
+        toast("Area no existe en monday", `La Habitacion/area "${areaLabel}" no esta como label en la columna Area.`, false, 5200);
+        return;
+      }
+
+      const checklistFinishedAtDT = nowLocalMySQL();
+      const itemName = `Inspeccion ${habitacion} (${fecha})`;
+
+      const columnValues = {};
+
+      // Dropdowns
+      columnValues[COL_AREA_DROPDOWN] = { labels: [areaLabel] };
+      columnValues[COL_CAMARERA_DROPDOWN] = { labels: [camareraSel] };
+
+      // estado7: inspector (login)
+      columnValues[COL_ESTADO_CAMARERA] = { label: mapSupervisorLabel(CTX.usuario) };
+
+      // estado17: tipo
+      columnValues[COL_ESTADO_LIMPIEZA] = { label: tipoSel };
+
+      // fecha3
+      columnValues[COL_FECHA] = { date: fecha };
+
+      // horas
+      const hIni = toMondayHourObjFromMySQL(startAtDT);
+      const hFin = toMondayHourObjFromMySQL(endAtDT);
+      const hChk = toMondayHourObjFromMySQL(checklistFinishedAtDT);
+
+      if (hIni) columnValues[COL_HORA_INICIO] = hIni;
+      if (hFin) columnValues[COL_HORA_FIN] = hFin;
+      if (hChk) columnValues[COL_HORA_FIN_CHECK] = hChk;
+
+      // texto largo (long_text requiere { text: "..." })
+      columnValues[COL_TEXTO_LARGO] = {
+        text: buildObservacionesTexto(
+          modulo, habitacion, fecha, camareraSel, tipoSel, obsGeneral, startAtDT, endAtDT, checklistFinishedAtDT
+        )
+      };
+
+      // checklist
+      CHECK_ITEMS.forEach(it => {
+        const st = ensure(it.label);
+        columnValues[it.id] = { label: toMondayLabelForColumn(it.id, st.estado) };
+      });
+
+      isSavingInspection = true;
+      setGuardarLoading(true, "Enviando checklist. No cierres esta pantalla...");
+      try {
+        toast("Enviando", "Guardando checklist. Espera un momento...", true, 1800);
+        const sendMondayItem = async (itemNameToSend, extraObsNote = "") => {
+          if (isBrowserOffline()) {
+            throw new Error("Sin conexion. Espera a recuperar internet y vuelve a intentar.");
+          }
+          const payloadCols = {
+            ...columnValues,
+            [COL_TEXTO_LARGO]: {
+              text: `${columnValues[COL_TEXTO_LARGO].text}${extraObsNote ? `\n\n${extraObsNote}` : ""}`
+            }
+          };
+          const resp = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ boardId: BOARD_ID, itemName: itemNameToSend, columnValues: payloadCols })
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok || !data?.ok) {
+            throw new Error(data?.error || "No se pudo enviar a monday");
+          }
+          return data;
+        };
+
+        let pendingSubmit = getPendingInspectionSubmit();
+        if (pendingSubmit && (
+          pendingSubmit.inicio_limpieza !== startAtDT ||
+          pendingSubmit.fin_limpieza !== endAtDT ||
+          pendingSubmit.fecha !== fecha
+        )) {
+          clearPendingInspectionSubmit();
+          pendingSubmit = null;
+        }
+        let dataNormal = pendingSubmit?.itemId ? pendingSubmit : null;
+
+        if (dataNormal?.itemId) {
+          setGuardarStatus("Este checklist ya fue enviado a Monday. Intentando liberar la habitacion...", "warn");
+          toast("Pendiente", `Ya existe en Monday (Item ID: ${dataNormal.itemId}). Solo se intentara liberar la habitacion.`, false, 5200);
+        } else {
+          setGuardarStatus("Enviando checklist a Monday...");
+          dataNormal = await sendMondayItem(itemName);
+          setPendingInspectionSubmit({
+            itemId: dataNormal.itemId,
+            itemName,
+            modulo,
+            habitacion,
+            fecha,
+            camarera: camareraSel,
+            tipoLimpieza: tipoSel,
+            inicio_limpieza: startAtDT,
+            fin_limpieza: endAtDT
+          });
+          toast("Listo OK", `Enviado a Monday. Item ID: ${dataNormal.itemId}`, true, 2600);
+        }
+
+
+
+        // OK Liberar Habitacion en BD SOLO si Monday OK (sin borrar tiempos)
+        setGuardarStatus("Checklist enviado. Liberando habitacion en el sistema...");
+        try {
+          if (isBrowserOffline()) {
+            throw new Error("Sin conexion al liberar habitacion");
+          }
+          const nextEstado = (String(tipoSel || "").trim().toLowerCase() === "estadia")
+            ? "ocupada limpia"
+            : "libre";
+          await updateRoomDB(CTX.modulo, CTX.habitacion, {
+            estado: nextEstado,
+            decorada: 0,
+            source: "inspeccion"
+          });
+        } catch (e) {
+          setGuardarStatus("Se envio a Monday, pero no se pudo liberar la habitacion. Cuando vuelva la conexion presiona Guardar otra vez; no se duplicara en Monday.", "err");
+          toast("Aviso", "Se envio a Monday, pero NO se pudo liberar en BD. Reintenta cuando tengas conexion; no se volvera a enviar a Monday.", false, 9000);
+          console.error("Error liberando en BD:", e);
+          return;
+        }
+        clearPendingInspectionSubmit();
+        // indicador local de "limpiada" (solo UI)
+        try {
+          const k = `${CTX.modulo}::${CTX.habitacion}`;
+          const map = JSON.parse(localStorage.getItem("hk_cleaned_rooms_v1") || "{}");
+          map[k] = Date.now();
+          localStorage.setItem("hk_cleaned_rooms_v1", JSON.stringify(map));
+        } catch { }
+
+        localStorage.removeItem(SESSION_KEY);
+        resetAll();
+
+        window.location.href = "./index.html?done=1";
+
+      } catch (e) {
+        setGuardarStatus("No se pudo completar el envio. Revisa la conexion y vuelve a intentar.", "err");
+        toast("Error de red", String(e), false, 6200);
+        console.error(e);
+      } finally {
+        isSavingInspection = false;
+        const pendingSubmit = getPendingInspectionSubmit();
+        setGuardarLoading(false);
+        if (pendingSubmit?.itemId) {
+          setGuardarStatus("Pendiente de liberar habitacion. Presiona Guardar otra vez cuando haya conexion; no se duplicara en Monday.", "warn");
+        }
+      }
+    });
+  </script>
+</body>
+
+</html>
