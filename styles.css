@@ -72,8 +72,7 @@ body{
   gap: 12px;
   padding: 16px 18px;
   border-bottom: 1px solid var(--stroke);
-  background: rgba(0,0,0,.18);
-  backdrop-filter: blur(10px);
+  background: var(--bg0);
   position: sticky;
   top: 0;
   z-index: 10;
