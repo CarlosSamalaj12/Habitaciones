@@ -1,4 +1,4 @@
-const CACHE_NAME = "hk-cache-v10";
+const CACHE_NAME = "hk-cache-v11";
 const ASSETS = [
   "./",
   "./index.html",
@@ -14,6 +14,33 @@ const ASSETS = [
   "./Inspeccion.html",
   "./server/check_table.js"
 ];
+
+// Pagina offline generada inline
+function offlinePageHTML() {
+  return `<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sin conexion - Habitaciones</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#070A12;color:#EAF0FF;min-height:100vh;display:flex;align-items:center;justify-content:center}
+  .card{text-align:center;padding:30px 20px;max-width:340px}
+  .icon{font-size:48px;margin-bottom:16px}
+  h1{font-size:20px;font-weight:800;margin:0 0 8px}
+  p{font-size:14px;color:#A9B3D0;margin:0 0 20px;line-height:1.5}
+  .btn{border:1px solid rgba(255,255,255,.16);background:linear-gradient(135deg,rgba(59,130,246,.28),rgba(124,58,237,.28));color:#EAF0FF;padding:12px 24px;border-radius:14px;cursor:pointer;font-weight:800;font-size:14px;box-shadow:0 12px 26px rgba(0,0,0,.35)}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">📡</div>
+  <h1>Sin conexion</h1>
+  <p>No hay conexion a internet. Revisa tu red y vuelve a intentar.</p>
+  <button class="btn" onclick="location.reload()">Reintentar</button>
+</div>
+</body>
+</html>`;
+}
 
 // Instalacion: cachear assets estaticos
 self.addEventListener("install", (e) => {
@@ -46,8 +73,10 @@ self.addEventListener("fetch", (e) => {
   // Solo interceptar GET
   if (e.request.method !== "GET") return;
 
+  const url = new URL(e.request.url);
+
   // No cachear llamadas API
-  if (e.request.url.includes("/api/")) {
+  if (url.pathname.includes("/api/")) {
     e.respondWith(fetch(e.request).catch(() => {
       return new Response(JSON.stringify({ ok: false, error: "offline" }), {
         headers: { "Content-Type": "application/json" }
@@ -57,22 +86,40 @@ self.addEventListener("fetch", (e) => {
   }
 
   // No cachear socket.io
-  if (e.request.url.includes("socket.io")) {
+  if (url.pathname.includes("socket.io")) {
     e.respondWith(fetch(e.request));
     return;
   }
 
+  // Estrategia: Network First con fallback a cache
   e.respondWith(
-    fetch(e.request)
-      .then((response) => {
-        // Cachear respuestas exitosas
-        if (response.ok || response.type === "opaqueredirect") {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
-        }
-        return response;
-      })
-      .catch(() => caches.match(e.request))
+    fetch(e.request).then((response) => {
+      // Cachear respuestas exitosas
+      if (response.ok || response.type === "opaqueredirect") {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+      }
+      return response;
+    }).catch(async () => {
+      // Intentar servir desde cache
+      const cached = await caches.match(e.request);
+      if (cached) return cached;
+
+      // Si es una navegacion (pagina HTML), mostrar pagina offline
+      if (e.request.mode === "navigate") {
+        return new Response(offlinePageHTML(), {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=utf-8" }
+        });
+      }
+
+      // Para imagenes, devolver un placeholder transparente
+      if (e.request.destination === "image") {
+        return new Response(null, { status: 204 });
+      }
+
+      return new Response("Offline", { status: 503 });
+    })
   );
 });
 

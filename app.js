@@ -19,6 +19,48 @@ let TIME_OFFSET_MS = 0; // server - client
 ========================= */
 const $ = (id) => document.getElementById(id);
 
+/* =========================
+   PWA INSTALL PROMPT
+========================= */
+let deferredPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  // Prevenir que Chrome muestre el banner automaticamente
+  e.preventDefault();
+  deferredPrompt = e;
+  // Mostrar el boton de instalar
+  const btn = $("btnInstall");
+  if (btn) btn.classList.remove("hidden");
+});
+
+$("btnInstall")?.addEventListener("click", async () => {
+  if (!deferredPrompt) {
+    toast("ok", "Ya instalada", "La app ya esta instalada en tu dispositivo.");
+    return;
+  }
+  // Mostrar el dialogo de instalacion
+  deferredPrompt.prompt();
+  const result = await deferredPrompt.userChoice;
+  if (result.outcome === "accepted") {
+    toast("ok", "Instalada", "App agregada a tu pantalla de inicio.");
+    const btn = $("btnInstall");
+    if (btn) btn.classList.add("hidden");
+  }
+  deferredPrompt = null;
+});
+
+// Detectar si ya esta instalada (display-mode: standalone)
+if (window.matchMedia("(display-mode: standalone)").matches) {
+  const btn = $("btnInstall");
+  if (btn) btn.classList.add("hidden");
+}
+
+// Tambien ocultar si se instalo desde iOS
+if (window.navigator.standalone === true) {
+  const btn = $("btnInstall");
+  if (btn) btn.classList.add("hidden");
+}
+
 /**
  * OK Enviamos ISO (UTC) para que el backend convierta a Guatemala
  */
@@ -1222,9 +1264,9 @@ function setSummary(counts, total) {
 }
 
 function setProgressAll(counts, total) {
-  const pct = total ? Math.round((counts.lista / total) * 100) : 0;
+  const pct = total ? Math.round((counts.sucias / total) * 100) : 0;
   const progText = $("sumProgTextAll");
-  if (progText) progText.textContent = `${counts.lista}/${total} (${pct}%)`;
+  if (progText) progText.textContent = `${counts.sucias}/${total} (${pct}%)`;
   const progFill = $("sumProgFillAll");
   if (progFill) progFill.style.width = `${pct}%`;
 }
