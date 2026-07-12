@@ -90,7 +90,7 @@ self.addEventListener("push", (e) => {
     body: data.body || "",
     icon: "./Oficial_JDL_blanco.png",
     badge: "./Oficial_JDL_blanco.png",
-    vibrate: [200, 100, 200],
+    vibrate: [200, 100, 200, 100, 200],
     data: { url: data.url || "./index.html" },
     requireInteraction: true
   };

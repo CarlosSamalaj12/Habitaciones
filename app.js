@@ -448,6 +448,44 @@ function normalizeRoom(row) {
 ========================= */
 let notifPermission = "Notification" in window ? Notification.permission : "denied";
 let pushSubscription = null;
+let audioCtx = null;
+let notifAudioUnlocked = false;
+
+function unlockNotifAudio() {
+  if (notifAudioUnlocked) return;
+  try {
+    if (typeof AudioContext !== "undefined" || typeof webkitAudioContext !== "undefined") {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      notifAudioUnlocked = true;
+    }
+  } catch (e) {}
+}
+// Desbloquear audio en la primera interaccion del usuario
+["click", "touchstart", "keydown"].forEach(ev => {
+  document.addEventListener(ev, unlockNotifAudio, { once: true });
+});
+
+function playNotificationSound() {
+  try {
+    if (!audioCtx || audioCtx.state !== "running") return;
+    // Dos tonos cortos: "ding-ding" a 800Hz y 1000Hz
+    [800, 1000].forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.15 + 0.2);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(audioCtx.currentTime + i * 0.15);
+      osc.stop(audioCtx.currentTime + i * 0.15 + 0.2);
+    });
+  } catch (e) {
+    // Web Audio no disponible o bloqueado
+  }
+}
 
 function requestNotifPermission() {
   if ("Notification" in window && notifPermission !== "granted") {
@@ -532,8 +570,31 @@ function unsubscribeFromPush() {
   pushSubscription = null;
 }
 
+function playNotificationSound() {
+  try {
+    if (typeof AudioContext === "undefined" && typeof webkitAudioContext === "undefined") return;
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Dos tonos cortos: "ding-ding" a 800Hz y 1000Hz
+    [800, 1000].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.2);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + i * 0.15);
+      osc.stop(ctx.currentTime + i * 0.15 + 0.2);
+    });
+  } catch (e) {
+    // Web Audio no disponible o bloqueado
+  }
+}
+
 function showRoomNotification(title, body, tag) {
   if (!("Notification" in window && notifPermission === "granted")) return;
+  playNotificationSound();
   try {
     const n = new Notification(title, {
       body: body,
