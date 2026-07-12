@@ -1056,7 +1056,7 @@ function addRecentNotification(modulo, etiqueta, oldEstado, newEstado) {
     oldLabel,
     newLabel,
     time: timeStr,
-    ts: ts.getTime(),
+    ts: now.getTime(),
     id: modulo + "-" + etiqueta + "-" + now.getTime()
   });
 
