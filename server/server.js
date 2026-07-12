@@ -4,6 +4,7 @@ console.log("🔥 SERVER NUEVO CARGADO:", __filename);
 
 const express = require("express");
 const http = require("http");
+const path = require("path");
 const cors = require("cors");
 const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
@@ -65,6 +66,10 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Servir archivos estaticos del frontend (index.html, app.js, styles.css, etc.)
+app.use(express.static(path.join(__dirname, "..")));
+
 const io = new Server(server, { cors: corsOptions });
 
 function signAccessToken(user){
@@ -107,7 +112,8 @@ function normalizeRole(rawDept){
 
   if (d === "administrador" || d === "admin") return "ADMIN";
   if (d.includes("gerencia")) return "GERENCIA";
-  if (d.includes("camar")) return "CAMARERIA";
+  if (d.includes("reportes")) return "REPORTES";
+  if (d.includes("ama") || d.includes("camar")) return "AMA_LLAVES";
   return "RECEPCION";
 }
 
@@ -135,6 +141,139 @@ async function initDB(){
   pool.on("connection", (conn) => {
     conn.query("SET time_zone = '-06:00'");
   });
+
+  // Migración: agregar columna es_familiar si no existe
+  try {
+    await pool.query("ALTER TABLE inspecciones ADD COLUMN es_familiar TINYINT(1) DEFAULT 0 AFTER es_decorada");
+    console.log("✅ Columna es_familiar agregada a inspecciones");
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME') {
+      console.warn("⚠️ No se pudo agregar es_familiar:", e.message);
+    }
+  }
+
+  // Migración: agregar columna factura a camareras
+  try {
+    await pool.query("ALTER TABLE camareras ADD COLUMN factura TINYINT(1) DEFAULT 0 AFTER nombre");
+    console.log("✅ Columna factura agregada a camareras");
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME') {
+      console.warn("⚠️ No se pudo agregar factura a camareras:", e.message);
+    }
+  }
+
+  // Migración: crear tabla configuracion_pagos si no existe
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS configuracion_pagos (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        porcentaje_factura DECIMAL(5,2) NOT NULL DEFAULT 33.00,
+        extra_factura_si DECIMAL(10,2) NOT NULL DEFAULT 46.00,
+        extra_factura_no DECIMAL(10,2) NOT NULL DEFAULT 36.00,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    console.log("✅ Tabla configuracion_pagos creada/verificada");
+  } catch (e) {
+    console.warn("⚠️ No se pudo crear configuracion_pagos:", e.message);
+  }
+
+  // Insertar fila por defecto si la tabla esta vacia
+  try {
+    const [cnt] = await pool.query("SELECT COUNT(*) AS c FROM configuracion_pagos");
+    if (cnt[0].c === 0) {
+      await pool.query("INSERT INTO configuracion_pagos (porcentaje_factura, extra_factura_si, extra_factura_no) VALUES (33.00, 46.00, 36.00)");
+      console.log("✅ Valores por defecto insertados en configuracion_pagos");
+    }
+  } catch (e) {
+    console.warn("⚠️ No se pudo insertar config por defecto:", e.message);
+  }
+
+  // Migración: agregar 'inspeccion' al ENUM de estados_habitacion.estado si no existe
+  try {
+    // Primero intentamos convertir a VARCHAR para evitar problemas futuros con ENUM
+    await pool.query("ALTER TABLE estados_habitacion MODIFY COLUMN estado VARCHAR(40) DEFAULT 'libre'");
+    console.log("✅ Columna estado migrada a VARCHAR(40) en estados_habitacion");
+  } catch (e) {
+    console.warn("⚠️ No se pudo migrar columna estado:", e.message);
+  }
+
+  // Migración: agregar columna precio_especial a habitaciones
+  try {
+    await pool.query("ALTER TABLE habitaciones ADD COLUMN precio_especial DECIMAL(10,2) DEFAULT NULL AFTER etiqueta");
+    console.log("✅ Columna precio_especial agregada a habitaciones");
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME') {
+      console.warn("⚠️ No se pudo agregar precio_especial a habitaciones:", e.message);
+    }
+  }
+
+  // Migración: crear tabla precios_especiales_habitacion (precio especial por habitacion + tipo_limpieza)
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS precios_especiales_habitacion (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        habitacion_id INT NOT NULL,
+        tipo_limpieza_id INT NOT NULL,
+        precio DECIMAL(10,2) DEFAULT NULL,
+        UNIQUE KEY uq_hab_tipo (habitacion_id, tipo_limpieza_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    console.log("✅ Tabla precios_especiales_habitacion creada/verificada");
+  } catch (e) {
+    console.warn("⚠️ No se pudo crear precios_especiales_habitacion:", e.message);
+  }
+
+  // Migración: agregar columna es_familiar a habitaciones
+  try {
+    await pool.query("ALTER TABLE habitaciones ADD COLUMN es_familiar TINYINT(1) DEFAULT 0 AFTER etiqueta");
+    console.log("✅ Columna es_familiar agregada a habitaciones");
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME') {
+      console.warn("⚠️ No se pudo agregar es_familiar a habitaciones:", e.message);
+    }
+  }
+
+  // Migración: agregar UNIQUE KEY (modulo_id, etiqueta) a habitaciones si no existe
+  try {
+    await pool.query("ALTER TABLE habitaciones ADD UNIQUE KEY uq_mod_etiq (modulo_id, etiqueta)");
+    console.log("✅ UNIQUE KEY (modulo_id, etiqueta) agregada a habitaciones");
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME' && e.code !== 'ER_DUP_KEYNAME') {
+      console.warn("⚠️ No se pudo agregar UNIQUE KEY a habitaciones:", e.message);
+    }
+  }
+
+  // Migración: agregar columna es_familiar a precios_especiales_habitacion y actualizar UNIQUE KEY
+  try {
+    // Primero intentamos agregar la columna
+    await pool.query("ALTER TABLE precios_especiales_habitacion ADD COLUMN es_familiar TINYINT(1) DEFAULT 0 AFTER tipo_limpieza_id");
+    console.log("✅ Columna es_familiar agregada a precios_especiales_habitacion");
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME') {
+      console.warn("⚠️ No se pudo agregar es_familiar a precios_especiales_habitacion:", e.message);
+    }
+  }
+  // Actualizar UNIQUE KEY para incluir es_familiar
+  try {
+    await pool.query("ALTER TABLE precios_especiales_habitacion DROP INDEX uq_hab_tipo");
+  } catch (e) { /* puede que no exista */ }
+  try {
+    await pool.query("ALTER TABLE precios_especiales_habitacion ADD UNIQUE KEY uq_hab_tipo_fam (habitacion_id, tipo_limpieza_id, es_familiar)");
+    console.log("✅ UNIQUE KEY actualizada en precios_especiales_habitacion");
+  } catch (e) {
+    if (e.code !== 'ER_DUP_KEYNAME') {
+      console.warn("⚠️ No se pudo actualizar UNIQUE KEY:", e.message);
+    }
+  }
+
+  // Migración: eliminar tabla precios_limpieza (ya no se usa, reemplazada por precios_especiales_habitacion)
+  try {
+    await pool.query("DROP TABLE IF EXISTS precios_limpieza");
+    console.log("✅ Tabla precios_limpieza eliminada");
+  } catch (e) {
+    console.warn("⚠️ No se pudo eliminar precios_limpieza:", e.message);
+  }
 
   await pool.query("SELECT 1");
   console.log("✅ MariaDB conectada");
@@ -212,10 +351,45 @@ app.post("/api/users/create", requireAuthIfEnabled, async (req,res)=>{
   }
 });
 
-app.get("/api/users", requireAuthIfEnabled, async (req,res)=>{
+app.get("/api/users", async (req,res)=>{
   try{
     const [rows] = await pool.query("SELECT id, nombre, departamento FROM usuarios ORDER BY nombre");
     res.json({ ok:true, data: rows });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/users/update", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    if(!id) return res.status(400).json({ ok:false, error:"ID requerido" });
+
+    const nombre = req.body?.nombre !== undefined ? String(req.body.nombre).trim() : null;
+    const departamento = req.body?.departamento !== undefined ? String(req.body.departamento).trim() : null;
+
+    const sets = [];
+    const params = [];
+    if (nombre !== null && nombre !== '') { sets.push("nombre=?"); params.push(nombre); }
+    if (departamento !== null && departamento !== '') { sets.push("departamento=?"); params.push(departamento); }
+
+    if (!sets.length) return res.status(400).json({ ok:false, error:"Sin campos para actualizar" });
+
+    params.push(id);
+    await pool.query(`UPDATE usuarios SET ${sets.join(", ")} WHERE id=?`, params);
+    res.json({ ok:true });
+  }catch(e){
+    if(e.code === 'ER_DUP_ENTRY') return res.status(409).json({ ok:false, error:"Ya existe un usuario con ese nombre" });
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/users/delete", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    if(!id) return res.status(400).json({ ok:false, error:"ID requerido" });
+    await pool.query("DELETE FROM usuarios WHERE id=?", [id]);
+    res.json({ ok:true });
   }catch(e){
     res.status(500).json({ ok:false, error: "Error interno del servidor" });
   }
@@ -232,7 +406,7 @@ app.post("/api/login", async (req,res)=>{
       [nombre]
     );
 
-    if(!rows.length) return res.status(401).json({ ok:false, error:"Credenciales inv??lidas" });
+    if(!rows.length) return res.status(401).json({ ok:false, error:"Credenciales inválidas" });
 
     const u = rows[0];
     const stored = String(u.clave || "");
@@ -243,7 +417,7 @@ app.post("/api/login", async (req,res)=>{
       ok = stored === clave;
     }
 
-    if(!ok) return res.status(401).json({ ok:false, error:"Credenciales inv??lidas" });
+    if(!ok) return res.status(401).json({ ok:false, error:"Credenciales inválidas" });
 
     const token = signAccessToken(u);
     res.json({
@@ -267,135 +441,1117 @@ app.get("/api/modules", requireAuthIfEnabled, async (req,res)=>{
   }
 });
 
-// ===== MONDAY =====
-app.post("/api/enviar-inspeccion", requireAuthIfEnabled, async (req,res) => {
+// ===== MODULOS CRUD =====
+app.post("/api/modulos/create", requireAuthIfEnabled, async (req,res)=>{
   try{
-    if (!MONDAY_TOKEN) {
-      return res.status(500).json({ ok:false, error:"MONDAY_TOKEN no configurado" });
-    }
+    let id = String(req.body?.id || "").trim().toUpperCase().replace(/\s+/g, "");
+    const descripcion = String(req.body?.descripcion || "").trim().replace(/\s+/g, " ");
+    if(!id || !descripcion) return res.status(400).json({ ok:false, error:"ID y descripcion requeridos" });
+    const [dup] = await pool.query("SELECT id FROM modulos WHERE id=?", [id]);
+    if(dup.length) return res.status(409).json({ ok:false, error:`El modulo "${id}" ya existe` });
+    await pool.query("INSERT INTO modulos (id, descripcion) VALUES (?,?)", [id, descripcion]);
+    res.json({ ok:true });
+  }catch(e){
+    if(e.code === 'ER_DUP_ENTRY') return res.status(409).json({ ok:false, error:"El ID del modulo ya existe" });
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
 
-    const boardId = Number(req.body?.boardId || MONDAY_BOARD_ID || 0);
-    const parentItemId = String(req.body?.parentItemId || "").trim();
-    const itemName = String(req.body?.itemName || "").trim();
-    const columnValues = req.body?.columnValues || {};
-
-    if ((!boardId && !parentItemId) || !itemName) {
-      return res.status(400).json({ ok:false, error:"Faltan datos (boardId o parentItemId, itemName)" });
-    }
-
-    const query = parentItemId
-      ? `
-        mutation ($parentItemId: ID!, $itemName: String!, $columnValues: JSON!) {
-          create_subitem (parent_item_id: $parentItemId, item_name: $itemName, column_values: $columnValues) {
-            id
-          }
-        }
-      `
-      : `
-        mutation ($boardId: ID!, $itemName: String!, $columnValues: JSON!) {
-          create_item (board_id: $boardId, item_name: $itemName, column_values: $columnValues) {
-            id
-          }
-        }
-      `;
-
-    const normalizeHours = (vals) => {
-      const out = { ...(vals || {}) };
-      for (const [k, v] of Object.entries(out)) {
-        if (v && typeof v === "object" && "hour" in v) {
-          // Monday "hour" column expects { hour: <int>, minute: <int> }
-          if (typeof v.hour === "string" && v.hour.includes(":")) {
-            const [h, m] = v.hour.split(":").map((x) => Number(x));
-            out[k] = { hour: Number.isFinite(h) ? h : 0, minute: Number.isFinite(m) ? m : 0 };
-          } else {
-            const h = Number(v.hour);
-            const m = Number(v.minute);
-            out[k] = { hour: Number.isFinite(h) ? h : 0, minute: Number.isFinite(m) ? m : 0 };
-          }
-        }
-      }
-      return out;
-    };
-
-    const normalizedColumns = normalizeHours(columnValues);
-
-    const variables = parentItemId
-      ? {
-          parentItemId,
-          itemName,
-          columnValues: JSON.stringify(normalizedColumns || {})
-        }
-      : {
-          boardId: String(boardId),
-          itemName,
-          columnValues: JSON.stringify(normalizedColumns || {})
-        };
-
-    const r = await fetch(MONDAY_API, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": MONDAY_TOKEN
-      },
-      body: JSON.stringify({ query, variables })
-    });
-
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok || data?.errors) {
-      console.error("Monday error (raw):", JSON.stringify(data, null, 2));
-      console.error("Monday payload columnValues:", JSON.stringify(normalizedColumns, null, 2));
-      return res.status(500).json({ ok:false, error:"Monday error", detail: data?.errors || data });
-    }
-
-    const itemId = data?.data?.create_item?.id;
-    res.json({ ok:true, itemId });
+app.post("/api/modulos/update", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = String(req.body?.id || "").trim();
+    const descripcion = String(req.body?.descripcion || "").trim();
+    if(!id || !descripcion) return res.status(400).json({ ok:false, error:"Datos incompletos" });
+    await pool.query("UPDATE modulos SET descripcion=? WHERE id=?", [descripcion, id]);
+    res.json({ ok:true });
   }catch(e){
     res.status(500).json({ ok:false, error: "Error interno del servidor" });
   }
 });
 
-// Consultar columnas del tablero Monday
-app.get("/api/monday/columns", requireAuthIfEnabled, async (req,res) => {
+app.post("/api/modulos/delete", requireAuthIfEnabled, async (req,res)=>{
   try{
-    if (!MONDAY_TOKEN) {
-      return res.status(500).json({ ok:false, error:"MONDAY_TOKEN no configurado" });
+    const id = String(req.body?.id || "").trim();
+    if(!id) return res.status(400).json({ ok:false, error:"ID requerido" });
+    const [refs] = await pool.query("SELECT COUNT(*) AS cnt FROM inspecciones WHERE modulo_id=?", [id]);
+    const count = Number(refs[0]?.cnt || 0);
+    if(count > 0) {
+      return res.status(409).json({
+        ok: false,
+        error: `No se puede eliminar: hay ${count} inspeccion${count !== 1 ? 'es' : ''} asociada${count !== 1 ? 's' : ''} a este modulo.`,
+        code: "HAS_REFERENCES",
+        refCount: count
+      });
     }
-    const boardId = Number(req.query?.boardId || MONDAY_BOARD_ID || 0);
-    if (!boardId) return res.status(400).json({ ok:false, error:"Falta boardId" });
+    await pool.query("DELETE FROM habitaciones WHERE modulo_id=?", [id]);
+    await pool.query("DELETE FROM modulos WHERE id=?", [id]);
+    res.json({ ok:true });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
 
-    const query = `
-      query ($boardId: ID!) {
-        boards (ids: [$boardId]) {
-          id
-          name
-          columns { id title type }
+// ===== HABITACIONES CRUD =====
+app.post("/api/habitaciones/create", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const modulo_id = String(req.body?.modulo_id || "").trim();
+    let etiqueta = String(req.body?.etiqueta || "").trim();
+    const es_familiar = req.body?.es_familiar ? 1 : 0;
+
+    if(!modulo_id) return res.status(400).json({ ok:false, error:"Modulo requerido" });
+    if(!etiqueta) return res.status(400).json({ ok:false, error:"Etiqueta requerida" });
+
+    const [r] = await pool.query(
+      "INSERT INTO habitaciones (modulo_id, etiqueta, es_familiar) VALUES (?,?,?)",
+      [modulo_id, etiqueta, es_familiar]
+    );
+    res.json({ ok:true });
+  }catch(e){
+    if(e.code === 'ER_DUP_ENTRY') return res.status(409).json({ ok:false, error:"Esa habitacion ya existe en ese modulo" });
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/habitaciones/update", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    if(!id) return res.status(400).json({ ok:false, error:"ID requerido" });
+
+    const etiqueta = req.body?.etiqueta !== undefined ? String(req.body.etiqueta).trim() : null;
+    const es_familiar = req.body?.es_familiar !== undefined ? (req.body.es_familiar ? 1 : 0) : null;
+
+    const sets = [];
+    const params = [];
+    if (etiqueta !== null) { sets.push("etiqueta=?"); params.push(etiqueta); }
+    if (es_familiar !== null) { sets.push("es_familiar=?"); params.push(es_familiar); }
+
+    if (!sets.length) return res.status(400).json({ ok:false, error:"Sin campos para actualizar" });
+
+    params.push(id);
+    await pool.query(`UPDATE habitaciones SET ${sets.join(", ")} WHERE id=?`, params);
+    res.json({ ok:true });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/habitaciones/delete", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    if(!id) return res.status(400).json({ ok:false, error:"ID requerido" });
+    const [hab] = await pool.query("SELECT modulo_id, etiqueta FROM habitaciones WHERE id=?", [id]);
+    if(!hab.length) return res.status(404).json({ ok:false, error:"Habitacion no encontrada" });
+    const { modulo_id, etiqueta } = hab[0];
+    const [refs] = await pool.query(
+      "SELECT COUNT(*) AS cnt FROM inspecciones WHERE modulo_id=? AND habitacion_etiqueta=?",
+      [modulo_id, etiqueta]
+    );
+    const count = Number(refs[0]?.cnt || 0);
+    if(count > 0) {
+      return res.status(409).json({
+        ok: false,
+        error: `No se puede eliminar: hay ${count} inspeccion${count !== 1 ? 'es' : ''} asociada${count !== 1 ? 's' : ''} a esta habitacion.`,
+        code: "HAS_REFERENCES",
+        refCount: count
+      });
+    }
+    await pool.query("DELETE FROM habitaciones WHERE id=?", [id]);
+    res.json({ ok:true });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+
+
+// ===== CAMARERAS =====
+app.get("/api/camareras", async (req,res)=>{
+  try{
+    const [rows] = await pool.query("SELECT id, nombre, factura FROM camareras WHERE activo=1 ORDER BY nombre");
+    res.json({ ok:true, data: rows });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/camareras/create", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    let nombre = String(req.body?.nombre || "").trim().replace(/\s+/g, " ");
+    const factura = req.body?.factura ? 1 : 0;
+    if(!nombre) return res.status(400).json({ ok:false, error:"Nombre requerido" });
+    const [dup] = await pool.query("SELECT id FROM camareras WHERE LOWER(nombre)=LOWER(?) AND activo=1", [nombre]);
+    if(dup.length) return res.status(409).json({ ok:false, error:`Ya existe una camarera con el nombre "${nombre}"` });
+    const [r] = await pool.query("INSERT INTO camareras (nombre, factura) VALUES (?,?)", [nombre, factura]);
+    res.json({ ok:true, id: r.insertId });
+  }catch(e){
+    if(e.code === 'ER_DUP_ENTRY') return res.status(409).json({ ok:false, error:"Ya existe una camarera con ese nombre" });
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/camareras/update", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    let nombre = String(req.body?.nombre || "").trim().replace(/\s+/g, " ");
+    if(!id || !nombre) return res.status(400).json({ ok:false, error:"Datos incompletos" });
+    const [dup] = await pool.query("SELECT id FROM camareras WHERE LOWER(nombre)=LOWER(?) AND activo=1 AND id!=?", [nombre, id]);
+    if(dup.length) return res.status(409).json({ ok:false, error:`Ya existe otra camarera con el nombre "${nombre}"` });
+    if (req.body?.factura !== undefined) {
+      const factura = req.body.factura ? 1 : 0;
+      await pool.query("UPDATE camareras SET nombre=?, factura=? WHERE id=?", [nombre, factura, id]);
+    } else {
+      await pool.query("UPDATE camareras SET nombre=? WHERE id=?", [nombre, id]);
+    }
+    res.json({ ok:true });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/camareras/delete", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    if(!id) return res.status(400).json({ ok:false, error:"ID requerido" });
+    const [refs] = await pool.query("SELECT COUNT(*) AS cnt FROM inspecciones WHERE camarera_id=?", [id]);
+    const count = Number(refs[0]?.cnt || 0);
+    if(count > 0) {
+      return res.status(409).json({
+        ok: false,
+        error: `No se puede eliminar: tiene ${count} inspeccion${count !== 1 ? 'es' : ''} asignada${count !== 1 ? 's' : ''}. Puedes desactivarla (se marcará como inactiva).`,
+        code: "HAS_REFERENCES",
+        refCount: count
+      });
+    }
+    await pool.query("UPDATE camareras SET activo=0 WHERE id=?", [id]);
+    res.json({ ok:true });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// ===== CONFIGURACION PAGOS =====
+app.get("/api/config-pagos", async (req,res)=>{
+  try{
+    const [rows] = await pool.query("SELECT id, porcentaje_factura, extra_factura_si, extra_factura_no FROM configuracion_pagos LIMIT 1");
+    const config = rows[0] || { porcentaje_factura: 33.00, extra_factura_si: 46.00, extra_factura_no: 36.00 };
+    res.json({ ok:true, data: config });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/config-pagos/update", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const porcentaje_factura = Number(req.body?.porcentaje_factura);
+    const extra_factura_si = Number(req.body?.extra_factura_si);
+    const extra_factura_no = Number(req.body?.extra_factura_no);
+
+    if (!Number.isFinite(porcentaje_factura) || porcentaje_factura < 0) {
+      return res.status(400).json({ ok:false, error:"Porcentaje invalido" });
+    }
+    if (!Number.isFinite(extra_factura_si) || extra_factura_si < 0) {
+      return res.status(400).json({ ok:false, error:"Extra factura si invalido" });
+    }
+    if (!Number.isFinite(extra_factura_no) || extra_factura_no < 0) {
+      return res.status(400).json({ ok:false, error:"Extra factura no invalido" });
+    }
+
+    const [rows] = await pool.query("SELECT id FROM configuracion_pagos LIMIT 1");
+    if (rows.length) {
+      await pool.query(
+        "UPDATE configuracion_pagos SET porcentaje_factura=?, extra_factura_si=?, extra_factura_no=? WHERE id=?",
+        [porcentaje_factura, extra_factura_si, extra_factura_no, rows[0].id]
+      );
+    } else {
+      await pool.query(
+        "INSERT INTO configuracion_pagos (porcentaje_factura, extra_factura_si, extra_factura_no) VALUES (?,?,?)",
+        [porcentaje_factura, extra_factura_si, extra_factura_no]
+      );
+    }
+    res.json({ ok:true });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// ===== CHECKLIST CATEGORIAS =====
+app.get("/api/checklist/categorias", async (req,res)=>{
+  try{
+    const [rows] = await pool.query("SELECT id, nombre, ayuda, orden FROM checklist_categorias WHERE activo=1 ORDER BY orden");
+    res.json({ ok:true, data: rows });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/checklist/categorias/create", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const nombre = String(req.body?.nombre || "").trim();
+    const ayuda = String(req.body?.ayuda || "").trim();
+    if(!nombre) return res.status(400).json({ ok:false, error:"Nombre requerido" });
+    const [r] = await pool.query("INSERT INTO checklist_categorias (nombre, ayuda) VALUES (?,?)", [nombre, ayuda]);
+    res.json({ ok:true, id: r.insertId });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/checklist/categorias/update", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    const nombre = String(req.body?.nombre || "").trim();
+    if(!id || !nombre) return res.status(400).json({ ok:false, error:"Datos incompletos" });
+    await pool.query("UPDATE checklist_categorias SET nombre=? WHERE id=?", [nombre, id]);
+    res.json({ ok:true });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/checklist/categorias/delete", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    if(!id) return res.status(400).json({ ok:false, error:"ID requerido" });
+    await pool.query("UPDATE checklist_categorias SET activo=0 WHERE id=?", [id]);
+    res.json({ ok:true });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// ===== CHECKLIST ITEMS =====
+app.get("/api/checklist/items", async (req,res)=>{
+  try{
+    const [rows] = await pool.query(`
+      SELECT ci.id, ci.categoria_id, ci.nombre, ci.orden, cc.nombre AS categoria_nombre
+      FROM checklist_items ci
+      JOIN checklist_categorias cc ON cc.id = ci.categoria_id
+      WHERE ci.activo=1 AND cc.activo=1
+      ORDER BY ci.orden
+    `);
+    res.json({ ok:true, data: rows });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/checklist/items/create", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const categoria_id = Number(req.body?.categoria_id);
+    const nombre = String(req.body?.nombre || "").trim();
+    if(!categoria_id || !nombre) return res.status(400).json({ ok:false, error:"Datos incompletos" });
+    const [r] = await pool.query("INSERT INTO checklist_items (categoria_id, nombre) VALUES (?,?)", [categoria_id, nombre]);
+    res.json({ ok:true, id: r.insertId });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/checklist/items/update", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    const nombre = String(req.body?.nombre || "").trim();
+    const categoria_id = req.body?.categoria_id ? Number(req.body.categoria_id) : null;
+    if(!id || !nombre) return res.status(400).json({ ok:false, error:"Datos incompletos" });
+    const sql = categoria_id ? "UPDATE checklist_items SET nombre=?, categoria_id=? WHERE id=?" : "UPDATE checklist_items SET nombre=? WHERE id=?";
+    const params = categoria_id ? [nombre, categoria_id, id] : [nombre, id];
+    await pool.query(sql, params);
+    res.json({ ok:true });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/checklist/items/delete", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    if(!id) return res.status(400).json({ ok:false, error:"ID requerido" });
+    await pool.query("UPDATE checklist_items SET activo=0 WHERE id=?", [id]);
+    res.json({ ok:true });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// ===== TIPOS DE LIMPIEZA =====
+app.get("/api/tipos-limpieza", async (req,res)=>{
+  try{
+    const [rows] = await pool.query("SELECT id, nombre FROM tipos_limpieza WHERE activo=1 ORDER BY id");
+    res.json({ ok:true, data: rows });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/tipos-limpieza/create", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const nombre = String(req.body?.nombre || "").trim();
+    if(!nombre) return res.status(400).json({ ok:false, error:"Nombre requerido" });
+    const [r] = await pool.query("INSERT INTO tipos_limpieza (nombre) VALUES (?)", [nombre]);
+    res.json({ ok:true, id: r.insertId });
+  }catch(e){
+    if(e.code === 'ER_DUP_ENTRY') return res.status(409).json({ ok:false, error:"Ya existe ese tipo de limpieza" });
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/tipos-limpieza/update", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    const nombre = String(req.body?.nombre || "").trim();
+    if(!id || !nombre) return res.status(400).json({ ok:false, error:"Datos incompletos" });
+    await pool.query("UPDATE tipos_limpieza SET nombre=? WHERE id=?", [nombre, id]);
+    res.json({ ok:true });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.post("/api/tipos-limpieza/delete", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    if(!id) return res.status(400).json({ ok:false, error:"ID requerido" });
+    await pool.query("UPDATE tipos_limpieza SET activo=0 WHERE id=?", [id]);
+    res.json({ ok:true });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// ===== INSPECCIONES (LOCAL) =====
+app.post("/api/inspecciones/guardar", async (req,res)=>{
+  try{
+    const data = req.body;
+    if(!data?.modulo_id || !data?.habitacion_etiqueta || !data?.fecha){
+      return res.status(400).json({ ok:false, error:"Faltan datos requeridos" });
+    }
+
+    const inicio = toMySQLDatetime(data.inicio_limpieza);
+    const fin = toMySQLDatetime(data.fin_limpieza);
+    const horaChk = toMySQLDatetime(data.hora_checklist);
+
+    // Verificar si ya existe una inspeccion identica (misma hab, fecha, horas, inspector)
+    const [existing] = await pool.query(`
+      SELECT id FROM inspecciones
+      WHERE modulo_id=? AND habitacion_etiqueta=? AND fecha=?
+        AND ((? IS NULL AND inicio_limpieza IS NULL) OR inicio_limpieza=?)
+        AND ((? IS NULL AND fin_limpieza IS NULL) OR fin_limpieza=?)
+        AND inspector_nombre=?
+      LIMIT 1
+    `, [
+      data.modulo_id, data.habitacion_etiqueta, data.fecha,
+      inicio, inicio,
+      fin, fin,
+      data.inspector_nombre || ''
+    ]);
+
+    if(existing.length){
+      const inspeccion_id = existing[0].id;
+      // Reemplazar detalles (por si cambiaron estados)
+      if(Array.isArray(data.detalles) && data.detalles.length){
+        await pool.query("DELETE FROM inspeccion_detalles WHERE inspeccion_id=?", [inspeccion_id]);
+        for(const d of data.detalles){
+          if(!d.item_id) continue;
+          const estado = ['CUMPLE','NO_CUMPLE','NO_APLICA'].includes(d.estado) ? d.estado : 'NO_APLICA';
+          await pool.query(
+            "INSERT INTO inspeccion_detalles (inspeccion_id, item_id, estado) VALUES (?,?,?)",
+            [inspeccion_id, d.item_id, estado]
+          );
         }
       }
+      return res.json({ ok:true, id: inspeccion_id, dedup: true });
+    }
+
+    const [header] = await pool.query(`
+      INSERT INTO inspecciones
+        (modulo_id, modulo_nombre, habitacion_etiqueta, fecha, camarera_id, tipo_limpieza_id,
+         inspector_nombre, inspector_dept, inicio_limpieza, fin_limpieza, hora_checklist,
+         observaciones, es_decorada, es_familiar)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `, [
+      data.modulo_id,
+      data.modulo_nombre || '',
+      data.habitacion_etiqueta,
+      data.fecha,
+      data.camarera_id || null,
+      data.tipo_limpieza_id || null,
+      data.inspector_nombre || '',
+      data.inspector_dept || '',
+      inicio, fin, horaChk,
+      data.observaciones || null,
+      data.es_decorada ? 1 : 0,
+      data.es_familiar ? 1 : 0
+    ]);
+
+    const inspeccion_id = header.insertId;
+
+    if(Array.isArray(data.detalles)){
+      for(const d of data.detalles){
+        if(!d.item_id) continue;
+        const estado = ['CUMPLE','NO_CUMPLE','NO_APLICA'].includes(d.estado) ? d.estado : 'NO_APLICA';
+        await pool.query(
+          "INSERT INTO inspeccion_detalles (inspeccion_id, item_id, estado) VALUES (?,?,?)",
+          [inspeccion_id, d.item_id, estado]
+        );
+      }
+    }
+
+    res.json({ ok:true, id: inspeccion_id });
+  }catch(e){
+    console.error("Error guardando inspeccion:", e);
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// ===== REPORTES =====
+
+// GET /api/reportes/pagos?fecha_desde=YYYY-MM-DD&fecha_hasta=YYYY-MM-DD&camarera_id=N&modulo_id=X
+app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const fecha_desde = String(req.query?.fecha_desde || "").trim();
+    const fecha_hasta = String(req.query?.fecha_hasta || "").trim();
+    const camarera_id = req.query?.camarera_id ? Number(req.query.camarera_id) : null;
+    const modulo_id = String(req.query?.modulo_id || "").trim();
+
+    if (!fecha_desde || !fecha_hasta) {
+      return res.status(400).json({ ok:false, error:"Faltan fecha_desde y fecha_hasta" });
+    }
+
+    const sql = `
+      SELECT
+        i.id, i.modulo_nombre, i.habitacion_etiqueta, i.fecha,
+        i.inicio_limpieza, i.fin_limpieza, i.hora_checklist,
+        i.es_familiar, i.observaciones,
+        c.id AS camarera_id, c.nombre AS camarera_nombre,
+        c.factura AS camarera_factura,
+        t.id AS tipo_limpieza_id, t.nombre AS tipo_nombre,
+        COALESCE((SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id AND d.estado = 'CUMPLE'), 0) AS cumplen,
+        COALESCE((SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id AND d.estado = 'NO_CUMPLE'), 0) AS no_cumplen,
+        COALESCE((SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id AND d.estado = 'NO_APLICA'), 0) AS no_aplica,
+        COALESCE((SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id), 0) AS total_items,
+        COALESCE(pe.precio, 0) AS pago_base
+      FROM inspecciones i
+      LEFT JOIN camareras c ON c.id = i.camarera_id
+      LEFT JOIN tipos_limpieza t ON t.id = i.tipo_limpieza_id
+      LEFT JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
+      LEFT JOIN precios_especiales_habitacion pe ON pe.habitacion_id = h.id AND pe.tipo_limpieza_id = i.tipo_limpieza_id AND pe.es_familiar = COALESCE(i.es_familiar, 0)
+      WHERE i.fecha >= ? AND i.fecha <= ?
+        AND i.camarera_id IS NOT NULL
+        AND (? IS NULL OR i.camarera_id = ?)
+        AND (? = '' OR i.modulo_id = ?)
+      ORDER BY i.fecha DESC, i.created_at DESC
     `;
 
-    const r = await fetch(MONDAY_API, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": MONDAY_TOKEN
-      },
-      body: JSON.stringify({ query, variables: { boardId: String(boardId) } })
+    const [rows] = await pool.query(sql, [fecha_desde, fecha_hasta, camarera_id, camarera_id, modulo_id, modulo_id]);
+
+    // Obtener configuracion de pagos
+    let pct = 33, extraSi = 46, extraNo = 36;
+    try {
+      const [cfg] = await pool.query("SELECT porcentaje_factura, extra_factura_si, extra_factura_no FROM configuracion_pagos LIMIT 1");
+      if (cfg.length) {
+        pct = Number(cfg[0].porcentaje_factura) || 33;
+        extraSi = Number(cfg[0].extra_factura_si) || 46;
+        extraNo = Number(cfg[0].extra_factura_no) || 36;
+      }
+    } catch (e) {}
+
+    // El 33% y el extra NO es por habitacion, es sobre el total del dia
+    // Si factura = 1: Total * (1 + pct/100) + extraSi
+    // Si factura = 0: Total + extraNo (sin porcentaje)
+
+    const grupoPagos = {};
+    let globalOk = 0, globalNo = 0, globalNa = 0;
+    rows.forEach(r => {
+      const cid = r.camarera_id;
+      if (!grupoPagos[cid]) {
+        grupoPagos[cid] = { base: 0, factura: Number(r.camarera_factura), nombre: r.camarera_nombre };
+      }
+      grupoPagos[cid].base += Number(r.pago_base || 0);
+      globalOk += Number(r.cumplen || 0);
+      globalNo += Number(r.no_cumplen || 0);
+      globalNa += Number(r.no_aplica || 0);
     });
 
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok || data?.errors) {
-      return res.status(500).json({ ok:false, error:"Monday error", detail: data?.errors || data });
+    // Calcular pago final por camarera
+    let totalPagoFinal = 0;
+    const porCamarera = {};
+    Object.keys(grupoPagos).forEach(cid => {
+      const g = grupoPagos[cid];
+      // Si factura: Total * (1 + pct/100) + extraSi
+      // Si NO factura: Total + extraNo (solo extra fijo, nada de %)
+      const pagoFinal = g.factura
+        ? g.base * (1 + pct / 100) + extraSi
+        : g.base + extraNo;
+      const rounded = Math.round(pagoFinal * 100) / 100;
+      g.pagoFinal = rounded;
+      totalPagoFinal += rounded;
+      porCamarera[g.nombre] = rounded;
+    });
+
+    // Asignar pago_base como pago por fila (precio por habitacion, sin 33% ni 46)
+    rows.forEach(r => {
+      r.pago = Number(r.pago_base || 0);
+    });
+
+    // Construir detalle de pagos por camarera (desglose)
+    const detallePagos = {};
+    Object.keys(grupoPagos).forEach(cid => {
+      const g = grupoPagos[cid];
+      detallePagos[g.nombre] = {
+        base: Math.round(g.base * 100) / 100,
+        factura: Boolean(g.factura),
+        pct: g.factura ? pct : 0,
+        extra: g.factura ? extraSi : extraNo,
+        pagoFinal: g.pagoFinal
+      };
+    });
+
+    res.json({
+      ok: true,
+      data: rows,
+      resumen: {
+        total_registros: rows.length,
+        total_pago: Math.round(totalPagoFinal * 100) / 100,
+        total_ok: globalOk,
+        total_no: globalNo,
+        total_na: globalNa,
+        por_camarera: porCamarera,
+        detalle_pagos: detallePagos
+      }
+    });
+  }catch(e){
+    console.error("Error en reporte pagos:", e);
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// GET /api/reportes/rendimiento?fecha_desde=YYYY-MM-DD&fecha_hasta=YYYY-MM-DD&camarera_id=N
+app.get("/api/reportes/rendimiento", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const fecha_desde = String(req.query?.fecha_desde || "").trim();
+    const fecha_hasta = String(req.query?.fecha_hasta || "").trim();
+    const camarera_id = req.query?.camarera_id ? Number(req.query.camarera_id) : null;
+
+    if (!fecha_desde || !fecha_hasta) {
+      return res.status(400).json({ ok:false, error:"Faltan fecha_desde y fecha_hasta" });
     }
 
-    res.json({ ok:true, data });
+    const sql = `
+      SELECT
+        c.id AS camarera_id,
+        c.nombre AS camarera_nombre,
+        COUNT(i.id) AS total_inspecciones,
+        COALESCE(ROUND(AVG(
+          (SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id AND d.estado = 'CUMPLE') * 100.0 /
+          NULLIF((SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id), 0)
+        ), 1), 0) AS promedio_pct,
+        COALESCE(SUM(COALESCE(pe.precio, 0)), 0) AS total_pago,
+        COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza)), 0), 0) AS promedio_minutos,
+        COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.fin_limpieza, i.hora_checklist)), 0), 0) AS promedio_inspeccion_min
+      FROM inspecciones i
+      JOIN camareras c ON c.id = i.camarera_id
+      LEFT JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
+      LEFT JOIN precios_especiales_habitacion pe ON pe.habitacion_id = h.id AND pe.tipo_limpieza_id = i.tipo_limpieza_id AND pe.es_familiar = COALESCE(i.es_familiar, 0)
+      WHERE i.fecha >= ? AND i.fecha <= ?
+        AND (? IS NULL OR i.camarera_id = ?)
+      GROUP BY c.id, c.nombre
+      ORDER BY total_inspecciones DESC, c.nombre
+    `;
+
+    const [rows] = await pool.query(sql, [fecha_desde, fecha_hasta, camarera_id, camarera_id]);
+
+    res.json({ ok:true, data: rows });
+  }catch(e){
+    console.error("Error en reporte rendimiento:", e);
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// GET /api/reportes/rendimiento/daily?fecha_desde=YYYY-MM-DD&fecha_hasta=YYYY-MM-DD&camarera_id=N
+// Retorna desglose diario por camarera para graficas
+app.get("/api/reportes/rendimiento/daily", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const fecha_desde = String(req.query?.fecha_desde || "").trim();
+    const fecha_hasta = String(req.query?.fecha_hasta || "").trim();
+    const camarera_id = req.query?.camarera_id ? Number(req.query.camarera_id) : null;
+
+    if (!fecha_desde || !fecha_hasta) {
+      return res.status(400).json({ ok:false, error:"Faltan fecha_desde y fecha_hasta" });
+    }
+
+    const sql = `
+      SELECT
+        c.id AS camarera_id,
+        c.nombre AS camarera_nombre,
+        i.fecha,
+        COUNT(i.id) AS habitaciones,
+        COALESCE(ROUND(AVG(
+          (SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id AND d.estado = 'CUMPLE') * 100.0 /
+          NULLIF((SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id), 0)
+        ), 1), 0) AS puntuacion_prom,
+        COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza)), 0), 0) AS tiempo_prom_min,
+        COALESCE(SUM(COALESCE(pe.precio, 0)), 0) AS pago_total
+      FROM inspecciones i
+      JOIN camareras c ON c.id = i.camarera_id
+      LEFT JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
+      LEFT JOIN precios_especiales_habitacion pe ON pe.habitacion_id = h.id AND pe.tipo_limpieza_id = i.tipo_limpieza_id AND pe.es_familiar = COALESCE(i.es_familiar, 0)
+      WHERE i.fecha >= ? AND i.fecha <= ?
+        AND (? IS NULL OR i.camarera_id = ?)
+      GROUP BY c.id, c.nombre, i.fecha
+      ORDER BY c.nombre, i.fecha ASC
+    `;
+
+    const [rows] = await pool.query(sql, [fecha_desde, fecha_hasta, camarera_id, camarera_id]);
+
+    // Agrupar por camarera
+    const grouped = {};
+    rows.forEach(r => {
+      const cid = r.camarera_id;
+      if (!grouped[cid]) {
+        grouped[cid] = {
+          camarera_id: cid,
+          camarera_nombre: r.camarera_nombre,
+          dias: []
+        };
+      }
+      grouped[cid].dias.push({
+        fecha: r.fecha,
+        habitaciones: Number(r.habitaciones),
+        puntuacion_prom: Number(r.puntuacion_prom),
+        tiempo_prom_min: Number(r.tiempo_prom_min),
+        pago_total: Number(r.pago_total)
+      });
+    });
+
+    res.json({
+      ok: true,
+      data: Object.values(grouped)
+    });
+  }catch(e){
+    console.error("Error en rendimiento daily:", e);
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// GET /api/reportes/historial?modulo_id=X&etiqueta=Y&fecha=YYYY-MM-DD
+app.get("/api/reportes/historial", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const modulo_id = String(req.query?.modulo_id || "").trim();
+    const etiqueta = String(req.query?.etiqueta || "").trim();
+    const fecha = String(req.query?.fecha || "").trim();
+
+    if (!modulo_id || !etiqueta || !fecha) {
+      return res.status(400).json({ ok:false, error:"Faltan modulo_id, etiqueta, fecha" });
+    }
+
+    // 1) Obtener eventos del log para esa habitacion en esa fecha
+    const [logs] = await pool.query(`
+      SELECT
+        id, created_at AS timestamp, evento,
+        estado_prev, estado_new,
+        actor_name, actor_dept, source
+      FROM estados_habitacion_log
+      WHERE modulo_id = ? AND etiqueta = ?
+        AND DATE(created_at) = ?
+      ORDER BY created_at ASC
+    `, [modulo_id, etiqueta, fecha]);
+
+    // 2) Obtener inspecciones de esa habitacion en esa fecha
+    const [inspecciones] = await pool.query(`
+      SELECT
+        i.id, i.fecha,
+        i.inicio_limpieza, i.fin_limpieza, i.hora_checklist,
+        c.nombre AS camarera_nombre,
+        t.nombre AS tipo_nombre,
+        i.inspector_nombre, i.es_decorada, i.es_familiar,
+        i.observaciones
+      FROM inspecciones i
+      LEFT JOIN camareras c ON c.id = i.camarera_id
+      LEFT JOIN tipos_limpieza t ON t.id = i.tipo_limpieza_id
+      WHERE i.modulo_id = ? AND i.habitacion_etiqueta = ?
+        AND i.fecha = ?
+      ORDER BY i.inicio_limpieza ASC
+    `, [modulo_id, etiqueta, fecha]);
+
+    // 3) Construir linea de tiempo combinada
+    const timeline = [];
+
+    logs.forEach(l => {
+      const ts = String(l.timestamp || "");
+      const time = ts.includes(" ") ? ts.split(" ")[1]?.substring(0, 5) : "--:--";
+      timeline.push({
+        hora: time,
+        timestamp: ts,
+        tipo: "log",
+        evento: l.evento,
+        descripcion: l.evento === "room_update"
+          ? `Cambio de estado: ${l.estado_prev || "?"} → ${l.estado_new || "?"}`
+          : l.evento,
+        actor: l.actor_name || "Sistema",
+        dept: l.actor_dept || "",
+        color: colorDeEstado(l.estado_new)
+      });
+    });
+
+    // Inspecciones como eventos en la timeline
+    inspecciones.forEach(insp => {
+      if (insp.inicio_limpieza) {
+        const ts = String(insp.inicio_limpieza || "");
+        const time = ts.includes(" ") ? ts.split(" ")[1]?.substring(0, 5) : "--:--";
+        timeline.push({
+          hora: time,
+          timestamp: ts,
+          tipo: "inicio_limpieza",
+          evento: "INICIO LIMPIEZA",
+          descripcion: `Camarera: ${insp.camarera_nombre || "-"} | Tipo: ${insp.tipo_nombre || "-"}`,
+          actor: insp.camarera_nombre || "-",
+          dept: "CAMARERIA",
+          color: "#C8A57A"
+        });
+      }
+      if (insp.fin_limpieza) {
+        const ts = String(insp.fin_limpieza || "");
+        const time = ts.includes(" ") ? ts.split(" ")[1]?.substring(0, 5) : "--:--";
+        timeline.push({
+          hora: time,
+          timestamp: ts,
+          tipo: "fin_limpieza",
+          evento: "FIN LIMPIEZA",
+          descripcion: insp.observaciones || "-",
+          actor: insp.camarera_nombre || "-",
+          dept: "CAMARERIA",
+          color: "#38BDF8"
+        });
+      }
+      if (insp.hora_checklist) {
+        const ts = String(insp.hora_checklist || "");
+        const time = ts.includes(" ") ? ts.split(" ")[1]?.substring(0, 5) : "--:--";
+        const familiar = Number(insp.es_familiar) ? " (Familiar)" : "";
+        const decorada = Number(insp.es_decorada) ? " (Decorada)" : "";
+        timeline.push({
+          hora: time,
+          timestamp: ts,
+          tipo: "checklist",
+          evento: "INSPECCION COMPLETADA",
+          descripcion: `Inspector: ${insp.inspector_nombre || "-"}${familiar}${decorada}`,
+          actor: insp.inspector_nombre || "-",
+          dept: "CAMARERIA",
+          color: "#2EE59D"
+        });
+      }
+    });
+
+    // Ordenar por timestamp
+    timeline.sort((a, b) => {
+      if (a.timestamp < b.timestamp) return -1;
+      if (a.timestamp > b.timestamp) return 1;
+      return 0;
+    });
+
+    // Info de la habitacion
+    const [roomInfo] = await pool.query(`
+      SELECT h.etiqueta, h.modulo_id, m.descripcion AS modulo_nombre
+      FROM habitaciones h
+      LEFT JOIN modulos m ON m.id = h.modulo_id
+      WHERE h.modulo_id = ? AND h.etiqueta = ?
+      LIMIT 1
+    `, [modulo_id, etiqueta]);
+
+    res.json({
+      ok: true,
+      data: {
+        habitacion: roomInfo[0] || { etiqueta, modulo_id },
+        fecha,
+        timeline
+      }
+    });
+  }catch(e){
+    console.error("Error en historial:", e);
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+function colorDeEstado(estado) {
+  const map = {
+    "ocupado": "#EF4444",
+    "ocupada limpia": "#EF4444",
+    "lista": "#FBBF24",
+    "limpieza": "#C8A57A",
+    "inspeccion": "#38BDF8",
+    "libre": "#22C55E",
+    "mantenimiento": "#7C3AED",
+    "repaso": "#826142"
+  };
+  return map[estado] || "#9AA6C6";
+}
+
+app.get("/api/inspecciones", async (req,res)=>{
+  try{
+    const { modulo_id, fecha_desde, fecha_hasta, limit } = req.query;
+    let sql = `
+      SELECT i.*, c.nombre AS camarera_nombre, t.nombre AS tipo_nombre
+      FROM inspecciones i
+      LEFT JOIN camareras c ON c.id = i.camarera_id
+      LEFT JOIN tipos_limpieza t ON t.id = i.tipo_limpieza_id
+      WHERE 1=1
+    `;
+    const params = [];
+    if(modulo_id){ sql += " AND i.modulo_id=?"; params.push(modulo_id); }
+    if(fecha_desde){ sql += " AND i.fecha>=?"; params.push(fecha_desde); }
+    if(fecha_hasta){ sql += " AND i.fecha<=?"; params.push(fecha_hasta); }
+    sql += " ORDER BY i.created_at DESC";
+    if(limit){ sql += " LIMIT ?"; params.push(Number(limit)); }
+
+    const [rows] = await pool.query(sql, params);
+    res.json({ ok:true, data: rows });
   }catch(e){
     res.status(500).json({ ok:false, error: "Error interno del servidor" });
   }
 });
 
-// Labels de un dropdown (por columna)
+// POST /api/inspecciones/buscar - Busqueda avanzada con filtros
+app.post("/api/inspecciones/buscar", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const {
+      fecha_desde,
+      fecha_hasta,
+      camarera_id,
+      modulo_id,
+      habitacion_etiqueta
+    } = req.body || {};
+
+    let sql = `
+      SELECT i.id, i.modulo_id, i.habitacion_etiqueta, i.fecha,
+             i.camarera_id, i.tipo_limpieza_id, i.inspector_nombre,
+             i.inicio_limpieza, i.fin_limpieza, i.hora_checklist,
+             i.observaciones, i.es_decorada, i.es_familiar,
+             i.created_at,
+             c.nombre AS camarera_nombre, t.nombre AS tipo_nombre
+      FROM inspecciones i
+      LEFT JOIN camareras c ON c.id = i.camarera_id
+      LEFT JOIN tipos_limpieza t ON t.id = i.tipo_limpieza_id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (fecha_desde) { sql += " AND i.fecha >= ?"; params.push(String(fecha_desde).trim()); }
+    if (fecha_hasta) { sql += " AND i.fecha <= ?"; params.push(String(fecha_hasta).trim()); }
+    if (camarera_id) { sql += " AND i.camarera_id = ?"; params.push(Number(camarera_id)); }
+    if (modulo_id) { sql += " AND i.modulo_id = ?"; params.push(String(modulo_id).trim()); }
+    if (habitacion_etiqueta) { sql += " AND i.habitacion_etiqueta = ?"; params.push(String(habitacion_etiqueta).trim()); }
+
+    sql += " ORDER BY i.fecha DESC, i.created_at DESC LIMIT 500";
+
+    const [rows] = await pool.query(sql, params);
+    res.json({ ok: true, data: rows });
+  }catch(e){
+    console.error("Error en buscar inspecciones:", e);
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// POST /api/inspecciones/actualizar - Actualizar cabecera de inspeccion
+app.post("/api/inspecciones/actualizar", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    if (!id) return res.status(400).json({ ok:false, error:"ID requerido" });
+
+    // Verificar que existe
+    const [exist] = await pool.query("SELECT id FROM inspecciones WHERE id=?", [id]);
+    if (!exist.length) return res.status(404).json({ ok:false, error:"Inspeccion no encontrada" });
+
+    const updates = [];
+    const params = [];
+
+    if (req.body?.fecha !== undefined) {
+      updates.push("fecha=?");
+      params.push(String(req.body.fecha).trim());
+    }
+    if (req.body?.camarera_id !== undefined) {
+      updates.push("camarera_id=?");
+      params.push(req.body.camarera_id ? Number(req.body.camarera_id) : null);
+    }
+    if (req.body?.tipo_limpieza_id !== undefined) {
+      updates.push("tipo_limpieza_id=?");
+      params.push(req.body.tipo_limpieza_id ? Number(req.body.tipo_limpieza_id) : null);
+    }
+    if (req.body?.observaciones !== undefined) {
+      updates.push("observaciones=?");
+      params.push(String(req.body.observaciones || '').trim());
+    }
+    if (req.body?.es_familiar !== undefined) {
+      updates.push("es_familiar=?");
+      params.push(req.body.es_familiar ? 1 : 0);
+    }
+    if (req.body?.inspector_nombre !== undefined) {
+      updates.push("inspector_nombre=?");
+      params.push(String(req.body.inspector_nombre || '').trim());
+    }
+    if (req.body?.modulo_id !== undefined) {
+      updates.push("modulo_id=?");
+      params.push(String(req.body.modulo_id).trim());
+    }
+    if (req.body?.habitacion_etiqueta !== undefined) {
+      updates.push("habitacion_etiqueta=?");
+      params.push(String(req.body.habitacion_etiqueta).trim());
+    }
+
+    if (!updates.length) {
+      return res.status(400).json({ ok:false, error:"No hay campos para actualizar" });
+    }
+
+    params.push(id);
+    await pool.query(`UPDATE inspecciones SET ${updates.join(", ")} WHERE id=?`, params);
+
+    res.json({ ok: true });
+  }catch(e){
+    console.error("Error actualizando inspeccion:", e);
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// POST /api/inspecciones/detalle/actualizar - Actualizar estado de un item del checklist
+app.post("/api/inspecciones/detalle/actualizar", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    const estado = String(req.body?.estado || '').trim().toUpperCase();
+
+    if (!id) return res.status(400).json({ ok:false, error:"ID de detalle requerido" });
+    if (!['CUMPLE','NO_CUMPLE','NO_APLICA'].includes(estado)) {
+      return res.status(400).json({ ok:false, error:"Estado invalido. Use CUMPLE, NO_CUMPLE o NO_APLICA" });
+    }
+
+    await pool.query("UPDATE inspeccion_detalles SET estado=? WHERE id=?", [estado, id]);
+    res.json({ ok: true });
+  }catch(e){
+    console.error("Error actualizando detalle:", e);
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+app.get("/api/inspecciones/:id", async (req,res)=>{
+  try{
+    const id = Number(req.params.id);
+    if(!id) return res.status(400).json({ ok:false, error:"ID requerido" });
+
+    const [ins] = await pool.query(`
+      SELECT i.*, c.nombre AS camarera_nombre, t.nombre AS tipo_nombre
+      FROM inspecciones i
+      LEFT JOIN camareras c ON c.id = i.camarera_id
+      LEFT JOIN tipos_limpieza t ON t.id = i.tipo_limpieza_id
+      WHERE i.id=?
+    `, [id]);
+    if(!ins.length) return res.status(404).json({ ok:false, error:"No encontrada" });
+
+    const [detalles] = await pool.query(`
+      Select d.id, d.item_id, d.estado, ci.nombre AS item_nombre, cc.nombre AS categoria_nombre
+      FROM inspeccion_detalles d
+      JOIN checklist_items ci ON ci.id = d.item_id
+      JOIN checklist_categorias cc ON cc.id = ci.categoria_id
+      WHERE d.inspeccion_id=?
+      ORDER BY ci.orden
+    `, [id]);
+
+    res.json({ ok:true, data: { ...ins[0], detalles } });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
 
 // ===== ROOMS =====
+
+// POST /api/habitaciones/precio-especial - Actualizar precio especial de una habitacion
+app.post("/api/habitaciones/precio-especial", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    const precio_especial = req.body?.precio_especial;
+
+    if (!id) return res.status(400).json({ ok:false, error:"ID de habitacion requerido" });
+
+    // Si precio_especial es null o undefined, lo ponemos NULL (quitar precio especial)
+    if (precio_especial === null || precio_especial === undefined || precio_especial === '') {
+      await pool.query("UPDATE habitaciones SET precio_especial=NULL WHERE id=?", [id]);
+    } else {
+      const precio = Number(precio_especial);
+      if (!Number.isFinite(precio) || precio < 0) {
+        return res.status(400).json({ ok:false, error:"Precio invalido" });
+      }
+      await pool.query("UPDATE habitaciones SET precio_especial=? WHERE id=?", [precio, id]);
+    }
+
+    res.json({ ok:true });
+  }catch(e){
+    console.error("Error actualizando precio especial:", e);
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// GET /api/precios-especiales-habitacion?modulo_id=X&es_familiar=0
+app.get("/api/precios-especiales-habitacion", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const modulo_id = String(req.query?.modulo_id || "").trim();
+    if(!modulo_id) return res.status(400).json({ ok:false, error:"Falta modulo_id" });
+    const es_familiar = req.query?.es_familiar !== undefined ? (Number(req.query.es_familiar) ? 1 : 0) : null;
+
+    let sql = `
+      SELECT pe.id, pe.habitacion_id, pe.tipo_limpieza_id, pe.precio, pe.es_familiar,
+             h.etiqueta AS habitacion_etiqueta, t.nombre AS tipo_nombre
+      FROM precios_especiales_habitacion pe
+      JOIN habitaciones h ON h.id = pe.habitacion_id
+      JOIN tipos_limpieza t ON t.id = pe.tipo_limpieza_id
+      WHERE h.modulo_id = ?
+    `;
+    const params = [modulo_id];
+    if (es_familiar !== null) {
+      sql += " AND pe.es_familiar = ?";
+      params.push(es_familiar);
+    }
+    sql += " ORDER BY h.etiqueta, t.id, pe.es_familiar";
+
+    const [rows] = await pool.query(sql, params);
+
+    res.json({ ok:true, data: rows });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// POST /api/precios-especiales-habitacion/update
+app.post("/api/precios-especiales-habitacion/update", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const habitacion_id = Number(req.body?.habitacion_id);
+    const tipo_limpieza_id = Number(req.body?.tipo_limpieza_id);
+    const es_familiar = req.body?.es_familiar ? 1 : 0;
+    const precio = req.body?.precio;
+
+    if (!habitacion_id || !tipo_limpieza_id) {
+      return res.status(400).json({ ok:false, error:"Faltan datos" });
+    }
+
+    if (precio === null || precio === undefined || precio === '' || Number(precio) <= 0) {
+      await pool.query(
+        "DELETE FROM precios_especiales_habitacion WHERE habitacion_id=? AND tipo_limpieza_id=? AND es_familiar=?",
+        [habitacion_id, tipo_limpieza_id, es_familiar]
+      );
+    } else {
+      const val = Number(precio);
+      if (!Number.isFinite(val) || val < 0) {
+        return res.status(400).json({ ok:false, error:"Precio invalido" });
+      }
+      await pool.query(`
+        INSERT INTO precios_especiales_habitacion (habitacion_id, tipo_limpieza_id, es_familiar, precio)
+        VALUES (?,?,?,?)
+        ON DUPLICATE KEY UPDATE precio=?
+      `, [habitacion_id, tipo_limpieza_id, es_familiar, val, val]);
+    }
+
+    res.json({ ok:true });
+  }catch(e){
+    console.error("Error actualizando precio especial:", e);
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
 app.get("/api/rooms", requireAuthIfEnabled, async (req,res)=>{
   try{
     const modulo_id = String(req.query?.modulo_id || "").trim();
@@ -405,6 +1561,8 @@ app.get("/api/rooms", requireAuthIfEnabled, async (req,res)=>{
       SELECT
         h.id AS habitacion_id,
         h.etiqueta,
+        h.precio_especial,
+        h.es_familiar,
         h.modulo_id,
         COALESCE(e.estado,'libre') AS estado,
         COALESCE(e.adultos,0) AS adultos,
@@ -535,17 +1693,11 @@ function normalizePatch(patch){
   }
   if ("inspector_asignado" in p) out.inspector_asignado = p.inspector_asignado ?? null;
   if ("prioridad_limpieza" in p) out.prioridad_limpieza = p.prioridad_limpieza ?? null;
-
   if ("desde" in p) out.desde = toMySQLDatetime(p.desde);
   if ("inicio_limpieza" in p) out.inicio_limpieza = toMySQLDatetime(p.inicio_limpieza);
   if ("fin_limpieza" in p) out.fin_limpieza = toMySQLDatetime(p.fin_limpieza);
-  if ("inicio_repaso" in p) out.inicio_repaso = toMySQLDatetime(p.inicio_repaso);
-  if ("repaso" in p) out.repaso = p.repaso ?? null;
-
-  // ✅ No borrar "desde" cuando se inicia limpieza
-  if (p.estado === "limpieza" && ("desde" in p) && (p.desde == null || p.desde === "")) {
-    delete out.desde;
-  }
+  if ("inicio_repaso" in p) out.inicio_repaso = toMySQLDatetime(p.inicio_repaso);      if ("repaso" in p) out.repaso = p.repaso ?? null;
+      // inspeccion: fin_limpieza se usa como inicio del timer de inspeccion
 
   out._skipEstadoUpdate = !hasEstado;
   return out;
@@ -631,21 +1783,30 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
       const role = normalizeRole(req.user?.dept || actor?.dept || "");
       const fromInspeccion = String(source || "").trim().toLowerCase() === "inspeccion";
 
-      if (curEstado === "limpieza" && role !== "ADMIN" && !(role === "CAMARERIA" && fromInspeccion)) {
-        return res.status(403).json({ ok:false, error:"Solo Administrador puede liberar si est? en LIMPIEZA." });
+      // INSPECCION: ADMIN o AMA_LLAVES pueden liberar (o desde el flujo de inspeccion)
+      if (curEstado === "inspeccion") {
+        if (role !== "ADMIN" && role !== "AMA_LLAVES" && !fromInspeccion) {
+          return res.status(403).json({ ok:false, error:"Solo el Administrador o Ama de llaves puede liberar desde inspección." });
+        }
       }
 
-      if (role === "CAMARERIA") {
-        if (curEstado !== "mantenimiento" && !(curEstado === "limpieza" && fromInspeccion)) {
-          return res.status(403).json({ ok:false, error:"Camarer?a solo puede liberar habitaciones en MANTENIMIENTO." });
+      if (curEstado === "limpieza" && role !== "ADMIN" && !(role === "AMA_LLAVES" && fromInspeccion)) {
+        return res.status(403).json({ ok:false, error:"Solo Administrador puede liberar si está en LIMPIEZA." });
+      }
+
+      if (role === "AMA_LLAVES") {
+        // ✅ AMA DE LLAVES puede liberar desde: mantenimiento, inspeccion
+        const estadosPermitidos = ["mantenimiento", "inspeccion"];
+        if (!estadosPermitidos.includes(curEstado)) {
+          return res.status(403).json({ ok:false, error:"Ama de llaves solo puede liberar habitaciones en MANTENIMIENTO o INSPECCIÓN." });
         }
       } else if (role === "RECEPCION") {
         const allowed = new Set(["ocupado", "ocupada limpia", "mantenimiento", "lista"]);
         if (!allowed.has(curEstado)) {
-          return res.status(403).json({ ok:false, error:"Recepci?n solo puede liberar si est? OCUPADA, en MANTENIMIENTO o LISTA." });
+          return res.status(403).json({ ok:false, error:"Recepción solo puede liberar si está OCUPADA, en MANTENIMIENTO o LISTA." });
         }
       } else if (role === "ADMIN") {
-        const allowed = new Set(["ocupado", "ocupada limpia", "mantenimiento", "lista", "limpieza"]);
+        const allowed = new Set(["ocupado", "ocupada limpia", "mantenimiento", "lista", "limpieza", "inspeccion"]);
         if (!allowed.has(curEstado)) {
           return res.status(403).json({ ok:false, error:"Administrador solo puede liberar estados permitidos." });
         }
@@ -662,7 +1823,8 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
     io.emit("room:update", updated);
     res.json({ ok:true, data: updated });
   }catch(e){
-    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+    console.error("❌ Error en /api/room/update:", e);
+    res.status(500).json({ ok:false, error: e.message || "Error interno del servidor" });
   }
 });
 

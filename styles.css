@@ -86,6 +86,7 @@ body{
   border: 1px solid rgba(255,255,255,.12);
   box-shadow: var(--shadow);
   overflow:hidden;
+  flex-shrink:0;
 }
 .logoImg{ width:46%; height:90%; object-fit:contain; display:block; }
 .brandText{ min-width:0; }
@@ -137,7 +138,9 @@ body{
 .summaryPill.limpieza{ --sumAccent: 59,130,246; border-color: rgba(59,130,246,.45); }
 .summaryPill.lista{ --sumAccent: 251,191,36; border-color: rgba(251,191,36,.50); }
 .summaryPill.limpias{ --sumAccent: 34,197,94; border-color: rgba(34,197,94,.45); }
+.summaryPill.limpiadas{ --sumAccent: 56,189,248; border-color: rgba(56,189,248,.55); }
 .summaryPill.mantenimiento{ --sumAccent: 148,163,184; border-color: rgba(148,163,184,.55); }
+.summaryPill.inspeccion{ --sumAccent: 20,184,166; border-color: rgba(20,184,166,.55); }
 .summaryPill.prioridad{ --sumAccent: 224,38,188; border-color: rgba(224,38,188,.55); }
 .summaryPill.repaso{ --sumAccent: 130,95,66; border-color: rgba(130,95,66,.55); }
 
@@ -177,24 +180,6 @@ body{
   transition: width .25s ease;
 }
 
-@media (max-width: 720px){
-  .top{ position: static; }
-  .brand{ flex-wrap:wrap; }
-  .logoBox{ width:72px; height:44px; }
-  .summaryBar{
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap:8px;
-    max-width: 100%;
-  }
-  .summaryPill{
-    min-height:58px;
-    padding:8px 10px 10px;
-  }
-  .summaryPill b{ font-size:16px; }
-  .summaryProgress{ padding:8px 10px; }
-  .summaryProgTop{ font-size:11px; }
-}
-
 .rightTop{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
 .pill{
   padding:10px 12px;
@@ -218,7 +203,11 @@ body{
 
 /* ===== Modules ===== */
 .modulesBar{ padding: 12px 18px; }
-.modulesRow{ display:flex; gap:10px; flex-wrap:wrap; }
+.modulesRow{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
 .btnModule{
   padding: 12px 14px;
   border-radius: 999px;
@@ -230,6 +219,8 @@ body{
   letter-spacing: .08em;
   transition: transform .12s ease, filter .12s ease, border-color .12s ease;
   box-shadow: 0 12px 26px rgba(0,0,0,.35);
+  white-space:nowrap;
+  flex-shrink:0;
 }
 .btnModule:hover{ transform: translateY(-1px); filter: brightness(1.05); }
 .btnModule.active{
@@ -295,20 +286,23 @@ h2{
 .roomBtn{
   --accent: 255,255,255;
   position:relative;
-  padding: 66px 66px 14px 14px;
-  border-radius: 22px;
-  border: 1px solid rgba(var(--accent), .65);
-  background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+  padding: 58px 10px 56px 14px;
+  border-radius: 20px;
+  border: 2px solid rgba(var(--accent), .55);
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
   color: var(--text);
   cursor:pointer;
   box-shadow: 0 16px 52px rgba(0,0,0,.40);
   transition: transform .16s ease, filter .16s ease, box-shadow .16s ease, border-color .16s ease;
-
-  min-height: 180px;
+  min-height: 190px;
   text-align:left;
   overflow:hidden;
   will-change: transform, filter, box-shadow;
+  display:flex;
+  flex-direction:column;
 }
+
+/* El color de acento se muestra en el borde y el glow hover/selected */
 
 .roomBtn::after{
   content:"";
@@ -323,76 +317,76 @@ h2{
       rgba(var(--accent), .18),
       rgba(0,0,0,0) 70%);
   pointer-events:none;
+  border-radius: 20px;
 }
 
 .roomBtn:hover{
-  transform: translateY(-3px) scale(1.015);
-  filter: brightness(1.10);
-  border-color: rgba(var(--hoverBlue), .95);
+  transform: translateY(-2px) scale(1.008);
+  filter: brightness(1.08);
+  border-color: rgba(var(--hoverBlue), .85);
   box-shadow:
-    0 22px 82px rgba(0,0,0,.52),
-    0 0 0 7px rgba(var(--hoverBlue), .24),
-    0 0 40px rgba(var(--hoverBlue), .34);
+    0 22px 70px rgba(0,0,0,.48),
+    0 0 0 5px rgba(var(--hoverBlue), .18),
+    0 0 30px rgba(var(--hoverBlue), .25);
 }
 
 .roomBtn.selected{
-  border-color: rgba(var(--accent), .98);
+  border-color: rgba(var(--accent), .95);
   box-shadow:
-    0 22px 82px rgba(0,0,0,.55),
-    0 0 0 8px rgba(var(--accent), .26),
-    0 0 54px rgba(var(--accent), .44);
+    0 22px 70px rgba(0,0,0,.50),
+    0 0 0 6px rgba(var(--accent), .22),
+    0 0 40px rgba(var(--accent), .35);
 }
 
-.roomNum{ font-weight:1000; font-size: 22px; letter-spacing:.3px; position:relative; z-index:2; }
-.roomState{ margin-top:6px; font-size:12px; color: rgba(255,255,255,.78); letter-spacing:.12em; position:relative; z-index:2; }
-.roomOcc{ margin-top:6px; font-size:12px; font-weight:1000; letter-spacing:.08em; position:relative; z-index:2; }
+.roomNum{ font-weight:1000; font-size: 24px; letter-spacing:.3px; position:relative; z-index:2; }
+.roomState{ margin-top:4px; font-size:12px; color: rgba(255,255,255,.70); letter-spacing:.10em; position:relative; z-index:2; }
+.roomOcc{ margin-top:4px; font-size:12px; font-weight:700; letter-spacing:.06em; position:relative; z-index:2; }
 
 /* Badge */
 .badge{
   position:absolute;
-  top:14px; right:12px;
-  padding: 7px 10px;
+  top:12px; right:10px;
+  padding: 5px 10px;
   border-radius: 999px;
   font-size: 10px;
-  font-weight: 1000;
-  border: 1px solid rgba(255,255,255,.20);
-  background: rgba(0,0,0,.30);
+  font-weight: 900;
+  border: 1px solid rgba(var(--accent), .50);
+  background: rgba(0,0,0,.45);
+  backdrop-filter: blur(6px);
   z-index:3;
-  max-width: 120px;
-  white-space: normal;
   text-align: center;
+  letter-spacing: .04em;
 }
 
 .cleanTag{
   position:absolute;
-  top:48px; right:12px;
-  padding: 5px 8px;
+  top:40px; right:10px;
+  padding: 4px 8px;
   border-radius: 999px;
   font-size: 9px;
-  font-weight: 1000;
+  font-weight: 900;
+  letter-spacing:.08em;
   border: 1px solid rgba(34,197,94,.60);
   background: rgba(34,197,94,.18);
   color: rgba(234,255,243,.95);
   z-index:3;
-  letter-spacing:.08em;
 }
 .decoradaTag{
-  margin-top: 6px;
+  margin-top: 4px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
+  gap: 4px;
+  padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid rgba(251,191,36,.55);
   background: linear-gradient(135deg, rgba(251,191,36,.28), rgba(245,158,11,.22));
   color: #ffe8bf;
-  font-family: "Segoe UI", Tahoma, Verdana, sans-serif;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
   letter-spacing: .04em;
   text-transform: uppercase;
   width: fit-content;
-  box-shadow: 0 8px 18px rgba(0,0,0,.28);
+  box-shadow: 0 6px 14px rgba(0,0,0,.28);
   line-height: 1;
 }
 .decoradaEmoji{
@@ -481,6 +475,7 @@ h2{
 .roomBtn.ocupado{ --accent: 239,68,68; }
 .roomBtn.lista{ --accent: 251,191,36; }
 .roomBtn.limpieza{ --accent: 200,165,122; }
+.roomBtn.inspeccion{ --accent: 20,184,166; }
 .roomBtn.mantenimiento{ --accent: 124,58,237; }
 .roomBtn.repaso{ --accent: 130,95,66; }
 .roomBtn.prioHigh{
@@ -507,9 +502,9 @@ h2{
   }
 }
 
-/* ===== Observaciones: siempre visibles en compacto (si existen) ===== */
+/* ===== Observaciones ===== */
 .obsBar{
-  margin-top: 20px;
+  margin-top: 12px;
   display:flex;
   align-items: center;
   flex-wrap: wrap;
@@ -517,65 +512,47 @@ h2{
   position:relative;
   z-index:2;
   max-height: none;
-  overflow: visible;
-  width: 150%;
+  overflow: hidden;
+  width: 100%;
 }
 .obsChip{
-  width: 150px;
-  text-align: center;
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,.14);
   background: rgba(0,0,0,.20);
-  font-family: "Segoe UI", Tahoma, Verdana, sans-serif;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: .03em;
-  color: rgba(255,255,255,.92);
+  color: rgba(255,255,255,.85);
+  white-space: nowrap;
 }
 .obsPeekBtn{
-  border: 1px solid rgba(34,197,94,.55);
-  background: linear-gradient(135deg, rgba(34,197,94,.34), rgba(16,185,129,.34));
-  color: #ffffff;
+  border: 1px solid rgba(34,197,94,.50);
+  background: linear-gradient(135deg, rgba(34,197,94,.30), rgba(16,185,129,.30));
+  color: #c8ffdd;
   border-radius: 999px;
-  padding: 7px 13px;
-  font-family: "Segoe UI", Tahoma, Verdana, sans-serif;
-  font-size: 14px;
+  padding: 4px 10px;
+  font-size: 11px;
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.2;
   letter-spacing: .02em;
   cursor: pointer;
-  text-shadow: 0 1px 2px rgba(0,0,0,.35);
-  box-shadow:
-    0 8px 18px rgba(0,0,0,.35),
-    0 0 0 1px rgba(255,255,255,.12) inset,
-    0 0 12px rgba(34,197,94,.28);
-  text-transform: none;
-  transition: transform .12s ease, filter .12s ease, box-shadow .12s ease, border-color .12s ease;
+  box-shadow: 0 4px 10px rgba(0,0,0,.30);
+  transition: transform .12s ease, filter .12s ease;
 }
 .obsPeekBtn:hover{
   filter: brightness(1.12);
   transform: translateY(-1px);
-  box-shadow:
-    0 10px 22px rgba(0,0,0,.40),
-    0 0 0 1px rgba(255,255,255,.16) inset,
-    0 0 16px rgba(34,197,94,.40);
-}
-.obsPeekBtn:active{
-  transform: translateY(0);
 }
 .obsPeekBtn:focus-visible{
-  outline: none;
-  box-shadow:
-    0 10px 22px rgba(0,0,0,.40),
-    0 0 0 2px rgba(255,255,255,.20) inset,
-    0 0 0 4px rgba(34,197,94,.30);
+  outline: 2px solid rgba(34,197,94,.50);
+  outline-offset: 2px;
 }
 
 /* Panel detalle */
 .roomDetails{
   margin-top: 5px;
-  width: 150%;
+  width: 100%;
   border-radius: 14px;
   border: 1px solid rgba(255,255,255,.12);
   background: rgba(0,0,0,.26);
@@ -587,7 +564,7 @@ h2{
   max-height: 0;
   opacity: 0;
   overflow: auto;
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: none;
   transform: translateY(-4px);
   transition: max-height .42s ease, opacity .30s ease, transform .42s ease;
 }
@@ -640,154 +617,431 @@ h2{
 
 /* ===== Acciones flotantes ===== */
 .roomActions{
-  position:absolute;
-  right: 12px;
-  top: 64px;
-  bottom: 12px;
-  display:grid;
-  grid-template-columns: repeat(2, 46px);
-  grid-auto-rows: 38px;
+  position:relative;
+  margin-top: auto;
+  padding-top: 10px;
+  display:flex;
+  flex-wrap: wrap;
   justify-content: center;
-  align-content: center;
-  gap: 8px;
-  z-index: 25;
-
-  opacity: 0;
-  transform: translateX(10px);
-  pointer-events: none;
-  transition: opacity .16s ease, transform .16s ease;
-}
-.roomBtn.selected .roomActions{
+  gap: 6px;
+  z-index: 5;
   opacity: 1;
-  transform: translateX(0);
+  transform: none;
   pointer-events: auto;
+  transition: none;
 }
-.roomBtn:has(.timerBadge) .roomActions{ top: 78px; }
 
 .raBtn{
   position: relative;
-  width: 46px;
-  height: 38px;
-  border-radius: 16px;
-
-  background: rgba(10, 12, 22, .72);
-  border: 1px solid rgba(255,255,255,.18);
-  box-shadow:
-    0 10px 28px rgba(0,0,0,.45),
-    0 0 0 1px rgba(255,255,255,.08) inset;
-
-  backdrop-filter: blur(12px);
+  flex: 1 1 0;
+  min-width: 34px;
+  max-width: 52px;
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.15);
+  background: rgba(10,12,22,.65);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 6px 16px rgba(0,0,0,.35);
   color: #fff;
   cursor: pointer;
-
   display:grid;
   place-items:center;
-
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 900;
-
-  transition: transform .12s ease, filter .12s ease;
+  transition: transform .10s ease, filter .12s ease, box-shadow .12s ease;
 }
-.raBtn:hover{ transform: translateY(-1px) scale(1.03); filter: brightness(1.16); }
+.raBtn:hover{ transform: translateY(-2px) scale(1.08); filter: brightness(1.2); }
+.raBtn:active{ transform: translateY(0) scale(.95); }
+
 .raBtn::after{
   content: attr(title);
   position: absolute;
   left: 50%;
-  bottom: calc(100% + 8px);
+  /* Tooltip apunta hacia abajo para no ser recortado por overflow:hidden de la card */
+  top: calc(100% + 4px);
   transform: translateX(-50%);
-  padding: 5px 8px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.20);
+  padding: 3px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.16);
   background: rgba(8,12,24,.95);
   color: #eef3ff;
-  font-family: "Segoe UI", Tahoma, Verdana, sans-serif;
-  font-size: 12px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: .01em;
   line-height: 1.15;
   white-space: nowrap;
-  box-shadow: 0 10px 22px rgba(0,0,0,.45);
+  box-shadow: 0 6px 14px rgba(0,0,0,.45);
   opacity: 0;
   pointer-events: none;
   transition: opacity .12s ease;
+  z-index: 99;
 }
 .raBtn:hover::after,
 .raBtn:focus-visible::after{
   opacity: 1;
 }
-.raBtn::before{
-  content:"";
-  position:absolute;
-  inset: 7px;
-  border-radius: 999px;
-  background: rgba(255,255,255,.06);
-  box-shadow: 0 0 0 1px rgba(255,255,255,.10) inset;
-  z-index: -1;
-}
 .raIcon{
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   display: block;
   fill: currentColor;
 }
-.raBtn.ocupado{ border-color: rgba(239,68,68,.60); box-shadow: 0 10px 28px rgba(0,0,0,.45), 0 0 22px rgba(239,68,68,.22); }
-.raBtn.limpieza{ border-color: rgba(255,210,140,.70); box-shadow: 0 10px 28px rgba(0,0,0,.45), 0 0 22px rgba(200,165,122,.24); }
-.raBtn.mant{ border-color: rgba(180,120,255,.70); box-shadow: 0 10px 28px rgba(0,0,0,.45), 0 0 22px rgba(124,58,237,.24); }
-.raBtn.liberar{ border-color: rgba(34,197,94,.70); box-shadow: 0 10px 28px rgba(0,0,0,.45), 0 0 22px rgba(34,197,94,.22); }
-.raBtn.prio{ border-color: rgba(224,38,188,.70); box-shadow: 0 10px 28px rgba(0,0,0,.45), 0 0 22px rgba(224,38,188,.28); }
-.raBtn.repaso{ border-color: rgba(130,95,66,.70); box-shadow: 0 10px 28px rgba(0,0,0,.45), 0 0 22px rgba(130,95,66,.28); }
-.raBtn.ocupado{ color: rgb(239,68,68); }
-.raBtn.limpieza{ color: rgb(200,165,122); }
-.raBtn.mant{ color: rgb(124,58,237); }
-.raBtn.liberar{ color: rgb(34,197,94); }
-.raBtn.prio{ color: rgb(224,38,188); }
-.raBtn.repaso{ color: rgb(130,95,66); }
-.raBtn[disabled]{ opacity:.32; cursor:not-allowed; transform:none !important; filter:none !important; }
+.raBtn.ocupado{ border-color: rgba(239,68,68,.55); box-shadow: 0 6px 16px rgba(0,0,0,.35), 0 0 12px rgba(239,68,68,.18); color: rgb(255,120,120); }
+.raBtn.limpieza{ border-color: rgba(200,165,122,.55); box-shadow: 0 6px 16px rgba(0,0,0,.35), 0 0 12px rgba(200,165,122,.18); color: rgb(220,185,142); }
+.raBtn.mant{ border-color: rgba(124,58,237,.55); box-shadow: 0 6px 16px rgba(0,0,0,.35), 0 0 12px rgba(124,58,237,.18); color: rgb(160,120,255); }
+.raBtn.liberar{ border-color: rgba(34,197,94,.55); box-shadow: 0 6px 16px rgba(0,0,0,.35), 0 0 12px rgba(34,197,94,.18); color: rgb(80,220,140); }
+.raBtn.prio{ border-color: rgba(224,38,188,.55); box-shadow: 0 6px 16px rgba(0,0,0,.35), 0 0 12px rgba(224,38,188,.18); color: rgb(255,100,220); }
+.raBtn.repaso{ border-color: rgba(130,95,66,.55); box-shadow: 0 6px 16px rgba(0,0,0,.35), 0 0 12px rgba(130,95,66,.18); color: rgb(180,145,115); }
+.raBtn[disabled]{ opacity:.25; cursor:not-allowed; transform:none !important; filter:none !important; box-shadow:none !important; }
 
-/* Mobile */
-@media (max-width: 520px){
-  .roomBtn{
-    padding-right: 14px;
-    padding-bottom: 64px;
-    min-height: 190px;
+/* =========================
+   MOBILE (<= 767px)
+   ========================= */
+@media (max-width: 767px){
+  .top{
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    padding: 6px 10px;
+    gap: 6px;
+    flex-wrap: wrap;
+    background: var(--bg0);
+    box-shadow: 0 4px 14px rgba(0,0,0,.30);
   }
-  .obsBar{
-    width: 100%;
-    max-height: none;
-    flex-direction: column;
-    align-items: flex-start;
+  .brand{ flex-wrap:nowrap; gap:6px; align-items:center; flex-shrink:1; min-width:0; }
+  .logoBox{ width: 40px; height: 28px; border-radius: 10px; flex-shrink:0; }
+  .logoImg{ width:42%; height:80%; }
+  .brandText{ display:flex; flex-direction:row; align-items:center; gap:6px; flex-wrap:wrap; min-width:0; }
+  .t1{ font-size: 12px; letter-spacing:.15px; white-space:nowrap; }
+  /* Ocultar subtitulo de marca en mobile compact, mantener activeUserLabel */
+  .brandText > .t2:not(#activeUserLabel){ display:none; }
+  .t2{ font-size: 10px; margin-top:0; }
+  .rightTop{ flex-shrink:0; }
+  .rightTop .btnGhost{
+    padding: 6px 8px;
+    font-size: 10px;
+    letter-spacing: .04em;
+    box-shadow: 0 8px 16px rgba(0,0,0,.30);
+  }
+
+  /* Summary: scrollable row instead of 2-column grid */
+  .brandText .summaryBar{
+    display:flex;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    max-width: 100%;
+    margin-top: 8px;
+    scrollbar-width: none;
+  }
+  .brandText .summaryBar::-webkit-scrollbar{ display:none; }
+  .brandText .summaryPill{
+    flex: 0 0 auto;
+    min-width: 110px;
+    min-height: 54px;
+    padding: 8px 10px;
+    scroll-snap-align: start;
+  }
+  .brandText .summaryPill b{ font-size: 15px; }
+  .brandText .summaryPill span{ font-size: 10px; }
+  .brandText .summaryProgress{
+    flex: 0 0 auto;
+    min-width: 160px;
+    padding: 8px 10px;
+  }
+  .brandText .summaryProgTop{ font-size: 10px; }
+  .brandText .summaryProgTop b{ font-size: 10px; }
+  .brandText .summaryProgTrack{ height: 8px; }
+}
+
+/* Modules: horizontal scroll on mobile */
+@media (max-width: 767px){
+  .modulesBar{
+    padding: 6px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    position: sticky;
+    top: 48px;
+    z-index: 15;
+    background: linear-gradient(180deg, var(--bg1), rgba(11,16,36,.98));
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 6px 20px rgba(0,0,0,.35);
+  }
+  /* Fade gradient on right edge to indicate scrollability */
+  .modulesBar::after{
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 48px;
+    background: linear-gradient(90deg, transparent, var(--bg1) 100%);
+    pointer-events: none;
+    z-index: 2;
+  }
+  .modulesBar::-webkit-scrollbar{ display:none; }
+  .modulesRow{
     flex-wrap: nowrap;
     gap: 6px;
+    width: max-content;
+    min-width: 100%;
+    padding: 0 12px;
+  }
+  .btnModule{
+    padding: 10px 18px;
+    font-size: 13px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-height: 44px;
+    font-weight: 800;
+    letter-spacing: .04em;
+  }
+  .btnModule.active{
+    border-color: rgba(124,58,237,.85);
+    box-shadow: 0 0 0 5px rgba(124,58,237,.22), 0 10px 26px rgba(0,0,0,.40), 0 0 16px rgba(124,58,237,.30);
+  }
+}
+
+/* Mobile summary below modules */
+@media (max-width: 767px){
+  body.layout-mobile .summaryBar{
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 12px 6px;
+    scrollbar-width: none;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    margin-top: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,.04), transparent);
+  }
+  body.layout-mobile .summaryBar::-webkit-scrollbar{ display:none; }
+  body.layout-mobile .summaryPill{
+    flex: 0 0 auto;
+    min-width: 100px;
+    min-height: 46px;
+    padding: 8px 12px;
+    scroll-snap-align: start;
+  }
+  body.layout-mobile .summaryPill b{ font-size: 15px; }
+  body.layout-mobile .summaryPill span{ font-size: 10px; }
+  body.layout-mobile .summaryProgress{
+    flex: 0 0 auto;
+    min-width: 150px;
+    padding: 8px 12px;
+  }
+  body.layout-mobile .summaryProgTop{ font-size: 10px; }
+  body.layout-mobile .summaryProgTop b{ font-size: 10px; }
+  body.layout-mobile .summaryProgTrack{ height: 8px; }
+  body.layout-mobile #summaryProgressAll{
+    margin: 0 12px 10px;
+    padding: 10px 12px;
+  }
+}
+
+/* Hide original summary in header when JS has already moved them */
+body.layout-mobile .brandText .summaryBar{
+    display: none;
+}
+body.layout-mobile .brandText #summaryProgressAll{
+    display: none;
+}
+
+/* Mobile fixed layout: solo las habitaciones hacen scroll */
+@media (max-width: 767px){
+  body{
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+  .top{
+    position: relative;
+    top: auto;
+    flex: none;
+  }
+  .modulesBar{
+    position: relative;
+    top: auto;
+    flex: none;
+  }
+  .modulesBar::after{
+    display: none;
+  }
+  .main{
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Rooms grid: responsive columns on mobile */
+@media (max-width: 480px){
+  .roomsGrid{
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+@media (min-width: 481px) and (max-width: 767px){
+  .roomsGrid{
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+/* Room cards: compact on mobile */
+@media (max-width: 767px){
+  .main{
+    padding: 8px 12px 16px;
+  }
+  .headRow{
+    margin-bottom: 6px;
+  }
+  h2{
+    font-size: 13px;
+    margin:4px 0;
+  }
+  .headActions{
+    gap:6px;
+  }
+  .selected{
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  .btnDecoradaHead{
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .roomBtn{
+    padding: 50px 10px 48px 12px;
+    border-radius: 16px;
+    min-height: 160px;
+  }
+  .roomBtn:not(:has(.timerBadge)){
+    padding-top: 44px;
+  }
+  .roomNum{
+    font-size: 19px;
+  }
+  .roomState{
+    font-size: 11px;
+    margin-top: 4px;
+  }
+  .roomOcc{
+    font-size: 11px;
+    margin-top: 4px;
+  }
+
+  /* Badge compact */
+  .badge{
+    top: 10px;
+    right: 10px;
+    padding: 5px 8px;
+    font-size: 9px;
+    max-width: 90px;
+  }
+  .cleanTag{
+    top: 38px;
+    right: 10px;
+    padding: 4px 6px;
+    font-size: 8px;
+  }
+
+  /* Timer compact */
+  .timerBadge{
+    top: 8px;
+    left: 8px;
+    padding: 7px 10px;
+    border-radius: 14px;
+    font-size: 11px;
+    gap: 6px;
+  }
+  .timerIcon{ width: 18px; height: 18px; }
+  .prioIcon{ width: 16px; height: 16px; font-size: 10px; }
+  .roomBtn:has(.timerBadge){
+    padding-top: 54px;
+  }
+  .roomBtn:has(.timerBadge) .badge{ top: 44px; }
+  .roomBtn:has(.timerBadge) .cleanTag{ top: 48px; }
+  .roomBtn:has(.timerBadge) .timerBadge{ top: 6px; left: 8px; }
+
+  /* Decorada tag compact */
+  .decoradaTag{
+    padding: 4px 8px;
+    font-size: 10px;
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .decoradaEmoji{ font-size: 11px; }
+
+  /* Obs bar compact */
+  .obsBar{
+    width: 100%;
+    margin-top: 8px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
   }
   .obsChip{
-    width: 150px;
-    flex: 0 0 auto;
+    width: auto;
+    padding: 4px 8px;
+    font-size: 10px;
   }
   .obsPeekBtn{
-    flex: 0 0 auto;
+    padding: 5px 10px;
+    font-size: 12px;
   }
+
+  /* Room details compact */
   .roomDetails{
     width: 100%;
+    margin-top: 4px;
   }
+  .detailList{ font-size: 14px; }
+  .detailObs{ font-size: 11px; }
+  .detailBlock{ padding: 6px 8px 8px; }
+  .detailBlockTitle{ font-size: 10px; }
+
+  /* Actions: always visible row at bottom */
   .roomActions{
-    top: auto !important;
-    bottom: 12px !important;
-    left: 12px !important;
-    right: 12px !important;
-    flex-direction: row !important;
-    justify-content: space-between !important;
-    gap: 10px !important;
-    transform: translateY(10px);
+    gap: 5px;
+    padding-top: 8px;
   }
-  .roomBtn.selected .roomActions{ transform: translateY(0); }
   .raBtn{
-    flex: 1 1 0;
-    width: auto;
-    height: 42px;
-    font-size: 18px;
-    border-radius: 18px;
+    min-width: 32px;
+    max-width: 46px;
+    height: 32px;
+    font-size: 12px;
+    border-radius: 10px;
   }
-  .raBtn::before{ inset: 8px; }
+  .raBtn::after{ display:none; }
+  .raIcon{ width: 14px; height: 14px; }
+
+  /* PrioHigh on mobile */
+  .roomBtn.prioHigh{
+    box-shadow:
+      0 14px 40px rgba(0,0,0,.50),
+      0 0 0 5px rgba(224,38,188,.22),
+      0 0 30px rgba(224,38,188,.35);
+  }
+
+  /* Room selected mobile */
+  .roomBtn.selected{
+    box-shadow:
+      0 16px 50px rgba(0,0,0,.50),
+      0 0 0 5px rgba(var(--accent), .20),
+      0 0 30px rgba(var(--accent), .30);
+  }
 }
 
 /* ===== Modal ===== */
@@ -1133,14 +1387,43 @@ h2{
 .userName{ font-weight: 1000; font-size: 12.5px; }
 .userDept{ color: rgba(234,240,255,.72); font-size: 11.5px; margin-top: 2px; }
 
+/* Login mobile */
 @media (max-width: 560px){
   .userPill{ min-width: 0; }
-  .loginTable{ grid-template-columns: 1fr 1fr; }
-  .loginTable .utCell:nth-child(3n){ display:none; }
+  .loginOverlay{ padding: 12px; align-items:flex-start; padding-top: 24px; }
+  .loginCard{ border-radius: 20px; }
+  .loginTop{ flex-direction:column; text-align:center; padding:14px; }
+  .loginLogo{ width: 80px; height: 44px; }
+  .loginTitle{ font-size: 15px; }
+  .loginSub{ font-size: 11px; }
+  .loginBody{ padding: 12px 14px; }
+  .loginPassRow{ flex-direction:column; gap:8px; }
+  .loginPassRow .loginInput{ width:100%; }
+  .loginBtn{ width:100%; justify-content:center; }
+  .loginFooter{ flex-direction:column; text-align:center; gap:6px; padding:10px 14px 14px; }
 }
-
 
 /* ===== Config modal ===== */
 .configForm .loginLabel{ margin-top: 10px; }
 .configForm .loginInput,
 .configForm .loginSelect{ margin-bottom: 6px; }
+
+/* Config modal mobile */
+@media (max-width: 560px){
+  .modalOverlay{ padding: 12px; align-items:flex-end; }
+  .modalCard{ border-radius: 20px 20px 0 0; max-height: 90vh; overflow-y: auto; }
+  .modalHeader{ padding: 14px 14px 8px; }
+  .modalTitle{ font-size: 14px; }
+  .modalBody{ padding: 10px 14px; }
+  .modalFooter{ padding: 10px 14px 14px; }
+  .fieldRow{ flex-direction:column; align-items:stretch; gap:6px; padding:8px 0; }
+  .stepper{ justify-content:center; }
+  .btnModal{ flex:1; text-align:center; }
+}
+
+/* Misc mobile tweaks */
+@media (max-width: 560px){
+  .roomsGrid{ gap: 8px; }
+  .summaryProgressAll{ margin-top: 8px; }
+  .loginTableWrap{ display:none !important; }
+}

@@ -1,0 +1,2722 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/png" href="./Oficial_JDL_blanco.png?v=1">
+  <link rel="shortcut icon" href="./Oficial_JDL_blanco.png?v=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Reportes - Gestion Habitaciones</title>
+  <style>
+    :root {
+      --bg0: #070A12; --bg1: #0B1024;
+      --card: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.10);
+      --text: #EAF0FF; --muted: #A9B3D0;
+      --primary: #7C3AED; --primaryLight: rgba(124,58,237,.25);
+      --ok: #2EE59D; --warn: #FFB020; --bad: #FF4D6D;
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      --r: 18px; --r2: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: radial-gradient(1200px 700px at 15% 10%, rgba(124,58,237,.22), transparent 55%),
+                  radial-gradient(900px 600px at 85% 20%, rgba(34,211,238,.18), transparent 55%),
+                  linear-gradient(180deg, var(--bg0), var(--bg1));
+      min-height: 100vh;
+    }
+    .wrap { max-width: 1200px; margin: 22px auto; padding: 0 14px; }
+    .top {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin-bottom: 18px; flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logoImg { width: 48px; height: 48px; border-radius: 12px; object-fit: contain; background: rgba(255,255,255,.06); padding: 4px; border: 1px solid rgba(255,255,255,.12); }
+    h1 { font-size: 20px; margin: 0; letter-spacing: .2px; }
+    .hint { color: var(--muted); font-size: 12px; }
+
+    button {
+      border: 1px solid rgba(255,255,255,.16);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      color: var(--text); padding: 10px 16px; border-radius: 12px;
+      cursor: pointer; font-weight: 600; font-size: 13px; line-height: 1.25;
+      transition: all .15s;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,.3); }
+    button:active { transform: scale(.97); }
+    .primary {
+      border-color: rgba(124,58,237,.55);
+      background: linear-gradient(135deg, rgba(124,58,237,.85), rgba(139,92,246,.75));
+      color: #fff;
+    }
+    .tabs {
+      display: flex; gap: 4px; margin-bottom: 18px; background: rgba(0,0,0,.25);
+      padding: 4px; border-radius: 14px; overflow-x: auto;
+    }
+    .tab {
+      padding: 10px 18px; border-radius: 10px; border: none;
+      background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 13px; font-weight: 700; white-space: nowrap;
+      transition: all .15s;
+    }
+    .tab:hover { color: var(--text); background: rgba(255,255,255,.06); }
+    .tab.active { background: var(--primaryLight); color: #B8A0FF; }
+
+    .panel {
+      background: var(--card); border: 1px solid var(--stroke);
+      border-radius: var(--r); box-shadow: var(--shadow);
+      backdrop-filter: blur(10px); overflow: hidden;
+      margin-bottom: 18px;
+    }
+    .panelHeader {
+      padding: 14px 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    }
+    .panelHeader h2 { margin: 0; font-size: 16px; font-weight: 700; }
+    .panelBody { padding: 16px 18px; }
+
+    /* Filtros */
+    .filters {
+      display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;
+      padding: 14px; background: rgba(0,0,0,.2); border-radius: var(--r2);
+      margin-bottom: 16px;
+    }
+    .filterGroup { display: flex; flex-direction: column; }
+    .filterGroup label { display: block; margin: 0 0 4px; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+    .filterGroup input, .filterGroup select {
+      padding: 9px 12px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(10,14,28,.55); color: var(--text);
+      outline: none; font-size: 13px; min-width: 150px;
+    }
+    .filterGroup input:focus, .filterGroup select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primaryLight); }
+
+    /* Tabla */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 10px 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.06); }
+    th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; position: sticky; top: 0; background: rgba(10,14,28,.95); z-index: 2; }
+    tr:hover td { background: rgba(255,255,255,.04); }
+    .numCol { text-align: right; font-variant-numeric: tabular-nums; }
+    .badgePago { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .badgeCumple { background: rgba(46,229,157,.15); color: #2EE59D; }
+    .badgeNoCumple { background: rgba(255,77,109,.15); color: #FF4D6D; }
+    .badgeNA { background: rgba(255,176,32,.15); color: #FFB020; }
+    .familiarBadge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; background: rgba(255,176,32,.15); color: var(--warn); }
+
+    /* Grupo de camarera con subtotales */
+    .groupHeader td {
+      background: rgba(124,58,237,.12) !important;
+      border-top: 2px solid rgba(124,58,237,.3);
+      border-bottom: 1px solid rgba(124,58,237,.15);
+      padding: 8px 10px;
+      font-weight: 800;
+      font-size: 14px;
+      color: #C4B0FF;
+    }
+    .groupHeader:hover td { background: rgba(124,58,237,.18) !important; }
+    .subtotalRow td {
+      background: rgba(255,255,255,.04) !important;
+      border-top: 1px solid rgba(255,255,255,.08);
+      border-bottom: 2px solid rgba(124,58,237,.2);
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .subtotalRow:hover td { background: rgba(255,255,255,.06) !important; }
+    .subtotalLabel { color: var(--muted); font-size: 11px; }
+
+    /* Resumen */
+    .resumenRow {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px; margin-bottom: 16px;
+    }
+    .resumenCard {
+      padding: 14px 14px; border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
+      text-align: center;
+    }
+    .resumenCard .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+    .resumenCard .value { font-size: 22px; font-weight: 1000; margin-top: 4px; }
+    .resumenCard.pago .value { color: #2EE59D; }
+    .resumenCard.ok .value { color: #2EE59D; }
+    .resumenCard.no .value { color: #FF4D6D; }
+
+    /* Resumen por camarera */
+    .camResumenWrap {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+      padding: 2px 0 6px;
+      scroll-snap-type: x mandatory;
+    }
+    .camResumenCard {
+      flex: 0 0 240px;
+      scroll-snap-align: start;
+      border: 1px solid var(--stroke);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      overflow: hidden;
+      transition: transform .15s ease, box-shadow .15s ease;
+      cursor: pointer;
+    }
+    .camResumenCard:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 40px rgba(0,0,0,.35);
+    }
+    .camResumenCard.active {
+      border-color: rgba(124,58,237,.6);
+      box-shadow: 0 0 0 2px rgba(124,58,237,.3), 0 10px 40px rgba(0,0,0,.4);
+      background: linear-gradient(180deg, rgba(124,58,237,.15), rgba(124,58,237,.05));
+    }
+    .camResumenCard.active .camResumenReg {
+      color: #C4B0FF;
+      font-weight: 800;
+    }
+    .camResumenHead {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .camResumenAvatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 900;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .camResumenName {
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .camResumenBody {
+      padding: 10px 12px 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 12px;
+    }
+    .camResumenItem { line-height: 1.3; }
+    .camResumenItem .lbl {
+      font-size: 9px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .camResumenItem .val {
+      font-size: 15px;
+      font-weight: 900;
+    }
+    .camResumenItem .val.green { color: #2EE59D; }
+    .camResumenItem .val.yellow { color: #FFB020; }
+    .camResumenItem .val.purple { color: #B8A0FF; }
+    .camResumenReg {
+      padding: 6px 12px;
+      border-top: 1px solid rgba(255,255,255,.06);
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* Dashboard Rendimiento */
+    .dashGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 14px;
+    }
+    .dashCard {
+      border: 1px solid var(--stroke);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      overflow: hidden;
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .dashCard:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 48px rgba(0,0,0,.35);
+    }
+
+    /* Sub-tabs dentro de un panel */
+    .subTabs {
+      display: flex; gap: 2px;
+      background: rgba(0,0,0,.2);
+      padding: 3px;
+      border-radius: 10px;
+    }
+    .subTab {
+      padding: 7px 14px; border: none; border-radius: 8px;
+      background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 12px; font-weight: 700; white-space: nowrap;
+      transition: all .12s;
+    }
+    .subTab:hover { color: var(--text); background: rgba(255,255,255,.06); }
+    .subTab.active { background: rgba(124,58,237,.25); color: #B8A0FF; }
+
+    /* ===== GRAFICAS CSS ===== */
+    .chartWrap { margin-top: 14px; }
+    .chartTitle { font-size: 14px; font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .chartTitle small { font-weight: 400; color: var(--muted); font-size: 11px; }
+
+    /* Chart: Barras agrupadas */
+    .chartBarsWrap {
+      position: relative;
+      padding: 6px 0 6px 0;
+    }
+    .chartYLabels {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 40px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      padding: 6px 0;
+      pointer-events: none;
+    }
+    .chartYLabels span {
+      font-size: 9px;
+      color: rgba(255,255,255,.25);
+      text-align: right;
+      padding-right: 6px;
+      line-height: 1;
+    }
+
+    /* Contenedor del chart con grid lines */
+    .chartGrid {
+      position: relative;
+      margin-left: 36px;
+      background: repeating-linear-gradient(
+        180deg,
+        transparent,
+        transparent 19px,
+        rgba(255,255,255,.03) 19px,
+        rgba(255,255,255,.03) 20px
+      );
+    }
+    .chartGrid::before,
+    .chartGrid::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      height: 1px;
+      background: rgba(255,255,255,.06);
+    }
+    .chartGrid::before { top: 0; }
+    .chartGrid::after { bottom: 0; }
+
+    .chartRow {
+      display: flex; align-items: flex-end;
+      height: 50px;
+      gap: 2px;
+      position: relative;
+      margin-bottom: 2px;
+    }
+    .chartRow .colLabel {
+      position: absolute;
+      left: -36px;
+      bottom: 4px;
+      font-size: 9px;
+      color: var(--muted);
+      min-width: 32px;
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .chartBar {
+      flex: 1;
+      border-radius: 3px 3px 0 0;
+      min-height: 2px;
+      position: relative;
+      transition: opacity .15s;
+      cursor: pointer;
+    }
+    .chartBar:hover { opacity: .8; }
+    .chartBar .tooltipChart {
+      display: none;
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.85);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      white-space: nowrap;
+      z-index: 5;
+      pointer-events: none;
+      margin-bottom: 4px;
+    }
+    .chartBar:hover .tooltipChart { display: block; }
+
+    /* Chart: Linea de tendencia */
+    .trendWrap {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      padding: 10px 0 10px 0;
+      position: relative;
+    }
+    .trendCol {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .trendDot {
+      width: 14px; height: 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      position: relative;
+      transition: transform .12s;
+      box-shadow: 0 0 0 2px rgba(10,14,28,.8);
+    }
+    .trendDot:hover {
+      transform: scale(1.3);
+    }
+    .trendDot .tooltipChart {
+      display: none;
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.85);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      white-space: nowrap;
+      z-index: 5;
+      pointer-events: none;
+      margin-bottom: 6px;
+    }
+    .trendDot:hover .tooltipChart { display: block; }
+    .trendLine {
+      width: 2px;
+      border-radius: 999px;
+      opacity: .35;
+    }
+    .trendLabel {
+      font-size: 8px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 2px;
+      max-width: 50px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Comparacion horizontal */
+    .compSection { margin-bottom: 24px; }
+    .compSectionTitle {
+      font-size: 12px; font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em;
+      margin-bottom: 8px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.04);
+    }
+    .compRow {
+      display: flex; align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .compLabel {
+      font-size: 11px; font-weight: 700;
+      min-width: 80px;
+      text-align: right;
+      color: var(--text);
+    }
+    .compTrack {
+      flex: 1;
+      height: 18px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      overflow: hidden;
+    }
+    .compFill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width .6s ease;
+    }
+    .compValue {
+      font-size: 12px; font-weight: 800;
+      min-width: 50px;
+    }
+
+    /* Leyenda */
+    .chartLegend {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(0,0,0,.2);
+    }
+    .chartLegendItem {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 11px; color: var(--text);
+    }
+    .chartLegendSwatch {
+      width: 12px; height: 12px;
+      border-radius: 4px;
+    }
+
+    /* Selector de camarera en graficas */
+    .chartCamareraSelect {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(10,14,28,.55);
+      color: var(--text);
+      font-size: 12px;
+      outline: none;
+    }
+    .chartCamareraSelect:focus { border-color: var(--primary); }
+    .dashCardHead {
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .dashCardName { font-size: 15px; font-weight: 800; }
+    .dashCardStat {
+      padding: 12px 14px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    }
+    .statItem { text-align: center; padding: 8px; border-radius: 10px; background: rgba(255,255,255,.04); }
+    .statItem .num { font-size: 18px; font-weight: 1000; }
+    .statItem .lbl { font-size: 10px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: .04em; }
+
+    /* Barras de progreso CSS */
+    .barGroup { padding: 8px 14px 14px; }
+    .barRow { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+    .barLabel { font-size: 10px; color: var(--muted); min-width: 70px; text-align: right; }
+    .barTrack {
+      flex: 1; height: 16px; border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      overflow: hidden; position: relative;
+    }
+    .barFill {
+      height: 100%; border-radius: 999px;
+      transition: width .6s ease;
+      position: relative;
+    }
+    .barFill.blue { background: linear-gradient(90deg, rgba(59,130,246,.7), rgba(56,189,248,.7)); }
+    .barFill.green { background: linear-gradient(90deg, rgba(46,229,157,.7), rgba(72,240,170,.7)); }
+    .barFill.purple { background: linear-gradient(90deg, rgba(124,58,237,.7), rgba(167,139,250,.7)); }
+    .barFill.orange { background: linear-gradient(90deg, rgba(251,146,60,.7), rgba(251,191,36,.7)); }
+    .barFill.pink { background: linear-gradient(90deg, rgba(224,38,188,.7), rgba(244,114,182,.7)); }
+    .barValue { font-size: 12px; font-weight: 800; min-width: 50px; text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* Loading / Empty */
+    .loading { text-align: center; padding: 40px; color: var(--muted); }
+    .empty { text-align: center; padding: 30px; color: var(--muted); font-size: 13px; }
+
+    /* Toast */
+    .toastWrap { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 9999; display: grid; gap: 8px; width: min(560px, calc(100vw - 22px)); }
+    .toast { border-radius: 14px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.12); background: rgba(10,14,28,.92); font-size: 13px; }
+    .toast.ok { border-color: rgba(46,229,157,.45); }
+    .toast.err { border-color: rgba(255,77,109,.45); }
+
+    /* Puntuacion inline */
+    .scoreDots { display: flex; gap: 3px; align-items: center; }
+    .scoreDot { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
+    .scoreDot.ok { background: #2EE59D; }
+    .scoreDot.no { background: #FF4D6D; }
+    .scoreDot.na { background: #FFB020; }
+
+    /* Scroll horizontal en tabla */
+    .tableWrap { overflow-x: auto; border-radius: 10px; }
+
+    /* Filas clickeables */
+    .clickRow { cursor: pointer; }
+    .clickRow:hover td { background: rgba(124,58,237,.12) !important; }
+    .clickRow td:first-child { position: relative; }
+    .clickRow td:first-child::before {
+      content: "🔍";
+      position: absolute;
+      left: -2px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 10px;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+    .clickRow:hover td:first-child::before { opacity: .7; }
+
+    /* Modal detalle inspeccion */
+    .detModalOverlay {
+      position: fixed; inset:0;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(12px);
+      display:grid; place-items:center;
+      z-index:1000;
+      padding:18px;
+      animation: detFadeIn .15s ease;
+    }
+    @keyframes detFadeIn { from{ opacity:0 } to{ opacity:1 } }
+    .detModalCard {
+      width: min(700px, 100%);
+      max-height: 90vh;
+      overflow-y: auto;
+      border-radius: 22px;
+      background: rgba(12,16,34,.96);
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 30px 90px rgba(0,0,0,.55);
+      animation: detSlideIn .18s ease;
+    }
+    @keyframes detSlideIn { from{ transform:translateY(8px) scale(.98); opacity:0 } to{ transform:translateY(0) scale(1); opacity:1 } }
+    .detModalHead {
+      display:flex; align-items:flex-start; justify-content:space-between;
+      gap:12px;
+      padding:16px 18px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      position: sticky; top:0;
+      background: rgba(12,16,34,.98);
+      z-index:2;
+    }
+    .detModalTitle { font-size: 18px; font-weight: 1000; }
+    .detModalSub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .detModalClose {
+      width: 36px; height: 36px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: linear-gradient(135deg, rgba(59,130,246,.2), rgba(124,58,237,.2));
+      color: var(--text);
+      cursor: pointer;
+      display:grid; place-items:center;
+      font-size: 16px; font-weight: 700;
+      flex-shrink:0;
+    }
+    .detModalBody { padding: 14px 18px; }
+
+    /* Category group en detalle */
+    .detCatGroup { margin-bottom: 14px; }
+    .detCatTitle {
+      font-size: 13px; font-weight: 800;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(124,58,237,.12);
+      border: 1px solid rgba(124,58,237,.2);
+      margin-bottom: 6px;
+      color: #c4b0ff;
+    }
+    .detItemRow {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 10px;
+      border-radius: 8px;
+      margin: 2px 0;
+      font-size: 13px;
+    }
+    .detItemRow:hover { background: rgba(255,255,255,.04); }
+    .detItemName { font-weight: 600; }
+    .detItemBadge {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .04em;
+    }
+    .detItemBadge.ok { background: rgba(46,229,157,.15); color: #2EE59D; }
+    .detItemBadge.no { background: rgba(255,77,109,.15); color: #FF4D6D; }
+    .detItemBadge.na { background: rgba(255,176,32,.15); color: #FFB020; }
+
+    /* Summary del detalle */
+    .detResumen {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      padding: 10px 0; margin-top: 4px;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .detResumenItem {
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid rgba(255,255,255,.10);
+    }
+
+    /* Timeline del historial */
+    .timelineWrap { position: relative; padding: 10px 0 10px 30px; }
+    .timelineWrap::before {
+      content: '';
+      position: absolute;
+      left: 13px; top: 0; bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, rgba(124,58,237,.3), rgba(34,211,238,.3));
+      border-radius: 999px;
+    }
+    .timelineEvent {
+      position: relative;
+      margin-bottom: 14px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.04);
+      transition: background .15s;
+    }
+    .timelineEvent:hover { background: rgba(255,255,255,.08); }
+    .timelineEvent::before {
+      content: '';
+      position: absolute;
+      left: -23px;
+      top: 14px;
+      width: 12px; height: 12px;
+      border-radius: 999px;
+      border: 2px solid var(--stroke);
+      background: var(--bg0);
+      z-index: 1;
+    }
+    .timelineEvent .eventDot {
+      position: absolute;
+      left: -21px;
+      top: 16px;
+      width: 8px; height: 8px;
+      border-radius: 999px;
+      z-index: 2;
+    }
+    .timelineEvent .eventTime {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+    .timelineEvent .eventTitle {
+      font-size: 14px;
+      font-weight: 800;
+      margin-top: 2px;
+    }
+    .timelineEvent .eventDesc {
+      font-size: 12px;
+      color: rgba(234,240,255,.78);
+      margin-top: 3px;
+      line-height: 1.35;
+    }
+    .timelineEvent .eventActor {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .timelineHeader {
+      padding: 12px 12px;
+      border-radius: 12px;
+      background: rgba(124,58,237,.1);
+      border: 1px solid rgba(124,58,237,.25);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .timelineHeader .roomTitle { font-size: 18px; font-weight: 1000; }
+    .timelineHeader .roomMeta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .histRoomSelect { min-width: 120px; }
+
+    @media (max-width: 767px) {
+      .filters { flex-direction: column; align-items: stretch; }
+      .filterGroup { width: 100%; }
+      .filterGroup input, .filterGroup select { width: 100%; min-width: 0; }
+      .dashGrid { grid-template-columns: 1fr; }
+      .resumenRow { grid-template-columns: repeat(2, 1fr); }
+      .tabs { overflow-x: auto; }
+      th, td { padding: 8px 6px; font-size: 12px; }
+      .panelBody { padding: 12px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="toasts" class="toastWrap"></div>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <img class="logoImg" src="./Oficial_JDL_blanco.png" alt="Logo" />
+        <div>
+          <h1 id="pageTitle">Reportes</h1>
+          <div class="hint" id="pageSub">Selecciona fechas y genera reportes</div>
+        </div>
+      </div>
+      <button id="btnBack" type="button">&larr; Regresar</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="pagos">Pagos</button>
+      <button class="tab" data-tab="historial">Historial</button>
+      <button class="tab" data-tab="rendimiento">Rendimiento</button>
+    </div>
+
+    <!-- ===== TAB: PAGOS ===== -->
+    <div class="panel tabContent" id="tabPagos">
+      <div class="panelHeader">
+        <h2>Reporte de Pagos</h2>
+        <span class="count" id="pagosCount">0 registros</span>
+      </div>
+      <div class="panelBody">
+        <div class="filters">
+          <div class="filterGroup">
+            <label>Fecha desde</label>
+            <input id="filtroDesde" type="date" />
+          </div>
+          <div class="filterGroup">
+            <label>Fecha hasta</label>
+            <input id="filtroHasta" type="date" />
+          </div>
+          <div class="filterGroup">
+            <label>Modulo (opcional)</label>
+            <select id="filtroModulo">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div class="filterGroup">
+            <label>Camarera (opcional)</label>
+            <select id="filtroCamarera">
+              <option value="">Todas</option>
+            </select>
+          </div>
+          <button class="primary" id="btnGenerarPagos" type="button" style="height:38px">Generar Reporte</button>
+          <button id="btnExportarExcel" class="success" type="button" style="height:38px;display:none;border-color:rgba(46,229,157,.45);background:linear-gradient(135deg,rgba(46,229,157,.85),rgba(72,240,170,.75));color:#0a1a14">📥 Exportar Excel</button>
+        </div>
+
+        <div id="pagosResumen" class="resumenRow" style="display:none"></div>
+        <div id="pagosResumenCam" class="camResumenWrap" style="display:none"></div>
+
+        <!-- Chart de pagos: toggle -->
+        <div id="pagosChartSection" style="display:none;margin-bottom:16px">
+          <div class="panelHeader" style="padding:10px 14px;cursor:pointer" id="pagosChartToggle">
+            <h2 style="font-size:13px;display:flex;align-items:center;gap:8px">
+              <span id="pagosChartArrow">▶</span> 📊 Comparativa de Pagos entre Camareras
+            </h2>
+            <span style="font-size:11px;color:var(--muted)">Click para mostrar/ocultar</span>
+          </div>
+          <div id="pagosChartBody" class="panelBody" style="padding:14px 18px;display:none">
+            <div id="pagosChartContent"></div>
+
+            <!-- Panel de personalizacion de colores -->
+            <div id="pagosChartColors" style="margin-top:16px;border-top:1px solid rgba(255,255,255,.08);padding-top:14px;display:none">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <span style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">🎨 Colores del chart</span>
+                <button id="btnResetChartColors" type="button" style="font-size:11px;padding:5px 10px">Restaurar defaults</button>
+              </div>
+              <div id="pagosChartColorGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px"></div>
+              <div style="font-size:10px;color:var(--muted);margin-top:8px">💡 Los colores se guardan automaticamente en tu navegador.</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="pagosTableWrap" class="tableWrap">
+          <div id="pagosPlaceholder" class="empty">Usa los filtros y presiona "Generar Reporte"</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: HISTORIAL ===== -->
+    <div class="panel tabContent" id="tabHistorial" style="display:none">
+      <div class="panelHeader">
+        <h2>Historial de Habitacion</h2>
+        <span class="count" id="histCount"></span>
+      </div>
+      <div class="panelBody">
+        <div class="filters">
+          <div class="filterGroup">
+            <label>Modulo</label>
+            <select id="histModulo">
+              <option value="">Cargando...</option>
+            </select>
+          </div>
+          <div class="filterGroup">
+            <label>Habitacion</label>
+            <select id="histHabitacion">
+              <option value="">Selecciona modulo primero</option>
+            </select>
+          </div>
+          <div class="filterGroup">
+            <label>Fecha</label>
+            <input id="histFecha" type="date" />
+          </div>
+          <button class="primary" id="btnGenerarHist" type="button" style="height:38px">Ver Historial</button>
+        </div>
+        <div id="histTimeline">
+          <div class="empty">Selecciona modulo, habitacion, fecha y presiona "Ver Historial"</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: RENDIMIENTO ===== -->
+    <div class="panel tabContent" id="tabRendimiento" style="display:none">
+      <div class="panelHeader">
+        <h2>Rendimiento de Camareras</h2>
+        <span class="count" id="rendCount">0 camareras</span>
+        <div class="subTabs">
+          <button class="subTab active" data-sub="dash" type="button">Dashboard</button>
+          <button class="subTab" data-sub="charts" type="button">Graficas</button>
+        </div>
+      </div>
+      <div class="panelBody">
+        <div class="filters">
+          <div class="filterGroup">
+            <label>Fecha desde</label>
+            <input id="rendDesde" type="date" />
+          </div>
+          <div class="filterGroup">
+            <label>Fecha hasta</label>
+            <input id="rendHasta" type="date" />
+          </div>
+          <div class="filterGroup">
+            <label>Camarera (opcional)</label>
+            <select id="rendCamarera">
+              <option value="">Todas</option>
+            </select>
+          </div>
+          <button class="primary" id="btnGenerarRend" type="button" style="height:38px">Generar Dashboard</button>
+        </div>
+
+        <!-- Sub-panel: Dashboard -->
+        <div id="rendSubDash">
+          <div id="rendPlaceholder" class="empty">Usa los filtros y presiona &quot;Generar Dashboard&quot;</div>
+          <div id="rendGrid" class="dashGrid" style="display:none"></div>
+        </div>
+
+        <!-- Sub-panel: Graficas -->
+        <div id="rendSubCharts" style="display:none">
+          <div id="rendChartPlaceholder" class="empty">Genera el dashboard primero para ver las graficas.</div>
+          <div id="rendChartContent" style="display:none">
+            <!-- Selector de camarera para las graficas -->
+            <div class="filters" style="margin-bottom:12px;padding:8px 12px">
+              <div class="filterGroup">
+                <label>Enfocar en</label>
+                <select id="chartCamarera" class="chartCamareraSelect">
+                  <option value="">Todas las camareras</option>
+                </select>
+              </div>
+              <button id="btnActualizarGraficas" type="button" style="height:32px;font-size:12px;padding:6px 14px">Actualizar Graficas</button>
+            </div>
+
+            <!-- Grafica 1: Tendencia de Puntuacion -->
+            <div class="panel" style="margin-bottom:14px;background:rgba(0,0,0,.15);border-color:rgba(255,255,255,.06)">
+              <div class="panelHeader" style="padding:10px 14px">
+                <h2 style="font-size:13px">📈 Tendencia de Puntuacion por Dia</h2>
+              </div>
+              <div class="panelBody" style="padding:10px 14px">
+                <div id="chartTrend" style="min-height:180px">
+                  <div class="loading">Cargando...</div>
+                </div>
+                <div id="chartTrendLegend" class="chartLegend"></div>
+              </div>
+            </div>
+
+            <!-- Grafica 2: Barras de Rendimiento Diario -->
+            <div class="panel" style="margin-bottom:14px;background:rgba(0,0,0,.15);border-color:rgba(255,255,255,.06)">
+              <div class="panelHeader" style="padding:10px 14px">
+                <h2 style="font-size:13px">📊 Habitaciones Limpiadas por Dia</h2>
+              </div>
+              <div class="panelBody" style="padding:10px 14px">
+                <div id="chartRooms" style="min-height:150px">
+                  <div class="loading">Cargando...</div>
+                </div>
+                <div id="chartRoomsLegend" class="chartLegend"></div>
+              </div>
+            </div>
+
+            <!-- Grafica 3: Comparacion General -->
+            <div class="panel" style="background:rgba(0,0,0,.15);border-color:rgba(255,255,255,.06)">
+              <div class="panelHeader" style="padding:10px 14px">
+                <h2 style="font-size:13px">🏆 Comparacion General entre Camareras</h2>
+              </div>
+              <div class="panelBody" style="padding:10px 14px">
+                <div id="chartComparacion" style="min-height:180px">
+                  <div class="loading">Cargando...</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Grafica 4: Tiempo Promedio -->
+            <div class="panel" style="margin-top:14px;background:rgba(0,0,0,.15);border-color:rgba(255,255,255,.06)">
+              <div class="panelHeader" style="padding:10px 14px">
+                <h2 style="font-size:13px">⏱️ Tiempo Promedio de Limpieza (minutos)</h2>
+              </div>
+              <div class="panelBody" style="padding:10px 14px">
+                <div id="chartTiempo" style="min-height:150px">
+                  <div class="loading">Cargando...</div>
+                </div>
+                <div id="chartTiempoLegend" class="chartLegend"></div>
+              </div>
+            </div>
+
+            <!-- Grafica 5: Pastel - Distribucion de Puntuacion -->
+            <div class="panel" style="margin-top:14px;background:rgba(0,0,0,.15);border-color:rgba(255,255,255,.06)">
+              <div class="panelHeader" style="padding:10px 14px">
+                <h2 style="font-size:13px">🥧 Distribucion de Puntuacion por Camarera</h2>
+              </div>
+              <div class="panelBody" style="padding:10px 14px">
+                <div id="chartDonut" style="min-height:200px">
+                  <div class="loading">Cargando...</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Grafica 6: Pastel - Participacion por Camarera -->
+            <div class="panel" style="margin-top:14px;background:rgba(0,0,0,.15);border-color:rgba(255,255,255,.06)">
+              <div class="panelHeader" style="padding:10px 14px">
+                <h2 style="font-size:13px">🥧 Participacion por Camarera (% de habitaciones)</h2>
+              </div>
+              <div class="panelBody" style="padding:10px 14px">
+                <div id="chartParticipation" style="min-height:200px">
+                  <div class="loading">Cargando...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal detalle inspeccion -->
+  <div id="detModal" class="detModalOverlay" style="display:none" onclick="if(event.target===this)closeDetalle()">
+    <div class="detModalCard">
+      <div class="detModalHead">
+        <div>
+          <div class="detModalTitle" id="detTitle">Inspeccion</div>
+          <div class="detModalSub" id="detSub">Cargando...</div>
+        </div>
+        <button class="detModalClose" onclick="closeDetalle()" type="button">X</button>
+      </div>
+      <div class="detModalBody" id="detBody">
+        <div class="loading">Cargando detalle...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const APP_BASE = window.location.pathname.replace(/\/[^/]*$/, "/").replace(/\/+$/, "");
+    const API_BASE = `${window.location.origin}${APP_BASE}`;
+    const qs = new URLSearchParams(window.location.search);
+
+    let CAMARERAS = [];
+    let MODULOS = [];
+    let PAGOS_ROWS = [];
+    let PAGOS_RESUMEN = null;
+    let PAGOS_DESDE = "";
+    let PAGOS_HASTA = "";
+    let PAGOS_CAMARERA_NOMBRE = "Todas";
+    let PAGOS_MODULO_NOMBRE = "Todos";
+    let selectedCamarera = '';
+
+    // Chart global data
+    let CHART_DATA = null;
+    let CHART_DAILY_DATA = [];
+    const CHART_COLORS = [
+      '#7C3AED', '#2EE59D', '#38BDF8', '#FBBF24', '#FF4D6D',
+      '#F472B6', '#34D399', '#818CF8', '#FB923C', '#A78BFA'
+    ];
+
+    function toast(msg, ok = true, ms = 3200) {
+      const t = document.createElement("div");
+      t.className = "toast " + (ok ? "ok" : "err");
+      t.textContent = msg;
+      $("toasts").appendChild(t);
+      setTimeout(() => t.remove(), ms);
+    }
+
+    function setToday() {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const today = `${yyyy}-${mm}-${dd}`;
+      // Default: last 30 days
+      const past = new Date(now);
+      past.setDate(past.getDate() - 30);
+      const pY = past.getFullYear();
+      const pM = String(past.getMonth() + 1).padStart(2, '0');
+      const pD = String(past.getDate()).padStart(2, '0');
+      const pastStr = `${pY}-${pM}-${pD}`;
+
+      ["filtroDesde", "rendDesde"].forEach(id => {
+        const el = $(id);
+        if (el && !el.value) el.value = pastStr;
+      });
+      ["filtroHasta", "rendHasta"].forEach(id => {
+        const el = $(id);
+        if (el && !el.value) el.value = today;
+      });
+    }
+    setToday();
+
+    async function apiGET(path) {
+      const headers = {};
+      try {
+        const sess = JSON.parse(localStorage.getItem("hk_session_v3") || "null");
+        if (sess?.token) headers["Authorization"] = "Bearer " + sess.token;
+      } catch {}
+      const r = await fetch(`${API_BASE}${path}`, { headers });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `GET ${path} failed`);
+      return j;
+    }
+
+    async function loadCamareras() {
+      try {
+        const data = await apiGET("/api/camareras");
+        CAMARERAS = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
+        ["filtroCamarera", "rendCamarera"].forEach(id => {
+          const sel = $(id);
+          if (!sel) return;
+          sel.innerHTML = '<option value="">Todas</option>';
+          CAMARERAS.forEach(c => {
+            const o = document.createElement("option");
+            o.value = c.id;
+            o.textContent = c.nombre;
+            sel.appendChild(o);
+          });
+        });
+      } catch (e) {
+        toast("Error cargando camareras", false);
+      }
+    }
+    async function loadModulos() {
+      try {
+        const resp = await apiGET("/api/modules");
+        MODULOS = Array.isArray(resp?.data) ? resp.data : [];
+        const sel = $("filtroModulo");
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Todos</option>';
+        MODULOS.forEach(m => {
+          const o = document.createElement("option");
+          o.value = String(m.id);
+          o.textContent = m.descripcion || m.id;
+          sel.appendChild(o);
+        });
+      } catch (e) {
+        toast("Error cargando modulos", false);
+      }
+    }
+
+    // ===== TABS =====
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        document.querySelectorAll(".tabContent").forEach(c => c.style.display = "none");
+        const target = document.getElementById("tab" + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1));
+        if (target) target.style.display = "block";
+      });
+    });
+
+    $("btnBack").addEventListener("click", () => {
+      window.location.href = "./index.html";
+    });
+
+    // ===== COLORES PERSONALIZADOS DEL CHART =====
+    const PAGOS_COLORS_KEY = "pagos_chart_colors_v1";
+
+    function getPagosChartColors() {
+      try {
+        const saved = localStorage.getItem(PAGOS_COLORS_KEY);
+        if (saved) return JSON.parse(saved);
+      } catch {}
+      return {};
+    }
+
+    function savePagosChartColor(name, color) {
+      const colors = getPagosChartColors();
+      colors[name] = color;
+      localStorage.setItem(PAGOS_COLORS_KEY, JSON.stringify(colors));
+    }
+
+    function resetPagosChartColors() {
+      localStorage.removeItem(PAGOS_COLORS_KEY);
+    }
+
+    function getChartColorForCamarera(name, index) {
+      const custom = getPagosChartColors();
+      if (custom[name]) return custom[name];
+      return CHART_COLORS[index % CHART_COLORS.length];
+    }
+
+    function renderPagosColorPicker(names) {
+      const grid = $("pagosChartColorGrid");
+      const panel = $("pagosChartColors");
+      if (!grid || !names.length) { panel.style.display = "none"; return; }
+
+      panel.style.display = "block";
+      const customColors = getPagosChartColors();
+
+      // Ordenar igual que el chart (por pagoFinal descendente)
+      const detalle = (PAGOS_RESUMEN && PAGOS_RESUMEN.detalle_pagos) || {};
+      const sortedNames = names.slice().sort((a, b) => {
+        const pA = detalle[a]?.pagoFinal || 0;
+        const pB = detalle[b]?.pagoFinal || 0;
+        return pB - pA;
+      });
+
+      let html = '';
+      sortedNames.forEach((name, i) => {
+        const currentColor = customColors[name] || CHART_COLORS[i % CHART_COLORS.length];
+        html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.04)">
+          <input type="color" class="pagosColorInput" data-camarera="${escHtml(name)}" value="${currentColor}" style="width:32px;height:32px;border:none;border-radius:6px;cursor:pointer;padding:0" />
+          <span style="font-size:12px;font-weight:700;flex:1">${escHtml(name)}</span>
+          <span class="pagosColorPreview" style="width:12px;height:12px;border-radius:4px;background:${currentColor};border:1px solid rgba(255,255,255,.1)"></span>
+        </div>`;
+      });
+
+      grid.innerHTML = html;
+
+      // Event listeners para los color pickers
+      grid.querySelectorAll(".pagosColorInput").forEach(input => {
+        input.addEventListener("input", (e) => {
+          const name = e.target.dataset.camarera;
+          const color = e.target.value;
+          savePagosChartColor(name, color);
+          // Actualizar preview
+          const preview = e.target.closest('div').querySelector('.pagosColorPreview');
+          if (preview) preview.style.background = color;
+        });
+        input.addEventListener("change", (e) => {
+          // Re-renderizar chart con nuevos colores
+          renderPagosChart((PAGOS_RESUMEN && PAGOS_RESUMEN.detalle_pagos) || {});
+        });
+      });
+    }
+
+    // Resetear colores
+    $("btnResetChartColors").addEventListener("click", () => {
+      resetPagosChartColors();
+      const resumen = PAGOS_RESUMEN;
+      if (resumen) {
+        renderPagosChart(resumen.detalle_pagos || {});
+      }
+      toast("Colores restaurados a valores por defecto.", true, 2000);
+    });
+
+    // ===== PAGOS CHART TOGGLE =====
+    $("pagosChartToggle").addEventListener("click", () => {
+      const body = $("pagosChartBody");
+      const arrow = $("pagosChartArrow");
+      if (!body || !arrow) return;
+      const isOpen = body.style.display !== "none";
+      body.style.display = isOpen ? "none" : "block";
+      arrow.textContent = isOpen ? "▶" : "▼";
+    });
+
+    // ===== PAGOS =====
+    $("btnGenerarPagos").addEventListener("click", generarPagos);
+    // Enter key on fecha fields
+    ["filtroDesde","filtroHasta","filtroModulo","filtroCamarera"].forEach(id => {
+      const el = $(id);
+      if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") generarPagos(); });
+    });
+
+    async function generarPagos() {
+      const desde = $("filtroDesde").value;
+      const hasta = $("filtroHasta").value;
+      if (!desde || !hasta) { toast("Selecciona fecha desde y hasta.", false); return; }
+
+      const btn = $("btnGenerarPagos");
+      const origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Generando...";
+
+      try {
+        const camarera_id = $("filtroCamarera").value || "";
+        const modulo_id = $("filtroModulo").value || "";
+        let url = `/api/reportes/pagos?fecha_desde=${encodeURIComponent(desde)}&fecha_hasta=${encodeURIComponent(hasta)}`;
+        if (camarera_id) url += `&camarera_id=${camarera_id}`;
+        if (modulo_id) url += `&modulo_id=${encodeURIComponent(modulo_id)}`;
+
+        const resp = await apiGET(url);
+        const rows = Array.isArray(resp?.data) ? resp.data : [];
+        const resumen = resp?.resumen || { total_registros:0, total_pago:0, total_ok:0, total_no:0, total_na:0 };
+
+        PAGOS_ROWS = rows;
+        PAGOS_RESUMEN = resumen;
+        selectedCamarera = '';
+        PAGOS_DESDE = desde;
+        PAGOS_HASTA = hasta;
+        const selCamarera = $("filtroCamarera");
+        PAGOS_CAMARERA_NOMBRE = selCamarera && selCamarera.selectedOptions[0]
+          ? selCamarera.selectedOptions[0].textContent
+          : "Todas";
+        const selModulo = $("filtroModulo");
+        PAGOS_MODULO_NOMBRE = selModulo && selModulo.selectedOptions[0]
+          ? selModulo.selectedOptions[0].textContent
+          : "Todos";
+
+        $("pagosCount").textContent = `${rows.length} registros`;
+        selectedCamarera = '';
+        renderPagosResumen(resumen);
+        renderPagosResumenCamareras(resumen, rows);
+        renderPagosTable(rows, resumen, '');
+      } catch (e) {
+        toast("Error: " + (e?.message || e), false, 5200);
+        $("pagosPlaceholder").innerHTML = '<div class="empty">Error al generar reporte. Intenta de nuevo.</div>';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = origText;
+      }
+    }
+
+    function renderPagosResumen(r) {
+      const el = $("pagosResumen");
+      el.style.display = "grid";
+      el.innerHTML = `
+        <div class="resumenCard pago"><div class="label">Total Pago</div><div class="value">Q${Number(r.total_pago || 0).toFixed(2)}</div></div>
+        <div class="resumenCard ok"><div class="label">Cumplen</div><div class="value">${r.total_ok || 0}</div></div>
+        <div class="resumenCard no"><div class="label">No Cumplen</div><div class="value">${r.total_no || 0}</div></div>
+        <div class="resumenCard"><div class="label">N/A</div><div class="value">${r.total_na || 0}</div></div>
+        <div class="resumenCard"><div class="label">Registros</div><div class="value">${r.total_registros || 0}</div></div>
+      `;
+    }
+
+    function renderPagosResumenCamareras(resumen, rows) {
+      const container = $("pagosResumenCam");
+      const detallePagos = (resumen && resumen.detalle_pagos) || {};
+      const nombres = Object.keys(detallePagos);
+      if (!nombres.length) { container.style.display = "none"; return; }
+
+      // Contar registros por camarera
+      const counts = {};
+      rows.forEach(r => {
+        const key = r.camarera_nombre || "Sin asignar";
+        counts[key] = (counts[key] || 0) + 1;
+      });
+
+      const avatars = ['#7C3AED','#2EE59D','#38BDF8','#FBBF24','#FF4D6D','#F472B6','#34D399','#818CF8','#FB923C','#A78BFA'];
+
+      let html = '';
+      nombres.forEach((nombre, i) => {
+        const d = detallePagos[nombre] || {};
+        const cnt = counts[nombre] || 0;
+        const pct = d.pct || 0;
+        const extra = d.extra || 0;
+        const avatarColor = avatars[i % avatars.length];
+        const facturaSI = Boolean(d.factura);
+        const badgeHtml = facturaSI
+          ? '<span style="font-size:10px;padding:2px 7px;border-radius:999px;font-weight:700;background:rgba(46,229,157,.15);color:#2EE59D;border:1px solid rgba(46,229,157,.25);white-space:nowrap">🧾 SI factura</span>'
+          : '<span style="font-size:10px;padding:2px 7px;border-radius:999px;font-weight:700;background:rgba(255,176,32,.12);color:#FFB020;border:1px solid rgba(255,176,32,.2);white-space:nowrap">🚫 NO factura</span>';
+
+        const isActive = selectedCamarera === nombre;
+        html += `<div class="camResumenCard${isActive ? ' active' : ''}" data-camarera="${escHtml(nombre)}" onclick="setFiltroCamarera(this.dataset.camarera)">
+          <div class="camResumenHead">
+            <div class="camResumenAvatar" style="background:${avatarColor}">${escHtml(nombre.charAt(0).toUpperCase())}</div>
+            <div class="camResumenName" title="${escHtml(nombre)}">${escHtml(nombre)}</div>
+            ${badgeHtml}
+          </div>
+          <div class="camResumenBody">
+            <div class="camResumenItem"><div class="lbl">Pago Base</div><div class="val green">Q${Number(d.base || 0).toFixed(2)}</div></div>
+            <div class="camResumenItem"><div class="lbl">% Aplicado</div><div class="val" style="color:${pct > 0 ? '#2EE59D' : 'var(--muted)'}">${pct > 0 ? pct + '%' : '-'}</div></div>
+            <div class="camResumenItem"><div class="lbl">Extra</div><div class="val yellow">Q${Number(extra).toFixed(2)}</div></div>
+            <div class="camResumenItem"><div class="lbl">Pago Final</div><div class="val purple">Q${Number(d.pagoFinal || 0).toFixed(2)}</div></div>
+          </div>
+          <div class="camResumenReg">📋 ${cnt} registro${cnt !== 1 ? 's' : ''}</div>
+        </div>`;
+      });
+
+      container.innerHTML = html;
+
+      // Agregar chip "Todas" al inicio si hay filtro activo (despues de innerHTML)
+      if (selectedCamarera) {
+        const todasChip = document.createElement('div');
+        todasChip.className = 'camResumenCard';
+        todasChip.style.cssText = 'flex:0 0 110px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-color:rgba(124,58,237,.4);background:rgba(124,58,237,.08)';
+        todasChip.innerHTML = '<span style="font-size:18px;font-weight:800;color:#C4B0FF">✕</span><span style="font-size:12px;font-weight:700;color:#C4B0FF">Todas</span>';
+        todasChip.onclick = function() { setFiltroCamarera(''); };
+        container.insertBefore(todasChip, container.firstChild);
+      }
+
+      // Re-aplicar clase active a la card seleccionada
+      if (selectedCamarera) {
+        const activeCard = container.querySelector(`.camResumenCard[data-camarera="${CSS.escape(selectedCamarera)}"]`);
+        if (activeCard) activeCard.classList.add('active');
+      }
+
+      container.style.display = "flex";
+    }
+
+    function setFiltroCamarera(nombre) {
+      if (selectedCamarera === nombre) {
+        selectedCamarera = ''; // toggle off
+      } else {
+        selectedCamarera = nombre;
+      }
+      // Re-render cards y tabla
+      renderPagosResumenCamareras(PAGOS_RESUMEN, PAGOS_ROWS);
+      renderPagosTable(PAGOS_ROWS, PAGOS_RESUMEN, selectedCamarera);
+    }
+
+    function escHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function fmtTime(s) {
+      if (!s) return "-";
+      // "YYYY-MM-DD HH:MM:SS" -> show just HH:MM
+      const parts = String(s).split(" ");
+      if (parts.length >= 2) {
+        const time = parts[1];
+        return time.substring(0, 5);
+      }
+      return s;
+    }
+
+    function renderPagosTable(rows, resumen, filterCamarera) {
+      const wrap = $("pagosTableWrap");
+      if (!rows.length) {
+        $("btnExportarExcel").style.display = "none";
+        wrap.innerHTML = '<div class="empty">No se encontraron registros para ese rango de fechas.</div>';
+        return;
+      }
+
+      const porCamarera = (resumen && resumen.por_camarera) || {};
+      const detallePagos = (resumen && resumen.detalle_pagos) || {};
+
+      // Filtrar por camarera si hay filtro activo
+      let filteredRows = rows;
+      if (filterCamarera) {
+        filteredRows = rows.filter(r => (r.camarera_nombre || "") === filterCamarera);
+      }
+
+      // Agrupar por camarera
+      const groups = {};
+      filteredRows.forEach(r => {
+        const key = r.camarera_nombre || "Sin asignar";
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(r);
+      });
+
+      // Actualizar contador de registros mostrados
+      $("pagosCount").textContent = `${filteredRows.length} registro${filteredRows.length !== 1 ? 's' : ''}${filterCamarera ? ' (filtrado)' : ''}`;
+
+      // Totales globales
+      let globalPago = 0, globalOk = 0, globalNo = 0, globalNa = 0, globalPagoBase = 0;
+
+      let html = `<table><thead><tr>
+        <th>Fecha</th>
+        <th>Camarera</th>
+        <th>Habitacion</th>
+        <th>Tipo</th>
+        <th>Fam</th>
+        <th class="numCol">Inicio</th>
+        <th class="numCol">Fin</th>
+        <th class="numCol">OK</th>
+        <th class="numCol">X</th>
+        <th class="numCol">NA</th>
+        <th>Puntuacion</th>
+        <th class="numCol">Pago Base (Q)</th>
+        <th class="numCol" title="Si la camarera tiene factura activa: se aplica este % sobre el total de Pago Base. Si NO factura: 0%.">% Aplicado</th>
+        <th class="numCol" title="Monto fijo adicional que se suma al total. Q46 si factura, Q36 si no factura (valores configurables en Admin &gt; Config Pago).">Extra (Q)</th>
+        <th class="numCol" title="Pago Final = (Pago Base &times; (1 + %/100)) + Extra, o Pago Base + Extra si no factura.">Pago Final (Q)</th>
+      </tr></thead><tbody>`;
+
+      Object.keys(groups).forEach((camarera, gi) => {
+        const items = groups[camarera];
+
+        const subPagoCalculado = Number(porCamarera[camarera]) || 0;
+        globalPago += subPagoCalculado;
+
+        let subOk = 0, subNo = 0, subNa = 0, subPagoBase = 0;
+        items.forEach(r => {
+          subOk += Number(r.cumplen || 0);
+          subNo += Number(r.no_cumplen || 0);
+          subNa += Number(r.no_aplica || 0);
+          subPagoBase += Number(r.pago || 0);
+        });
+        globalOk += subOk;
+        globalNo += subNo;
+        globalNa += subNa;
+        globalPagoBase += subPagoBase;
+
+        const subTotal = subOk + subNo + subNa;
+        const subPct = subTotal > 0 ? Math.round((subOk / subTotal) * 100) : 0;
+        const avatarColor = CHART_COLORS[gi % CHART_COLORS.length];
+
+        // Badge factura
+        const det = detallePagos[camarera] || {};
+        const facturaSI = Boolean(det.factura);
+        const facturaBadge = facturaSI
+          ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(46,229,157,.15);color:#2EE59D;border:1px solid rgba(46,229,157,.3)">🧾 SI factura</span>'
+          : '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(255,176,32,.12);color:#FFB020;border:1px solid rgba(255,176,32,.25)">🚫 NO factura</span>';
+
+        // Fila de grupo: camarera
+        html += `<tr class="groupHeader">
+          <td colspan="15">
+            <span style="display:inline-flex;align-items:center;gap:8px">
+              <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;background:${avatarColor};color:#fff;font-size:12px;font-weight:800">
+                ${camarera.charAt(0).toUpperCase()}
+              </span>
+              <span>${escHtml(camarera)}</span>
+              ${facturaBadge}
+              <span style="font-weight:400;font-size:12px;color:var(--muted)">${items.length} registros</span>
+            </span>
+          </td>
+        </tr>`;
+
+        // Filas individuales
+        items.forEach(r => {
+          const total = Number(r.total_items || 1);
+          const ok = Number(r.cumplen || 0);
+          const no = Number(r.no_cumplen || 0);
+          const na = Number(r.no_aplica || 0);
+          const pct = Math.round((ok / total) * 100);
+          const pago = Number(r.pago || 0).toFixed(2);
+
+          // Score dots
+          let dots = "";
+          for (let i = 0; i < Math.min(ok, 10); i++) dots += '<span class="scoreDot ok"></span>';
+          for (let i = 0; i < Math.min(no, 5); i++) dots += '<span class="scoreDot no"></span>';
+          if (dots === "") dots = '<span style="color:var(--muted);font-size:11px">-</span>';
+
+          html += `<tr class="clickRow" data-inspeccion-id="${r.id}" title="Clic para ver detalle del checklist">
+            <td>${escHtml(r.fecha || "-")}</td>
+            <td style="color:var(--muted);font-size:12px">${escHtml(r.camarera_nombre || "-")}</td>
+            <td><strong>${escHtml(r.habitacion_etiqueta || "-")}</strong></td>
+            <td>${escHtml(r.tipo_nombre || "-")}</td>
+            <td>${Number(r.es_familiar) ? '<span class="familiarBadge">Fam</span>' : '-'}</td>
+            <td class="numCol">${fmtTime(r.inicio_limpieza)}</td>
+            <td class="numCol">${fmtTime(r.fin_limpieza)}</td>
+            <td class="numCol"><span class="badgePago badgeCumple">${ok}</span></td>
+            <td class="numCol"><span class="badgePago badgeNoCumple">${no}</span></td>
+            <td class="numCol"><span class="badgePago badgeNA">${na}</span></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-weight:700;font-size:13px">${pct}%</span>
+                <div class="scoreDots">${dots}</div>
+              </div>
+            </td>
+            <td class="numCol" style="font-weight:800;color:#2EE59D">Q${pago}</td>
+            <td class="numCol"></td>
+            <td class="numCol"></td>
+            <td class="numCol"></td>
+          </tr>`;
+        });
+
+        // Ya tenemos `det` declarado arriba (en la fila de grupo)
+        const pctAplicado = det.pct || 0;
+        const extraAplicado = det.extra || 0;
+        const pagoFinalCam = det.pagoFinal || subPagoCalculado;
+
+        // Fila de subtotal
+        html += `<tr class="subtotalRow">
+          <td colspan="5">
+            <span class="subtotalLabel">Subtotal ${escHtml(camarera)}</span>
+          </td>
+          <td class="numCol"></td>
+          <td class="numCol"></td>
+          <td class="numCol"><span class="badgePago badgeCumple">${subOk}</span></td>
+          <td class="numCol"><span class="badgePago badgeNoCumple">${subNo}</span></td>
+          <td class="numCol"><span class="badgePago badgeNA">${subNa}</span></td>
+          <td><span style="font-weight:700">${subPct}%</span></td>
+          <td class="numCol" style="color:var(--muted);font-size:12px">Q${subPagoBase.toFixed(2)}</td>
+          <td class="numCol" style="font-weight:700">${pctAplicado > 0 ? pctAplicado + '%' : '<span style="color:var(--muted)">-</span>'}</td>
+          <td class="numCol" style="font-weight:700;color:#FFB020">${extraAplicado > 0 ? 'Q' + extraAplicado.toFixed(2) : '<span style="color:var(--muted)">-</span>'}</td>
+          <td class="numCol" style="font-weight:800;color:#2EE59D">Q${pagoFinalCam.toFixed(2)}</td>
+        </tr>`;
+      });
+
+      // Fila de totales globales
+      const totalItems = globalOk + globalNo + globalNa;
+      const globalPct = totalItems > 0 ? Math.round((globalOk / totalItems) * 100) : 0;
+      html += `<tr class="subtotalRow" style="border-top:2px solid var(--primary);border-bottom:none">
+        <td colspan="5">
+          <span style="font-weight:800;font-size:14px;color:#C4B0FF">TOTALES GENERALES</span>
+        </td>
+        <td class="numCol"></td>
+        <td class="numCol"></td>
+        <td class="numCol"><span class="badgePago badgeCumple">${globalOk}</span></td>
+        <td class="numCol"><span class="badgePago badgeNoCumple">${globalNo}</span></td>
+        <td class="numCol"><span class="badgePago badgeNA">${globalNa}</span></td>
+        <td><span style="font-weight:800">${globalPct}%</span></td>
+        <td class="numCol" style="color:var(--muted);font-size:13px">Q${globalPagoBase.toFixed(2)}</td>
+        <td class="numCol"><span style="color:var(--muted)">-</span></td>
+        <td class="numCol"><span style="color:var(--muted)">-</span></td>
+        <td class="numCol" style="font-weight:1000;font-size:15px;color:#2EE59D">Q${globalPago.toFixed(2)}</td>
+      </tr>`;
+
+      html += `</tbody></table>`;
+      wrap.innerHTML = html;
+      $("btnExportarExcel").style.display = "inline-flex";
+
+      // Renderizar chart si hay datos
+      renderPagosChart(detallePagos);
+    }
+
+    function renderPagosChart(detallePagos) {
+      const names = Object.keys(detallePagos);
+      if (!names.length) {
+        $("pagosChartSection").style.display = "none";
+        return;
+      }
+
+      $("pagosChartSection").style.display = "block";
+      const container = $("pagosChartContent");
+
+      // Renderizar panel de colores personalizados
+      renderPagosColorPicker(names);
+
+      // Ordenar por pagoFinal descendente
+      const sorted = names
+        .map((n, idx) => ({ nombre: n, index: idx, ...detallePagos[n] }))
+        .sort((a, b) => b.pagoFinal - a.pagoFinal);
+
+      const maxPago = Math.max(...sorted.map(s => s.pagoFinal), 1);
+
+      // Seccion 1: Pago Final
+      let html = `<div class="compSection">
+        <div class="compSectionTitle">💰 Pago Final por Camarera</div>`;
+
+      sorted.forEach((s) => {
+        const pct = Math.min(Math.round((s.pagoFinal / maxPago) * 100), 100);
+        const color = getChartColorForCamarera(s.nombre, s.index);
+        const badge = s.factura
+          ? '<span style="font-size:9px;padding:1px 5px;border-radius:999px;font-weight:700;background:rgba(46,229,157,.15);color:#2EE59D">🧾</span>'
+          : '<span style="font-size:9px;padding:1px 5px;border-radius:999px;font-weight:700;background:rgba(255,176,32,.12);color:#FFB020">🚫</span>';
+        html += `<div class="compRow">
+          <span class="compLabel" style="min-width:100px">${escHtml(s.nombre)} ${badge}</span>
+          <div class="compTrack">
+            <div class="compFill" style="width:${pct}%;background:linear-gradient(90deg,${color},${color}88)"></div>
+          </div>
+          <span class="compValue" style="color:${color};min-width:70px">Q${s.pagoFinal.toFixed(2)}</span>
+        </div>`;
+      });
+
+      html += `</div>`;
+
+      // Seccion 2: Desglose Base vs Extra
+      const maxBase = Math.max(...sorted.map(s => s.base), 1);        html += `<div class="compSection" style="margin-top:18px">
+        <div class="compSectionTitle">📊 Desglose: Pago Base + Extra</div>`;
+
+      sorted.forEach((s) => {
+        const basePct = Math.min(Math.round((s.base / maxBase) * 100), 100);
+        const extraVal = s.extra || 0;
+        const color = getChartColorForCamarera(s.nombre, s.index);
+
+        // Barras apiladas visualmente: Base (color principal) + Extra (color mas claro)
+        html += `<div style="margin-bottom:6px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+            <span style="font-size:11px;font-weight:700;min-width:100px;color:var(--text)">${escHtml(s.nombre)}</span>
+            <span style="font-size:10px;color:var(--muted)">Q${s.base.toFixed(2)} base</span>
+            <span style="font-size:10px;color:#FFB020">+ Q${extraVal.toFixed(2)} extra</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <div class="compTrack" style="flex:1;height:20px;display:flex;gap:2px">
+              <div class="compFill" style="width:${basePct}%;height:100%;background:${color};border-radius:999px 0 0 999px"></div>
+              <div class="compFill" style="width:${Math.min(Math.round((extraVal / maxBase) * 100), 30)}%;height:100%;background:${color}55;border-radius:0 999px 999px 0"></div>
+            </div>
+            <span style="font-size:12px;font-weight:800;min-width:50px;text-align:right;color:#2EE59D">Q${s.pagoFinal.toFixed(2)}</span>
+          </div>
+        </div>`;
+      });
+
+      html += `</div>`;
+
+      // Seccion 3: Datos raw en tabla compacta
+      html += `<div class="compSection" style="margin-top:12px">
+        <div class="compSectionTitle">📋 Datos completos</div>
+        <div style="overflow-x:auto">
+          <table style="font-size:11px">
+            <thead><tr>
+              <th>Camarera</th>
+              <th class="numCol">Factura</th>
+              <th class="numCol">Pago Base</th>
+              <th class="numCol">%</th>
+              <th class="numCol">Extra</th>
+              <th class="numCol">Pago Final</th>
+              <th class="numCol">% del Total</th>
+            </tr></thead>
+            <tbody>`;
+
+      const totalPagos = sorted.reduce((sum, s) => sum + s.pagoFinal, 0);
+      sorted.forEach(s => {
+        const pctOfTotal = totalPagos > 0 ? ((s.pagoFinal / totalPagos) * 100).toFixed(1) : 0;
+        html += `<tr>
+          <td style="font-weight:700">${escHtml(s.nombre)}</td>
+          <td class="numCol">${s.factura ? '🧾 SI' : '🚫 NO'}</td>
+          <td class="numCol" style="color:var(--muted)">Q${s.base.toFixed(2)}</td>
+          <td class="numCol">${s.pct > 0 ? s.pct + '%' : '<span style="color:var(--muted)">-</span>'}</td>
+          <td class="numCol" style="color:#FFB020">Q${s.extra.toFixed(2)}</td>
+          <td class="numCol" style="font-weight:800;color:#2EE59D">Q${s.pagoFinal.toFixed(2)}</td>
+          <td class="numCol" style="color:var(--muted)">${pctOfTotal}%</td>
+        </tr>`;
+      });
+
+      html += `</tbody></table>
+        </div>
+      </div>`;
+
+      container.innerHTML = html;
+    }
+
+    // ===== EXPORTAR A EXCEL =====
+    $("btnExportarExcel").addEventListener("click", exportarExcel);
+
+    function exportarExcel() {
+      const rows = PAGOS_ROWS;
+      if (!rows || !rows.length) { toast("No hay datos para exportar.", false); return; }
+
+      // Obtener usuario logueado
+      let loggedUser = "-";
+      try {
+        const sess = JSON.parse(localStorage.getItem("hk_session_v3") || "null");
+        if (sess?.name) loggedUser = sess.name + (sess.dept ? " - " + sess.dept : "");
+      } catch {}
+
+      // Timestamp de impresion (Guatemala)
+      const now = new Date();
+      const printDate = now.toLocaleDateString("es-GT", { timeZone: "America/Guatemala", year: "numeric", month: "2-digit", day: "2-digit" });
+      const printTime = now.toLocaleTimeString("es-GT", { timeZone: "America/Guatemala", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+
+      // Totales
+      let totalPago = 0, totalOk = 0, totalNo = 0, totalNa = 0;
+      rows.forEach(r => {
+        totalPago += Number(r.pago || 0);
+        totalOk += Number(r.cumplen || 0);
+        totalNo += Number(r.no_cumplen || 0);
+        totalNa += Number(r.no_aplica || 0);
+      });
+
+      // Agrupar por camarera para Excel
+      const groups = {};
+      rows.forEach(r => {
+        const key = r.camarera_nombre || "Sin asignar";
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(r);
+      });
+
+      // Construir HTML con estilo profesional para Excel
+      const estilo = `
+        <style>
+          body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #1a1a2e; margin: 20px; }
+          .header { text-align: center; margin-bottom: 18px; }
+          .header h1 { font-size: 18pt; color: #1a365d; margin: 4px 0; font-weight: 700; }
+          .header .sub { font-size: 10pt; color: #4a5568; }
+          .header .divider { border: none; border-top: 2px solid #2b6cb0; margin: 12px 0; }
+          .meta { font-size: 10pt; color: #2d3748; margin-bottom: 14px; line-height: 1.6; }
+          .meta table { width: 100%; border-collapse: collapse; }
+          .meta td { padding: 2px 8px; }
+          .meta .label { font-weight: 700; color: #1a365d; width: 140px; }
+          table.data {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10pt;
+          }
+          table.data th {
+            background-color: #2b6cb0;
+            color: #ffffff;
+            font-weight: 700;
+            padding: 8px 6px;
+            border: 1px solid #1a365d;
+            text-align: center;
+            font-size: 10pt;
+          }
+          table.data td {
+            padding: 6px 6px;
+            border: 1px solid #cbd5e0;
+            vertical-align: middle;
+          }
+          .numCol { text-align: right; font-variant-numeric: tabular-nums; }
+          .center { text-align: center; }
+          .familiar { background-color: #fefcbf; padding: 2px 6px; border-radius: 3px; font-weight: 700; font-size: 9pt; }
+          .badgeOk { background-color: #c6f6d5; color: #22543d; padding: 2px 6px; border-radius: 3px; font-weight: 700; font-size: 9pt; }
+          .badgeNo { background-color: #fed7d7; color: #742a2a; padding: 2px 6px; border-radius: 3px; font-weight: 700; font-size: 9pt; }
+          .badgeNa { background-color: #fefcbf; color: #744210; padding: 2px 6px; border-radius: 3px; font-weight: 700; font-size: 9pt; }
+          .pagoCol { font-weight: 700; color: #276749; }
+          .pagoFinalCol { font-weight: 800; color: #059669; }
+          .pctCol { font-weight: 600; color: #7c3aed; }
+          .extraCol { font-weight: 600; color: #d97706; }
+          .groupHeader td {
+            font-weight: 800;
+            background-color: #e8e0ff !important;
+            border-top: 2px solid #7c3aed;
+            padding: 8px 6px;
+            font-size: 10pt;
+          }
+          .subtotalRow td {
+            font-weight: 700;
+            background-color: #f0f4ff !important;
+            border-top: 1px solid #cbd5e0;
+            font-size: 10pt;
+          }
+          .subtotalSeparator td {
+            border-bottom: 2px solid #7c3aed;
+          }
+          .totalRow td {
+            font-weight: 800;
+            background-color: #e2e8f0 !important;
+            border-top: 2px solid #2b6cb0;
+            font-size: 11pt;
+          }
+          .footer { margin-top: 16px; font-size: 9pt; color: #718096; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+        </style>
+      `;
+
+      let html = `<html><head><meta charset="UTF-8"><title>Reporte de Pagos</title>${estilo}</head><body>`;
+
+      // Encabezado
+      html += `
+        <div class="header">
+          <h1>Hotel Jardines del Lago</h1>
+          <div class="sub">Reporte de Pagos - Control de Limpieza</div>
+          <hr class="divider" />
+        </div>
+      `;
+
+      // Metadatos
+      html += `
+        <div class="meta">
+          <table>
+            <tr><td class="label">Usuario:</td><td>${escHtml(loggedUser)}</td></tr>
+            <tr><td class="label">Fecha impresion:</td><td>${escHtml(printDate)} ${escHtml(printTime)}</td></tr>
+            <tr><td class="label">Periodo:</td><td>${escHtml(PAGOS_DESDE)} al ${escHtml(PAGOS_HASTA)}</td></tr>
+            <tr><td class="label">Modulo:</td><td>${escHtml(PAGOS_MODULO_NOMBRE)}</td></tr>
+            <tr><td class="label">Camarera:</td><td>${escHtml(PAGOS_CAMARERA_NOMBRE)}</td></tr>
+            <tr><td class="label">Registros:</td><td>${rows.length}</td></tr>
+          </table>
+        </div>
+      `;
+
+      // Obtener detalle de pagos (desglose por camarera) para el pago final
+      const detPagos = (PAGOS_RESUMEN && PAGOS_RESUMEN.detalle_pagos) || {};
+
+      // Tabla de datos
+      html += `<table class="data"><thead><tr>
+        <th>#</th>
+        <th>Fecha</th>
+        <th>Camarera</th>
+        <th>Habitacion</th>
+        <th>Tipo</th>
+        <th>Fam</th>
+        <th class="center">Inicio</th>
+        <th class="center">Fin</th>
+        <th class="center">OK</th>
+        <th class="center">X</th>
+        <th class="center">NA</th>
+        <th class="center">Punt %</th>
+        <th class="center">Pago Base (Q)</th>
+        <th class="center">Pago Final (Q)</th>
+      </tr></thead><tbody>`;
+
+      let globalPagoBase = 0, globalPagoFinal = 0, globalOk = 0, globalNo = 0, globalNa = 0;
+      let rowIdx = 0;
+
+      Object.keys(groups).forEach((camarera, gi) => {
+        const items = groups[camarera];
+
+        // Obtener datos de pago final de esta camarera
+        const detCam = detPagos[camarera] || {};
+        const pagoFinalCam = detCam.pagoFinal || 0;
+        const pagoBaseCamTotal = items.reduce((sum, r) => sum + Number(r.pago_base || r.pago || 0), 0);
+
+        // Subtotal del grupo
+        let subPagoBase = 0, subOk = 0, subNo = 0, subNa = 0;
+        items.forEach(r => {
+          subPagoBase += Number(r.pago_base || r.pago || 0);
+          subOk += Number(r.cumplen || 0);
+          subNo += Number(r.no_cumplen || 0);
+          subNa += Number(r.no_aplica || 0);
+        });
+        globalPagoBase += subPagoBase;
+        globalPagoFinal += pagoFinalCam;
+        globalOk += subOk;
+        globalNo += subNo;
+        globalNa += subNa;
+
+        // Fila de grupo
+        html += `<tr class="groupHeader"><td colspan="14" style="color:#5b21b6">${escHtml(camarera)} &mdash; ${items.length} registros</td></tr>`;
+
+        // Filas individuales
+        items.forEach(r => {
+          rowIdx++;
+          const total = Number(r.total_items || 1);
+          const ok = Number(r.cumplen || 0);
+          const no = Number(r.no_cumplen || 0);
+          const na = Number(r.no_aplica || 0);
+          const pct = Math.round((ok / total) * 100);
+          const pagoBase = Number(r.pago_base || r.pago || 0);
+          // Pago final proporcional por fila (cuota parte del total de la camarera)
+          const pagoFinalRow = pagoBaseCamTotal > 0
+            ? (pagoBase / pagoBaseCamTotal) * pagoFinalCam
+            : 0;
+          const fam = Number(r.es_familiar) ? '<span class="familiar">Familiar</span>' : '-';
+
+          html += `<tr>
+            <td class="center">${rowIdx}</td>
+            <td class="center">${escHtml(r.fecha || "-")}</td>
+            <td>${escHtml(r.camarera_nombre || "-")}</td>
+            <td><b>${escHtml(r.habitacion_etiqueta || "-")}</b></td>
+            <td>${escHtml(r.tipo_nombre || "-")}</td>
+            <td class="center">${fam}</td>
+            <td class="center">${fmtTime(r.inicio_limpieza)}</td>
+            <td class="center">${fmtTime(r.fin_limpieza)}</td>
+            <td class="center"><span class="badgeOk">${ok}</span></td>
+            <td class="center"><span class="badgeNo">${no}</span></td>
+            <td class="center"><span class="badgeNa">${na}</span></td>
+            <td class="center numCol">${pct}%</td>
+            <td class="center pagoCol">Q${pagoBase.toFixed(2)}</td>
+            <td class="center pagoCol">Q${pagoFinalRow.toFixed(2)}</td>
+          </tr>`;
+        });
+
+        // Subtotal del grupo
+        const subTotal = subOk + subNo + subNa;
+        const subPct = subTotal > 0 ? Math.round((subOk / subTotal) * 100) : 0;
+        html += `<tr class="subtotalRow">
+          <td></td>
+          <td colspan="4" style="font-style:italic;color:#5b21b6">Subtotal ${escHtml(camarera)}</td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td class="center"><span class="badgeOk">${subOk}</span></td>
+          <td class="center"><span class="badgeNo">${subNo}</span></td>
+          <td class="center"><span class="badgeNa">${subNa}</span></td>
+          <td class="center">${subPct}%</td>
+          <td class="center pagoCol">Q${subPagoBase.toFixed(2)}</td>
+          <td class="center pagoCol" style="font-weight:800;color:#276749">Q${pagoFinalCam.toFixed(2)}</td>
+        </tr>`;
+      });
+
+      // Fila de totales globales
+      const totalItems = globalOk + globalNo + globalNa;
+      const totalPct = totalItems > 0 ? Math.round((globalOk / totalItems) * 100) : 0;
+      html += `<tr class="totalRow">
+        <td></td>
+        <td><b>TOTALES GENERALES</b></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="center"><span class="badgeOk">${globalOk}</span></td>
+        <td class="center"><span class="badgeNo">${globalNo}</span></td>
+        <td class="center"><span class="badgeNa">${globalNa}</span></td>
+        <td class="center">${totalPct}%</td>
+        <td class="center pagoCol">Q${globalPagoBase.toFixed(2)}</td>
+        <td class="center pagoCol" style="font-weight:800;color:#276749">Q${globalPagoFinal.toFixed(2)}</td>
+      </tr>`;
+
+      html += `</tbody></table>`;
+
+      // Footer
+      html += `<div class="footer">
+        Reporte generado el ${escHtml(printDate)} a las ${escHtml(printTime)} por ${escHtml(loggedUser)} -
+        Hotel Jardines del Lago &copy; ${new Date().getFullYear()}
+      </div>`;
+
+      html += `</body></html>`;
+
+      // Trigger descarga (con UTF-8 BOM para compatibilidad de caracteres en Excel)
+      const blob = new Blob(['\uFEFF' + html], { type: "application/vnd.ms-excel;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const fileName = `Reporte_Pagos_${PAGOS_DESDE}_al_${PAGOS_HASTA}.xls`;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast("Excel descargado: " + fileName, true, 3000);
+    }
+
+    // ===== Click en fila: abrir detalle de inspeccion =====
+    $("pagosTableWrap").addEventListener("click", (e) => {
+      const row = e.target.closest(".clickRow");
+      if (!row) return;
+      const id = row.getAttribute("data-inspeccion-id");
+      if (id) openDetalle(Number(id));
+    });
+
+    // ===== MODAL DETALLE =====
+    function closeDetalle() {
+      const modal = $("detModal");
+      if (modal) modal.style.display = "none";
+    }
+    // Cerrar con Escape
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeDetalle();
+    });
+
+    async function openDetalle(inspeccionId) {
+      const modal = $("detModal");
+      const title = $("detTitle");
+      const sub = $("detSub");
+      const body = $("detBody");
+      if (!modal || !title || !sub || !body) return;
+
+      modal.style.display = "grid";
+      title.textContent = "Cargando...";
+      sub.textContent = "Inspeccion #" + inspeccionId;
+      body.innerHTML = '<div class="loading">Cargando detalle...</div>';
+
+      try {
+        const resp = await apiGET("/api/inspecciones/" + inspeccionId);
+        const data = resp?.data;
+        if (!data) throw new Error("No se encontro la inspeccion");
+
+        title.textContent = `Inspeccion #${data.id} - ${data.habitacion_etiqueta || "-"}`;
+        sub.textContent = `${data.camarera_nombre || "-"} | ${data.tipo_nombre || "-"} | ${data.fecha || "-"}`;
+
+        const detalles = Array.isArray(data.detalles) ? data.detalles : [];
+
+        // Agrupar por categoria
+        const grouped = {};
+        detalles.forEach(d => {
+          const cat = d.categoria_nombre || "General";
+          if (!grouped[cat]) grouped[cat] = [];
+          grouped[cat].push(d);
+        });
+
+        // Contar resultados
+        let totalOk = 0, totalNo = 0, totalNa = 0;
+        detalles.forEach(d => {
+          if (d.estado === "CUMPLE") totalOk++;
+          else if (d.estado === "NO_CUMPLE") totalNo++;
+          else if (d.estado === "NO_APLICA") totalNa++;
+        });
+        const totalItems = detalles.length;
+        const pct = totalItems > 0 ? Math.round((totalOk / totalItems) * 100) : 0;
+
+        let html = "";
+        Object.keys(grouped).forEach(cat => {
+          const items = grouped[cat];
+          html += `<div class="detCatGroup">
+            <div class="detCatTitle">${escHtml(cat)} (${items.length})</div>`;
+          items.forEach(d => {
+            const badgeCls = d.estado === "CUMPLE" ? "ok" : d.estado === "NO_CUMPLE" ? "no" : "na";
+            const badgeText = d.estado === "CUMPLE" ? "OK" : d.estado === "NO_CUMPLE" ? "NO" : "NA";
+            html += `<div class="detItemRow">
+              <span class="detItemName">${escHtml(d.item_nombre || "-")}</span>
+              <span class="detItemBadge ${badgeCls}">${badgeText}</span>
+            </div>`;
+          });
+          html += `</div>`;
+        });
+
+        // Resumen
+        html += `<div class="detResumen">
+          <span class="detResumenItem" style="border-color:rgba(46,229,157,.3)">✅ ${totalOk} Cumple</span>
+          <span class="detResumenItem" style="border-color:rgba(255,77,109,.3)">❌ ${totalNo} No Cumple</span>
+          <span class="detResumenItem" style="border-color:rgba(255,176,32,.3)">➖ ${totalNa} N/A</span>
+          <span class="detResumenItem" style="border-color:rgba(124,58,237,.3)">📊 ${pct}% Puntuacion</span>
+        </div>`;
+
+        body.innerHTML = html;
+      } catch (e) {
+        title.textContent = "Error";
+        sub.textContent = "No se pudo cargar el detalle";
+        body.innerHTML = `<div class="empty">Error: ${escHtml(e?.message || "Desconocido")}</div>`;
+      }
+    }
+
+    // ===== HISTORIAL =====
+    // Poblar select de modulo en Historial
+    function populateHistModulos() {
+      const sel = $("histModulo");
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Seleccionar...</option>';
+      MODULOS.forEach(m => {
+        const o = document.createElement("option");
+        o.value = String(m.id);
+        o.textContent = m.descripcion || m.id;
+        sel.appendChild(o);
+      });
+      // Setear fecha actual
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const fechaEl = $("histFecha");
+      if (fechaEl && !fechaEl.value) fechaEl.value = `${yyyy}-${mm}-${dd}`;
+    }
+
+    let HIST_ROOMS = [];
+
+    $("histModulo").addEventListener("change", async () => {
+      const sel = $("histModulo");
+      const roomSel = $("histHabitacion");
+      if (!sel || !roomSel) return;
+      const moduloId = sel.value;
+      if (!moduloId) {
+        roomSel.innerHTML = '<option value="">Selecciona modulo primero</option>';
+        HIST_ROOMS = [];
+        return;
+      }
+      roomSel.innerHTML = '<option value="">Cargando...</option>';
+      try {
+        const resp = await apiGET(`/api/rooms?modulo_id=${encodeURIComponent(moduloId)}`);
+        HIST_ROOMS = Array.isArray(resp?.data) ? resp.data : [];
+        roomSel.innerHTML = '<option value="">Seleccionar...</option>';
+        HIST_ROOMS.forEach(r => {
+          const o = document.createElement("option");
+          o.value = String(r.etiqueta);
+          o.textContent = `Habitacion ${r.etiqueta}`;
+          roomSel.appendChild(o);
+        });
+      } catch (e) {
+        roomSel.innerHTML = '<option value="">Error cargando</option>';
+        toast("Error cargando habitaciones", false);
+      }
+    });
+
+    // Enter key para generar historial
+    ["histModulo","histHabitacion","histFecha"].forEach(id => {
+      const el = $(id);
+      if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") generarHistorial(); });
+    });
+
+    $("btnGenerarHist").addEventListener("click", generarHistorial);
+
+    async function generarHistorial() {
+      const modulo_id = $("histModulo").value;
+      const etiqueta = $("histHabitacion").value;
+      const fecha = $("histFecha").value;
+
+      if (!modulo_id) { toast("Selecciona un modulo.", false); return; }
+      if (!etiqueta) { toast("Selecciona una habitacion.", false); return; }
+      if (!fecha) { toast("Selecciona una fecha.", false); return; }
+
+      const btn = $("btnGenerarHist");
+      const origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Cargando...";
+
+      try {
+        const resp = await apiGET(`/api/reportes/historial?modulo_id=${encodeURIComponent(modulo_id)}&etiqueta=${encodeURIComponent(etiqueta)}&fecha=${encodeURIComponent(fecha)}`);
+        const data = resp?.data;
+        const timeline = Array.isArray(data?.timeline) ? data.timeline : [];
+        const hab = data?.habitacion || {};
+
+        $("histCount").textContent = `${timeline.length} eventos`;
+        renderTimeline(timeline, hab, fecha);
+      } catch (e) {
+        toast("Error: " + (e?.message || e), false, 5200);
+        $("histTimeline").innerHTML = '<div class="empty">Error al cargar historial.</div>';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = origText;
+      }
+    }
+
+    function renderTimeline(events, habitacion, fecha) {
+      const container = $("histTimeline");
+      if (!events.length) {
+        container.innerHTML = `<div class="empty">No hay eventos registrados para esta habitacion en esta fecha.</div>`;
+        return;
+      }
+
+      const habName = `Habitacion ${habitacion.etiqueta || "-"}`;
+      const modName = habitacion.modulo_nombre || `Modulo ${habitacion.modulo_id || ""}`;
+
+      let html = `
+        <div class="timelineHeader">
+          <div class="roomTitle">${escHtml(habName)}</div>
+          <div class="roomMeta">${escHtml(modName)} &middot; ${escHtml(fecha)} &middot; ${events.length} eventos</div>
+        </div>
+        <div class="timelineWrap">
+      `;
+
+      events.forEach(ev => {
+        const dotColor = ev.color || "#9AA6C6";
+        let title = ev.evento || "-";
+        // Formatear titulo
+        if (ev.evento === "room_update") {
+          // Extraer estado nuevo del evento
+          const partes = ev.descripcion.split("→");
+          const estadoNew = partes.length > 1 ? partes[1].trim() : "";
+          title = `Estado: ${estadoNew}`;
+        } else if (ev.evento && ev.evento.startsWith("estado_")) {
+          title = `Estado: ${ev.evento.replace("estado_", "").toUpperCase()}`;
+        } else {
+          title = ev.evento;
+        }
+
+        html += `
+          <div class="timelineEvent">
+            <div class="eventDot" style="background:${dotColor};box-shadow:0 0 6px ${dotColor}"></div>
+            <div class="eventTime">${escHtml(ev.hora || "--:--")}</div>
+            <div class="eventTitle" style="color:${dotColor}">${escHtml(title)}</div>
+            <div class="eventDesc">${escHtml(ev.descripcion || "")}</div>
+            <div class="eventActor">${escHtml(ev.actor || "")}${ev.dept ? " - " + escHtml(ev.dept) : ""}</div>
+          </div>
+        `;
+      });
+
+      html += `</div>`;
+      container.innerHTML = html;
+    }
+
+    // ===== RENDIMIENTO =====
+    ["rendDesde","rendHasta","rendCamarera"].forEach(id => {
+      const el = $(id);
+      if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") generarRend(); });
+    });
+
+    function renderDashboard(rows) {
+      const placeholder = $("rendPlaceholder");
+      const grid = $("rendGrid");
+
+      if (!rows.length) {
+        placeholder.style.display = "block";
+        placeholder.innerHTML = '<div class="empty">No hay datos de rendimiento para ese rango.</div>';
+        grid.style.display = "none";
+        return;
+      }
+
+      placeholder.style.display = "none";
+      grid.style.display = "grid";
+
+      // Encontrar valores maximos para escalar las barras
+      const maxRooms = Math.max(...rows.map(r => Number(r.total_inspecciones || 0)), 1);
+      const maxPct = 100;
+      const maxPago = Math.max(...rows.map(r => Number(r.total_pago || 0)), 1);
+      const maxMin = Math.max(...rows.map(r => Number(r.promedio_minutos || 0)), 1);
+
+      let html = "";
+      rows.forEach((r, idx) => {
+        const rooms = Number(r.total_inspecciones || 0);
+        const pct = Number(r.promedio_pct || 0);
+        const pago = Number(r.total_pago || 0);
+        const avgMin = Number(r.promedio_minutos || 0);
+        const inspMin = Number(r.promedio_inspeccion_min || 0);
+
+        const roomsBar = Math.round((rooms / maxRooms) * 100);
+        const pctBar = Math.round(pct);
+        const pagoBar = Math.round((pago / maxPago) * 100);
+        const minBar = Math.min(Math.round((avgMin / maxMin) * 100), 100);
+
+        html += `
+          <div class="dashCard">
+            <div class="dashCardHead">
+              <div>
+                <div class="dashCardName">${escHtml(r.camarera_nombre || "-")}</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">#${idx + 1} en rendimiento</div>
+              </div>
+            </div>
+            <div class="dashCardStat">
+              <div class="statItem">
+                <div class="num" style="color:#56B4FF">${rooms}</div>
+                <div class="lbl">Habitaciones</div>
+              </div>
+              <div class="statItem">
+                <div class="num" style="color:#2EE59D">${pct}%</div>
+                <div class="lbl">Puntuacion</div>
+              </div>
+              <div class="statItem">
+                <div class="num" style="color:#B794F4">Q${pago.toFixed(2)}</div>
+                <div class="lbl">Total Pagado</div>
+              </div>
+              <div class="statItem">
+                <div class="num" style="color:#FBBF24">${avgMin} min</div>
+                <div class="lbl">Limpieza (prom)</div>
+              </div>
+            </div>
+            <div class="barGroup">
+              <div class="barRow">
+                <span class="barLabel">Habitaciones</span>
+                <div class="barTrack"><div class="barFill blue" style="width:${roomsBar}%"></div></div>
+                <span class="barValue">${rooms}</span>
+              </div>
+              <div class="barRow">
+                <span class="barLabel">Puntuacion</span>
+                <div class="barTrack"><div class="barFill green" style="width:${pctBar}%"></div></div>
+                <span class="barValue">${pct}%</span>
+              </div>
+              <div class="barRow">
+                <span class="barLabel">Total Pagado</span>
+                <div class="barTrack"><div class="barFill purple" style="width:${pagoBar}%"></div></div>
+                <span class="barValue">Q${pago.toFixed(2)}</span>
+              </div>
+              <div class="barRow">
+                <span class="barLabel">Tiempo Prom</span>
+                <div class="barTrack"><div class="barFill orange" style="width:${minBar}%"></div></div>
+                <span class="barValue">${avgMin} min</span>
+              </div>
+              <div class="barRow">
+                <span class="barLabel">Inspeccion</span>
+                <div class="barTrack"><div class="barFill pink" style="width:${Math.min(inspMin, 60) * (100/60)}%"></div></div>
+                <span class="barValue">${inspMin} min</span>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      grid.innerHTML = html;
+    }
+
+    // ===== SUB-TABS (Dashboard / Graficas) =====
+    document.querySelectorAll(".subTab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        const parent = tab.closest(".panelBody");
+        if (!parent) return;
+        parent.querySelectorAll(".subTab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        const sub = tab.dataset.sub;
+        const dash = parent.querySelector("#rendSubDash");
+        const charts = parent.querySelector("#rendSubCharts");
+        if (dash) dash.style.display = sub === "dash" ? "block" : "none";
+        if (charts) charts.style.display = sub === "charts" ? "block" : "none";
+        // Si cambia a graficas y hay datos, renderizar
+        if (sub === "charts" && CHART_DATA) {
+          renderAllCharts();
+        }
+      });
+    });
+
+    // Selector de camarera en graficas
+    $("btnActualizarGraficas").addEventListener("click", () => {
+      if (CHART_DATA) renderAllCharts();
+    });
+
+    // ===== RENDIMIENTO: generar (con datos diarios para graficas) =====
+    $("btnGenerarRend").addEventListener("click", generarRend);
+
+    async function generarRend() {
+      const desde = $("rendDesde").value;
+      const hasta = $("rendHasta").value;
+      if (!desde || !hasta) { toast("Selecciona fecha desde y hasta.", false); return; }
+
+      const btn = $("btnGenerarRend");
+      const origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Generando...";
+
+      try {
+        const camarera_id = $("rendCamarera").value || "";
+
+        // Fetch dashboard + daily data in parallel
+        let url = `/api/reportes/rendimiento?fecha_desde=${encodeURIComponent(desde)}&fecha_hasta=${encodeURIComponent(hasta)}`;
+        if (camarera_id) url += `&camarera_id=${camarera_id}`;
+
+        const [resp, dailyResp] = await Promise.all([
+          apiGET(url),
+          apiGET(`/api/reportes/rendimiento/daily?fecha_desde=${encodeURIComponent(desde)}&fecha_hasta=${encodeURIComponent(hasta)}&camarera_id=${camarera_id || ''}`)
+        ]);
+
+        const rows = Array.isArray(resp?.data) ? resp.data : [];
+        const daily = Array.isArray(dailyResp?.data) ? dailyResp.data : [];
+
+        // Store for charts
+        CHART_DATA = rows;
+        CHART_DAILY_DATA = daily;
+
+        $("rendCount").textContent = `${rows.length} camareras`;
+        renderDashboard(rows);
+
+        // Poblar selector de camarera en graficas
+        const chartSel = $("chartCamarera");
+        if (chartSel) {
+          chartSel.innerHTML = '<option value="">Todas las camareras</option>';
+          rows.forEach(r => {
+            const o = document.createElement("option");
+            o.value = r.camarera_id;
+            o.textContent = r.camarera_nombre;
+            chartSel.appendChild(o);
+          });
+        }
+
+        toast(`Dashboard generado: ${rows.length} camareras, ${daily.length} con datos diarios`);
+      } catch (e) {
+        toast("Error: " + (e?.message || e), false, 5200);
+        $("rendPlaceholder").style.display = "block";
+        $("rendGrid").style.display = "none";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = origText;
+      }
+    }
+
+    // ===== GRAFICAS =====
+
+    function renderAllCharts() {
+      if (!CHART_DATA || !CHART_DAILY_DATA) return;
+      const chartSel = $("chartCamarera");
+      const filtroId = chartSel ? chartSel.value : "";
+
+      // Filtrar datos
+      let dailyFiltered = CHART_DAILY_DATA;
+      if (filtroId) {
+        dailyFiltered = CHART_DAILY_DATA.filter(d => String(d.camarera_id) === filtroId);
+      }
+
+      const chartContent = $("rendChartContent");
+      const placeholder = $("rendChartPlaceholder");
+
+      if (!dailyFiltered.length) {
+        placeholder.style.display = "block";
+        placeholder.innerHTML = '<div class="empty">No hay datos diarios para las camareras seleccionadas.</div>';
+        chartContent.style.display = "none";
+        return;
+      }
+
+      placeholder.style.display = "none";
+      chartContent.style.display = "block";
+
+      renderTrendChart(dailyFiltered);
+      renderRoomsChart(dailyFiltered);
+      renderComparacionChart(CHART_DATA, filtroId);
+      renderTiempoChart(dailyFiltered);
+      renderDonutChart(dailyFiltered);
+      renderParticipationChart(CHART_DATA);
+    }
+
+    function getCamareraColor(index) {
+      return CHART_COLORS[index % CHART_COLORS.length];
+    }
+
+    function renderTrendChart(dailyData) {
+      const container = $("chartTrend");
+      const legend = $("chartTrendLegend");
+      if (!container) return;
+
+      // Recolectar todos los dias unicos
+      const allDays = new Set();
+      dailyData.forEach(c => (c.dias || []).forEach(d => allDays.add(d.fecha)));
+      const days = Array.from(allDays).sort();
+
+      if (!days.length) {
+        container.innerHTML = '<div class="empty">Sin datos de tendencia.</div>';
+        legend.innerHTML = '';
+        return;
+      }
+
+      // Construir mapa: camarera_id -> { dias: { fecha: puntuacion } }
+      const scoreMap = {};
+      dailyData.forEach(c => {
+        scoreMap[c.camarera_id] = {};
+        (c.dias || []).forEach(d => {
+          scoreMap[c.camarera_id][d.fecha] = d.puntuacion_prom;
+        });
+      });
+
+      let html = `<div style="overflow-x:auto;padding:4px 0"><div style="display:flex;align-items:flex-end;gap:3px;min-width:${Math.max(days.length * 45, 200)}px">`;
+
+      days.forEach((dia, di) => {
+        html += `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">`;
+        // Barra para cada camarera
+        dailyData.forEach((c, ci) => {
+          const score = scoreMap[c.camarera_id]?.[dia] ?? null;
+          const h = score !== null ? Math.max(Math.round(score * 1.4), 2) : 0;
+          const color = getCamareraColor(ci);
+          const tooltip = score !== null
+            ? `${c.camarera_nombre}: ${score}%`
+            : `${c.camarera_nombre}: sin datos`;
+          html += `<div class="chartBar" style="height:${h}px;background:${color};width:100%;max-width:20px;opacity:${score !== null ? 1 : 0.2}">
+            <div class="tooltipChart">${tooltip}</div>
+          </div>`;
+        });
+        // Fecha label
+        const parts = dia.split("-");
+        const short = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dia;
+        html += `<span style="font-size:8px;color:var(--muted);writing-mode:vertical-lr;text-orientation:mixed;margin-top:4px">${short}</span>`;
+        html += `</div>`;
+      });
+
+      html += `</div></div>`;
+
+      // Linea de referencia al 100%
+      container.innerHTML = `
+        <div style="position:relative">
+          <div style="position:absolute;left:0;right:0;top:0;height:1px;background:rgba(255,255,255,.08);border-top:1px dashed rgba(46,229,157,.3);margin-bottom:2px"></div>
+          <div style="font-size:9px;color:rgba(46,229,157,.5);text-align:right;margin-bottom:4px">100%</div>
+          ${html}
+        </div>
+      `;
+
+      // Leyenda
+      legend.innerHTML = dailyData.map((c, ci) => `
+        <div class="chartLegendItem">
+          <div class="chartLegendSwatch" style="background:${getCamareraColor(ci)}"></div>
+          ${c.camarera_nombre}
+        </div>
+      `).join('');
+    }
+
+    function renderRoomsChart(dailyData) {
+      const container = $("chartRooms");
+      const legend = $("chartRoomsLegend");
+      if (!container) return;
+
+      const allDays = new Set();
+      dailyData.forEach(c => (c.dias || []).forEach(d => allDays.add(d.fecha)));
+      const days = Array.from(allDays).sort();
+
+      if (!days.length) {
+        container.innerHTML = '<div class="empty">Sin datos de habitaciones.</div>';
+        legend.innerHTML = '';
+        return;
+      }
+
+      // Encontrar maximo de habitaciones en un dia para escalar
+      let maxRooms = 1;
+      dailyData.forEach(c => (c.dias || []).forEach(d => {
+        if (d.habitaciones > maxRooms) maxRooms = d.habitaciones;
+      }));
+
+      const roomsMap = {};
+      dailyData.forEach(c => {
+        roomsMap[c.camarera_id] = {};
+        (c.dias || []).forEach(d => {
+          roomsMap[c.camarera_id][d.fecha] = d.habitaciones;
+        });
+      });
+
+      let html = `<div style="overflow-x:auto;padding:4px 0"><div style="display:flex;align-items:flex-end;gap:3px;min-width:${Math.max(days.length * 45, 200)}px">`;
+
+      days.forEach((dia, di) => {
+        html += `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">`;
+        dailyData.forEach((c, ci) => {
+          const rooms = roomsMap[c.camarera_id]?.[dia] ?? 0;
+          const h = Math.max(Math.round((rooms / maxRooms) * 60), rooms > 0 ? 4 : 0);
+          const color = getCamareraColor(ci);
+          html += `<div class="chartBar" style="height:${h}px;background:${color};width:100%;max-width:20px;opacity:${rooms > 0 ? 1 : 0.15}">
+            <div class="tooltipChart">${c.camarera_nombre}: ${rooms} hab.</div>
+          </div>`;
+        });
+        const parts = dia.split("-");
+        const short = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dia;
+        html += `<span style="font-size:8px;color:var(--muted);writing-mode:vertical-lr;text-orientation:mixed;margin-top:4px">${short}</span>`;
+        html += `</div>`;
+      });
+
+      html += `</div></div>`;
+      container.innerHTML = html;
+      // Leyenda igual a la de tendencia
+      legend.innerHTML = dailyData.map((c, ci) => `
+        <div class="chartLegendItem">
+          <div class="chartLegendSwatch" style="background:${getCamareraColor(ci)}"></div>
+          ${c.camarera_nombre}
+        </div>
+      `).join('');
+    }
+
+    function renderComparacionChart(allData, filtroId) {
+      const container = $("chartComparacion");
+      if (!container) return;
+
+      let data = allData;
+      if (filtroId) {
+        data = allData.filter(d => String(d.camarera_id) === filtroId);
+      }
+
+      if (!data.length) {
+        container.innerHTML = '<div class="empty">Sin datos de comparacion.</div>';
+        return;
+      }
+
+      // Encontrar maximos para escalar
+      const maxRooms = Math.max(...data.map(r => Number(r.total_inspecciones || 0)), 1);
+      const maxPago = Math.max(...data.map(r => Number(r.total_pago || 0)), 1);
+      const maxMin = Math.max(...data.map(r => Number(r.promedio_minutos || 0)), 1);
+
+      // Secciones
+      const sections = [
+        { title: "🏠 Habitaciones Limpiadas", key: "total_inspecciones", max: maxRooms, suffix: "", color: "#38BDF8" },
+        { title: "⭐ Puntuacion Promedio", key: "promedio_pct", max: 100, suffix: "%", color: "#2EE59D" },
+        { title: "💰 Total Pagado (Q)", key: "total_pago", max: maxPago, suffix: "", color: "#B794F4", fmt: v => `Q${Number(v).toFixed(2)}` },
+        { title: "⏱ Tiempo Prom Limpieza", key: "promedio_minutos", max: maxMin, suffix: " min", color: "#FBBF24" },
+        { title: "🔍 Tiempo Prom Inspeccion", key: "promedio_inspeccion_min", max: Math.max(...data.map(r => Number(r.promedio_inspeccion_min || 0)), 1), suffix: " min", color: "#F472B6" }
+      ];
+
+      let html = '';
+      sections.forEach(sec => {
+        html += `<div class="compSection">
+          <div class="compSectionTitle">${sec.title}</div>`;
+
+        data.forEach((r, ri) => {
+          const val = Number(r[sec.key] || 0);
+          const pct = Math.min(Math.round((val / sec.max) * 100), 100);
+          const color = getCamareraColor(ri);
+          const label = sec.fmt ? sec.fmt(val) : (sec.suffix ? `${val}${sec.suffix}` : val);
+          html += `<div class="compRow">
+            <span class="compLabel">${r.camarera_nombre || "-"}</span>
+            <div class="compTrack">
+              <div class="compFill" style="width:${pct}%;background:linear-gradient(90deg,${color},${color}88)"></div>
+            </div>
+            <span class="compValue" style="color:${color}">${label}</span>
+          </div>`;
+        });
+
+        html += `</div>`;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function renderTiempoChart(dailyData) {
+      const container = $("chartTiempo");
+      const legend = $("chartTiempoLegend");
+      if (!container) return;
+
+      const allDays = new Set();
+      dailyData.forEach(c => (c.dias || []).forEach(d => allDays.add(d.fecha)));
+      const days = Array.from(allDays).sort();
+
+      if (!days.length) {
+        container.innerHTML = '<div class="empty">Sin datos de tiempo.</div>';
+        legend.innerHTML = '';
+        return;
+      }
+
+      let maxTime = 1;
+      dailyData.forEach(c => (c.dias || []).forEach(d => {
+        if (d.tiempo_prom_min > maxTime) maxTime = d.tiempo_prom_min;
+      }));
+
+      const timeMap = {};
+      dailyData.forEach(c => {
+        timeMap[c.camarera_id] = {};
+        (c.dias || []).forEach(d => {
+          timeMap[c.camarera_id][d.fecha] = d.tiempo_prom_min;
+        });
+      });
+
+      let html = `<div style="overflow-x:auto;padding:4px 0"><div style="display:flex;align-items:flex-end;gap:3px;min-width:${Math.max(days.length * 45, 200)}px">`;
+
+      days.forEach((dia, di) => {
+        html += `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">`;
+        dailyData.forEach((c, ci) => {
+          const mins = timeMap[c.camarera_id]?.[dia] ?? 0;
+          const h = Math.max(Math.round((mins / maxTime) * 60), mins > 0 ? 4 : 0);
+          const color = getCamareraColor(ci);
+          html += `<div class="chartBar" style="height:${h}px;background:${color};width:100%;max-width:20px;opacity:${mins > 0 ? 1 : 0.15}">
+            <div class="tooltipChart">${c.camarera_nombre}: ${mins} min</div>
+          </div>`;
+        });
+        const parts = dia.split("-");
+        const short = parts.length === 3 ? `${parts[2]}/${parts[1]}` : dia;
+        html += `<span style="font-size:8px;color:var(--muted);writing-mode:vertical-lr;text-orientation:mixed;margin-top:4px">${short}</span>`;
+        html += `</div>`;
+      });
+
+      html += `</div></div>`;
+      container.innerHTML = html;
+      legend.innerHTML = dailyData.map((c, ci) => `
+        <div class="chartLegendItem">
+          <div class="chartLegendSwatch" style="background:${getCamareraColor(ci)}"></div>
+          ${c.camarera_nombre}
+        </div>
+      `).join('');
+    }
+
+    // ===== INIT =====
+    (async function init() {
+      try {
+        await Promise.all([
+          loadCamareras(),
+          loadModulos()
+        ]);
+        populateHistModulos();
+      } catch (e) {
+        toast("Error cargando datos", false);
+      }
+    })();
+  
+    // ===== GRAFICAS PASTEL / DONUT =====
+
+    function renderDonutChart(dailyData) {
+      const container = $("chartDonut");
+      if (!container) return;
+      if (!dailyData || !dailyData.length) {
+        container.innerHTML = '<div class="empty">Sin datos para distribucion de puntuacion.</div>';
+        return;
+      }
+      let html = '<div style="overflow-x:auto"><div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;padding:10px 0">';
+      dailyData.forEach((cam, ci) => {
+        const avgPct = cam.dias && cam.dias.length
+          ? Math.round(cam.dias.reduce((s,d) => s + Number(d.puntuacion_prom), 0) / cam.dias.length)
+          : 0;
+        const circumference = 2 * Math.PI * 22;
+        const dash = (avgPct / 100) * circumference;
+        const gap = circumference - dash;
+        const color = getCamareraColor(ci);
+        html += `<div style="display:flex;align-items:center;gap:16px;padding:8px 0">
+          <svg viewBox="0 0 50 50" style="width:60px;height:60px;transform:rotate(-90deg);flex-shrink:0">
+            <circle cx="25" cy="25" r="22" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5"/>
+            <circle cx="25" cy="25" r="22" fill="none" stroke="${color}" stroke-width="5"
+              stroke-dasharray="${dash} ${gap}" stroke-linecap="round"/>
+            <text x="25" y="25" text-anchor="middle" dominant-baseline="central"
+              fill="${color}" font-size="11" font-weight="800" transform="rotate(90,25,25)">${avgPct}%</text>
+          </svg>
+          <div style="font-size:12px;line-height:1.5">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="width:8px;height:8px;border-radius:999px;display:inline-block;background:${color}"></span>
+              ${escHtml(cam.camarera_nombre)}
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">Promedio: ${avgPct}%</div>
+          </div>
+        </div>`;
+      });
+      html += '</div></div>';
+      html += `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(0,0,0,.2)">
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px">
+          <span style="width:12px;height:12px;border-radius:4px;display:inline-block;background:#2EE59D"></span> Punt. alta (>=80%)
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px">
+          <span style="width:12px;height:12px;border-radius:4px;display:inline-block;background:#FFB020"></span> Punt. media (>=60%)
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px">
+          <span style="width:12px;height:12px;border-radius:4px;display:inline-block;background:#FF4D6D"></span> Punt. baja (<60%)
+        </div>
+      </div>`;
+      container.innerHTML = html;
+    }
+
+    function renderParticipationChart(allData) {
+      const container = $("chartParticipation");
+      if (!container) return;
+      if (!allData || !allData.length) {
+        container.innerHTML = '<div class="empty">Sin datos de participacion.</div>';
+        return;
+      }
+      const totalRooms = allData.reduce((s, r) => s + Number(r.total_inspecciones || 0), 0);
+      if (!totalRooms) {
+        container.innerHTML = '<div class="empty">Sin registros de habitaciones.</div>';
+        return;
+      }
+      const sorted = allData.slice().sort((a,b) => Number(b.total_inspecciones || 0) - Number(a.total_inspecciones || 0));
+      let html = '<div style="overflow-x:auto"><div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;padding:10px 0">';
+      sorted.forEach((cam, ci) => {
+        const rooms = Number(cam.total_inspecciones || 0);
+        const pct = Math.round((rooms / totalRooms) * 100);
+        const color = getCamareraColor(ci);
+        const circumference = 2 * Math.PI * 22;
+        const dash = (pct / 100) * circumference;
+        const gap = circumference - dash;
+        html += `<div style="display:flex;align-items:center;gap:16px;padding:8px 0">
+          <svg viewBox="0 0 50 50" style="width:60px;height:60px;transform:rotate(-90deg);flex-shrink:0">
+            <circle cx="25" cy="25" r="22" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5"/>
+            <circle cx="25" cy="25" r="22" fill="none" stroke="${color}" stroke-width="5"
+              stroke-dasharray="${dash} ${gap}" stroke-linecap="round"/>
+            <text x="25" y="25" text-anchor="middle" dominant-baseline="central"
+              fill="${color}" font-size="11" font-weight="800" transform="rotate(90,25,25)">${pct}%</text>
+          </svg>
+          <div style="font-size:12px;line-height:1.5">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="width:8px;height:8px;border-radius:999px;display:inline-block;background:${color}"></span>
+              ${escHtml(cam.camarera_nombre)}
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">${rooms} hab. de ${totalRooms}</div>
+          </div>
+        </div>`;
+      });
+      html += '</div></div>';
+      container.innerHTML = html;
+    }
+</script>
+</body>
+</html>

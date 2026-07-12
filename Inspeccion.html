@@ -469,6 +469,42 @@
       color: #0b1022;
     }
 
+    .checklistCounter {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .06);
+      border: 1px solid rgba(255, 255, 255, .10);
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .checklistCounter .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 0 8px;
+      transition: background .2s, color .2s;
+    }
+    .checklistCounter .num.ok {
+      background: rgba(46, 229, 157, .2);
+      color: var(--ok);
+    }
+    .checklistCounter .num.warn {
+      background: rgba(255, 176, 32, .2);
+      color: var(--na);
+    }
+    .checklistCounter .num.done {
+      background: rgba(46, 229, 157, .25);
+      color: var(--ok);
+    }
     .item.ok {
       border-color: rgba(46, 229, 157, .28)
     }
@@ -743,21 +779,14 @@
             <input id="fecha" type="date" />
           </div>
 
+          <div id="boxOcupacion" style="grid-column:1 / -1">
+            <div id="ocupacionInfo" style="display:none;padding:8px 12px;border-radius:12px;border:1px solid rgba(34,211,238,.35);background:rgba(34,211,238,.08);font-size:13px;line-height:1.4"></div>
+          </div>
+
           <div>
             <label>Camarera (quien limpia)</label>
             <select id="camarera">
-              <option value="">Seleccionar...</option>
-              <option value="Carolina De La Vega">Carolina De La Vega</option>
-              <option value="Aracely Julajuj">Aracely Julajuj</option>
-              <option value="Yerly Rodriguez">Yerly Rodriguez</option>
-              <option value="Yessica Xep">Yessica Xep</option>
-              <option value="Reyna Saminez">Reyna Saminez</option>
-              <option value="Ester Baran">Ester Baran</option>
-              <option value="Yojana Aju">Yojana Aju</option>
-              <option value="Carlos Samalaj">Carlos Samalaj</option>
-              <option value="Nelly Palacios">Nelly Palacios</option>
-              <option value="Jennifer Raxtun">Jennifer Raxtun</option>
-              <option value="Marilyn Lopic">Marilyn Lopic</option>
+              <option value="">Cargando...</option>
             </select>
           </div>
 
@@ -795,6 +824,14 @@
       </div>
 
       <div class="content">
+        <div class="checklistCounter" id="checklistCounter" style="display:none">
+          <span>📋 Progreso:</span>
+          <span class="num" id="counterPending">0</span>
+          <span>pendientes</span>
+          <span style="color:rgba(255,255,255,.15)">·</span>
+          <span class="num ok" id="counterDone">0</span>
+          <span>completados</span>
+        </div>
         <div id="sections"></div>
 
         <div class="footer">
@@ -808,7 +845,7 @@
             <div class="submitWrap">
               <button class="primary" id="btnGuardar" style="width:100%;height:48px;" type="button" aria-busy="false">
                 <span class="btnInner">
-                  <span class="btnLabel">Guardar y Enviar a monday</span>
+                  <span class="btnLabel">Guardar Inspeccion</span>
                   <span class="btnSpinner" id="btnGuardarSpinner" hidden aria-hidden="true"></span>
                 </span>
               </button>
@@ -865,7 +902,7 @@
       if (!btn) return;
       btn.disabled = isLoading;
       btn.setAttribute("aria-busy", isLoading ? "true" : "false");
-      if (label) label.textContent = isLoading ? "Enviando checklist..." : "Guardar y Enviar a monday";
+      if (label) label.textContent = isLoading ? "Guardando..." : "Guardar Inspeccion";
       if (spinner) spinner.hidden = !isLoading;
       if (bar) bar.classList.toggle("active", isLoading);
       if (isLoading) {
@@ -875,8 +912,8 @@
       }
     }
 
-    function applyReadOnlyIfGerencia() {
-      if (!isGerencia()) return;
+    function applyReadOnlyIfReadOnly() {
+      if (!isReadOnlyRole()) return;
       ["camarera", "tipoLimpieza", "fecha", "obsGeneral"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = true;
@@ -889,15 +926,15 @@
       if (hintUser) hintUser.textContent = `Inspector (login): ${CTX.usuario}${CTX.dept ? " - " + CTX.dept : ""}  -  Tip: toca una tarjeta . -> OK -> X -> NA`;
     }
 
-    function isGerencia() {
+    function isReadOnlyRole() {
       const d = String(CTX?.dept || "").toLowerCase();
-      return d.includes("gerencia");
+      return d.includes("gerencia") || d.includes("reportes");
     }
     localStorage.setItem("hk_inspeccion_ctx", JSON.stringify({ ...CTX, at: Date.now() }));
 
     const HK_ROOM_KEY = `${CTX.modulo}::${CTX.habitacion}`;
     localStorage.setItem("hk_last_room_key", HK_ROOM_KEY);
-    const PENDING_SUBMIT_KEY = `insp_pending_submit_v1::${HK_ROOM_KEY}`;
+
 
     if (CTX.usuario) localStorage.setItem("hk_logged_user_name", CTX.usuario);
     if (CTX.dept) localStorage.setItem("hk_logged_user_dept", CTX.dept);
@@ -912,7 +949,7 @@
     document.getElementById("inpUsuario").value = CTX.usuario || "";
     document.getElementById("inpDept").value = CTX.dept || "";
 
-    applyReadOnlyIfGerencia();
+    applyReadOnlyIfReadOnly();
     document.getElementById("inspectorTxt").value = CTX.usuario ? `${CTX.usuario}${CTX.dept ? " - " + CTX.dept : ""}` : "-";
 
     const titleRoom = document.getElementById("titleRoom");
@@ -924,27 +961,13 @@
       hintUser.textContent = `Inspector (login): ${CTX.usuario}${CTX.dept ? " - " + CTX.dept : ""}  -  Tip: toca una tarjeta . -> OK -> X -> NA`;
     }
 
-    // ===== CONFIG MONDAY + API =====
-    const BOARD_ID = "18398162991";
+    // ===== API =====
     const APP_BASE = window.location.pathname
       .replace(/\/[^/]*$/, "/")
       .replace(/\/+$/, "");
     const API_BASE = `${window.location.origin}${APP_BASE}`;
-    const API_URL = `${API_BASE}/api/enviar-inspeccion`;
 
-    const COL_AREA_DROPDOWN = "dropdown_mkzw93qc"; // Area
-    const COL_CAMARERA_DROPDOWN = "camarera__1";       // Camarera (dropdown)
-    const COL_FECHA = "fecha3";            // Fecha
-    const COL_TEXTO_LARGO = "texto_largo2";      // Observaciones
-
-    const COL_ESTADO_CAMARERA = "estado7";           // Supervisor / inspector (login)
-    const COL_ESTADO_LIMPIEZA = "estado17";          // Tipo
-
-    const COL_HORA_INICIO = "hour_mm05xfcc";     // Hora Limp Inicio
-    const COL_HORA_FIN = "hour_mm05y6f1";     // Hora Limp Fin
-    const COL_HORA_FIN_CHECK = "hour_mm05bza8";     // Hora Fin Check
-
-    // ===== API MariaDB (habitaciones) =====
+    // ===== API MariaDB =====
 
     async function apiPOST(path, body) {
       const r = await fetch(`${API_BASE}${path}`, {
@@ -994,31 +1017,10 @@
       localStorage.removeItem(PENDING_SUBMIT_KEY);
     }
 
-    const AREA_LABELS_EXISTENTES = new Set([
-      "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12",
-      "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "113", "114", "115",
-      "201", "202", "203", "204", "205", "206", "207", "208", "209", "210", "211", "212", "213", "214", "215",
-      "1001", "1002", "1003", "1004",
-      "01 Santa Isabel", "02 Santa Isabel", "Casa Amarilla", "Casa Celeste", "Casa Blanca",
-      "02 Familiar", "06 Familiar",
-      "116", "117", "118", "119", "120", "121", "216", "217", "218", "219", "220", "221", "316", "317", "318", "319", "320", "321",
-      "1005", "1006", "2005", "2006", "2007", "2008",
-      "RG1", "RG2", "RG3", "RG4", "RG5", "RGCOCINA", "RGSALA",
-      "109", "107", "110", "104", "111", "112", "113", "114", "105", "115", "106", "103", "102", "108", "101"
-    ]);
-    const CAMARERA_LABELS_VALIDAS = new Set([
-      "Carolina De La Vega",
-      "Yerly Rodriguez",
-      "Yessica Xep",
-      "Reyna Saminez",
-      "Ester Baran",
-      "Nelly Palacios",
-      "Yojana Aju",
-      "Carlos Samalaj",
-      "Aracely Julajuj",
-      "Marilyn Lopic",
-      "Jennifer Raxtun"
-    ]);
+    let CAMARERAS_MAP = {}; // nombre -> id
+    let CHECKLIST_ITEMS_DB = []; // items from DB
+    let CHECKLIST_ITEMS_MAP = {}; // label -> { id, categoria_id, nombre }
+    let CATEGORIAS_MAP = {}; // id -> { nombre, items[] }
 
     function normalizeLabel(s) {
       return String(s || "")
@@ -1027,27 +1029,85 @@
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
     }
-    const AREA_LABELS_EXISTENTES_NORM = new Set(
-      Array.from(AREA_LABELS_EXISTENTES).map(normalizeLabel)
-    );
 
-    const CAMARERA_LABELS_VALIDAS_NORM = new Set(
-      Array.from(CAMARERA_LABELS_VALIDAS).map(normalizeLabel)
-    );
-
-    function buildCamareraAllowedFromDOM() {
-      const sel = document.getElementById("camarera");
-      if (!sel) return new Set();
-      return new Set(
-        Array.from(sel.options || []).map(o => normalizeLabel(o.value || o.textContent))
-      );
+    async function loadCamareras(){
+      try{
+        const r = await fetch(`${API_BASE}/api/camareras`);
+        const j = await r.json();
+        if(!j?.ok) throw new Error(j?.error || "Error");
+        const sel = document.getElementById("camarera");
+        sel.innerHTML = `<option value="">Seleccionar...</option>`;
+        CAMARERAS_MAP = {};
+        (j.data || []).forEach(c => {
+          const opt = document.createElement("option");
+          opt.value = String(c.id);
+          opt.textContent = c.nombre;
+          opt.dataset.nombre = c.nombre;
+          sel.appendChild(opt);
+          CAMARERAS_MAP[normalizeLabel(c.nombre)] = c.id;
+        });
+      }catch(e){
+        console.warn("Error cargando camareras:", e);
+        const sel = document.getElementById("camarera");
+        sel.innerHTML = `<option value="">Error cargando</option>`;
+      }
     }
 
-    const CAMARERA_LABELS_DOM_NORM = buildCamareraAllowedFromDOM();
+    function reapplyCamareraSel() {
+      // Re-aplicar camarera desde localStorage DESPUES de que loadCamareras() haya poblado el select
+      try {
+        const s = JSON.parse(
+          localStorage.getItem(SESSION_KEY_ROOM(HK_ROOM_KEY)) ||
+          localStorage.getItem(SESSION_KEY) ||
+          "null"
+        );
+        if (!s) return;
+        const sameRoom = (s.roomKey && s.roomKey === HK_ROOM_KEY) ||
+          (String(s.modulo || "").trim() === String(CTX.modulo || "").trim() &&
+           normalizeRoom(s.habitacion) === normalizeRoom(CTX.habitacion));
+        if (sameRoom && String(s.date || "") === todayYMD()) {
+          if (s.camareraSel) {
+            const sel = document.getElementById("camarera");
+            // Solo aplicar si hay un option con ese valor
+            if (sel && sel.querySelector(`option[value="${s.camareraSel}"]`)) {
+              sel.value = s.camareraSel;
+            }
+          }
+          if (s.tipoSel) {
+            const selTipo = document.getElementById("tipoLimpieza");
+            if (selTipo && selTipo.querySelector(`option[value="${CSS.escape(s.tipoSel)}"]`)) {
+              selTipo.value = s.tipoSel;
+            }
+          }
+        }
+      } catch {}
+    }
 
-    function isCamareraValida(label) {
-      const n = normalizeLabel(label);
-      return CAMARERA_LABELS_VALIDAS_NORM.has(n) || CAMARERA_LABELS_DOM_NORM.has(n);
+    async function loadChecklistItems(){
+      try{
+        const r = await fetch(`${API_BASE}/api/checklist/items`);
+        const j = await r.json();
+        if(!j?.ok) throw new Error(j?.error || "Error");
+        CHECKLIST_ITEMS_DB = j.data || [];
+        CHECKLIST_ITEMS_MAP = {};
+        CATEGORIAS_MAP = {};
+        CHECKLIST_ITEMS_DB.forEach(it => {
+          CHECKLIST_ITEMS_MAP[normalizeLabel(it.nombre)] = it;
+          if(!CATEGORIAS_MAP[it.categoria_id]){
+            CATEGORIAS_MAP[it.categoria_id] = { nombre: it.categoria_nombre, items: [] };
+          }
+          CATEGORIAS_MAP[it.categoria_id].items.push(it);
+        });
+        renderChecklistFromDB();
+        updateChecklistCounter();
+        saveSession();
+      }catch(e){
+        console.warn("Error cargando checklist:", e);
+      }
+    }
+
+    function isCamareraValida(camareraId) {
+      return !!camareraId && Object.values(CAMARERAS_MAP).includes(Number(camareraId));
     }
 
 
@@ -1183,26 +1243,14 @@
     }
 
     function mapSupervisorLabel(loginName) {
-      const x = (loginName || "").trim().toLowerCase();
-      if (x === "carolina de la vega") return "Carolina De La Vega";
-      if (x === "Yerly rodriguez") return "Yerly Rodriguez";
-      if (x === "diana chavez") return "Diana Chavez";
       return "ADMINISTRATIVO";
     }
-
-    function toMondayLabelForColumn(columnId, estado) {
-      const base =
-        estado === "CUMPLE" ? "Cumple" :
-          estado === "NO_CUMPLE" ? "No Cumple" :
-            "No Aplica";
-
-      if (columnId === "luminarias" && base === "No Aplica") return "No APlica";
-      return base;
-    }
+    function toMondayLabelForColumn(columnId, estado) { return estado; }
 
     // ===== Persistencia local SOLO de la sesion del checklist (para continuar si vuelve) =====
     const SESSION_KEY = "insp_session_v2"; // compat antigua
     const SESSION_KEY_ROOM = (roomKey) => `insp_session_v2::${roomKey}`;
+    const PENDING_SUBMIT_KEY = "hk_pending_inspection_submit";
     let startAtDT = null; // DATETIME local
     let endAtDT = null;   // DATETIME local
     let currentRoomObservaciones = "";
@@ -1364,7 +1412,22 @@
 
         const estado = String(target.estado || "").trim().toLowerCase();
         currentRoomObservaciones = String(target.observaciones || "");
-        if (estado === "limpieza") {
+
+        // Mostrar ocupacion al camarera (adultos/ninos que dejo recepcion)
+        const adultos = Number(target.adultos);
+        const ninos = Number(target.ninos);
+        const ocupacionEl = document.getElementById("ocupacionInfo");
+        if (ocupacionEl) {
+          if (adultos > 0 || ninos > 0) {
+            const total = adultos + ninos;
+            ocupacionEl.innerHTML = `🛏️ Ocupación: ${adultos} Adulto${adultos !== 1 ? 's' : ''}${ninos > 0 ? ` / ${ninos} Niño${ninos !== 1 ? 's' : ''}` : ''} &mdash; <strong>${total} huésped${total !== 1 ? 'es' : ''}</strong>`;
+            ocupacionEl.style.display = "block";
+          } else {
+            ocupacionEl.style.display = "none";
+          }
+        }
+
+        if (estado === "limpieza" || estado === "inspeccion") {
           if (!startAtDT && target.inicio_limpieza) startAtDT = target.inicio_limpieza;
           if (!endAtDT && target.fin_limpieza) {
             const iniMs = toEpochMsFromAnyDate(target.inicio_limpieza);
@@ -1373,7 +1436,10 @@
               endAtDT = target.fin_limpieza;
             }
           }
-          if (!$("camarera").value && target.camarera_asignada) $("camarera").value = target.camarera_asignada;
+          if (!$("camarera").value && target.camarera_asignada) {
+            const cId = getCamareraIdFromName(target.camarera_asignada);
+            if (cId) $("camarera").value = String(cId);
+          }
           if (!$("tipoLimpieza").value && target.tipo_limpieza) $("tipoLimpieza").value = target.tipo_limpieza;
         } else {
           // Para un nuevo ciclo (lista/ocupada limpia/etc), iniciar sin bloqueo de horas anteriores.
@@ -1398,12 +1464,12 @@
       btnStart.disabled = started;
       btnEnd.disabled = !started || ended;
 
-      btnStart.textContent = started ? `Inici?: ${fmtTimeFromMySQL(startAtDT)}` : "Empezar limpieza";
-      btnEnd.textContent = ended ? `Termin?: ${fmtTimeFromMySQL(endAtDT)}` : "Terminar limpieza";
+      btnStart.textContent = started ? `✔ ${fmtTimeFromMySQL(startAtDT)}` : "Empezar limpieza";
+      btnEnd.textContent = ended ? `✔ ${fmtTimeFromMySQL(endAtDT)}` : "Terminar limpieza";
     }
 
     btnStart.addEventListener("click", async () => {
-      if (isGerencia()) {
+      if (isReadOnlyRole()) {
         toast("Restringido", "Gerencia solo puede visualizar.", false, 3200);
         return;
       }
@@ -1425,24 +1491,25 @@
       }
 
       if (!startAtDT) {
-        startAtDT = nowLocalMySQL(); // OK local
+        startAtDT = nowLocalMySQL();
         endAtDT = null;
-
+        updateStartEndUI();
         saveSession();
 
         try {
+          const camareraNombre = $("camarera").selectedOptions?.[0]?.textContent || camareraSel;
           const nextObs = appendObsLog(
             currentRoomObservaciones,
             "INICIO LIMPIEZA",
             startAtDT,
-            `Camarera encargada de limpieza: ${camareraSel}`
+            `Camarera encargada de limpieza: ${camareraNombre}`
           );
           const updated = await updateRoomDB(CTX.modulo, CTX.habitacion, {
             estado: "limpieza",
-            inicio_limpieza: startAtDT,         // OK DATETIME local
-            camarera_asignada: camareraSel,     // OK quien limpia
-            tipo_limpieza: tipoSel,             // OK tipo
-            inspector_asignado: CTX.usuario || null, // OK quien inspecciona (login)
+            inicio_limpieza: startAtDT,
+            camarera_asignada: camareraSel,
+            tipo_limpieza: tipoSel,
+            inspector_asignado: CTX.usuario || null,
             observaciones: nextObs
           });
           currentRoomObservaciones = String(updated?.observaciones ?? nextObs);
@@ -1450,6 +1517,7 @@
         } catch (e) {
           toast("Error BD", e.message || "No se pudo guardar inicio en MariaDB", false, 5200);
           startAtDT = null;
+          updateStartEndUI();
           saveSession();
           return;
         }
@@ -1460,12 +1528,13 @@
     });
 
     btnEnd.addEventListener("click", async () => {
-      if (isGerencia()) {
+      if (isReadOnlyRole()) {
         toast("Restringido", "Gerencia solo puede visualizar.", false, 3200);
         return;
       }
       if (startAtDT && !endAtDT) {
-        endAtDT = nowLocalMySQL(); // OK local
+        endAtDT = nowLocalMySQL();
+        updateStartEndUI();
         saveSession();
 
         try {
@@ -1476,8 +1545,8 @@
             `Camarera encargada de limpieza: ${$("camarera").value || "-"}`
           );
           const updated = await updateRoomDB(CTX.modulo, CTX.habitacion, {
-            estado: "limpieza",
-            fin_limpieza: endAtDT,                 // OK DATETIME local
+            estado: "inspeccion",
+            fin_limpieza: endAtDT,
             camarera_asignada: $("camarera").value || null,
             tipo_limpieza: $("tipoLimpieza").value || null,
             inspector_asignado: CTX.usuario || null,
@@ -1487,6 +1556,7 @@
         } catch (e) {
           toast("Error BD", e.message || "No se pudo guardar fin en MariaDB", false, 5200);
           endAtDT = null;
+          updateStartEndUI();
           saveSession();
           return;
         }
@@ -1498,34 +1568,8 @@
 
     restoreSession();
     updateStartEndUI();
-    restoreFromDB();
 
-    // ===== Checklist =====
-    const CHECK_ITEMS = [
-      { id: "limpieza_y_desinfecci_n_de_puerta", label: "Alfombra Plastica Bano" },
-      { id: "limpieza_y_desinfecci_n_de_controles", label: "Amenidades Bano" },
-      { id: "limpieza_y_desinfecci_n_de_manijas", label: "Bano" },
-      { id: "dup__of_ba_o5", label: "Toallas de Mano" },
-      { id: "dup__of_toallas_de_mano2", label: "Toallas De Pies" },
-      { id: "dup__of_toallas_de_mano", label: "Toallas de Cuerpo" },
-      { id: "dup__of_ba_o", label: "Ciza" },
-      { id: "ducha_tina", label: "Closet" },
-      { id: "lavamanos", label: "Mesas" },
-      { id: "wc", label: "Camas" },
-      { id: "dup__of_camas", label: "Blancos De Cama" },
-      { id: "dup__of_blancos_de_cama", label: "Edredon y Almohadas Extra" },
-      { id: "ventana_ba_o", label: "TV y Control" },
-      { id: "puerta_ba_o", label: "Ventana y Puerta" },
-      { id: "luminarias", label: "Amenidades Habitacion" },
-      { id: "espejo", label: "Habitacion" },
-      { id: "color_mkr8bns6", label: "Cocineta" },
-    ];
-
-    const SECCIONES = [
-      { key: "bano", nombre: "Bano", ayuda: "Toallas y Bano", items: ["Alfombra Plastica Bano", "Amenidades Bano", "Bano", "Toallas de Mano", "Toallas De Pies", "Toallas de Cuerpo"] },
-      { key: "hab", nombre: "Habitacion", ayuda: "Muebles, camas, blancos", items: ["Ciza", "Closet", "Mesas", "Camas", "Blancos De Cama", "Edredon y Almohadas Extra", "TV y Control", "Ventana y Puerta", "Amenidades Habitacion", "Habitacion", "Cocineta"] },
-    ];
-
+    // ===== Checklist (desde DB) =====
     const state = {};
     const cycle = ["SIN_SELECCION", "CUMPLE", "NO_CUMPLE", "NO_APLICA"];
     const icon = (v) =>
@@ -1533,44 +1577,46 @@
         v === "CUMPLE" ? "OK" :
           v === "NO_CUMPLE" ? "X" : "NA";
 
-    function ensure(label) {
-      if (!state[label]) state[label] = { estado: "SIN_SELECCION", touched: false };
-      return state[label];
+    function ensure(itemId) {
+      if (!state[itemId]) state[itemId] = { estado: "SIN_SELECCION", touched: false };
+      return state[itemId];
     }
 
-    function renderChecklist() {
+    function renderChecklistFromDB() {
       const host = $("sections");
       host.innerHTML = "";
-
-      SECCIONES.forEach((sec, idx) => {
+      if (!CHECKLIST_ITEMS_DB.length) {
+        host.innerHTML = `<div style="padding:20px;text-align:center;color:var(--muted)">No hay items de checklist configurados.</div>`;
+        return;
+      }
+      const catIds = Object.keys(CATEGORIAS_MAP);
+      catIds.forEach((catId, idx) => {
+        const cat = CATEGORIAS_MAP[catId];
         const det = document.createElement("details");
         det.open = (idx === 0);
 
         const sum = document.createElement("summary");
-
         const left = document.createElement("div");
         left.className = "secLeft";
-        left.innerHTML = `<b>${sec.nombre}</b><span>${sec.ayuda}</span>`;
-
+        left.innerHTML = `<b>${cat.nombre}</b><span>${cat.nombre}</span>`;
         sum.appendChild(left);
 
         const itemsWrap = document.createElement("div");
         itemsWrap.className = "items";
 
-        sec.items.forEach(label => {
-          const st = ensure(label);
-
+        cat.items.forEach(it => {
+          const st = ensure(it.id);
           const card = document.createElement("div");
           card.className = "item " + (
             st.estado === "CUMPLE" ? "ok" :
               st.estado === "NO_CUMPLE" ? "bad" :
                 st.estado === "NO_APLICA" ? "na" : "none"
           );
-          card.dataset.label = label;
+          card.dataset.itemId = it.id;
 
           const name = document.createElement("div");
           name.className = "itemName";
-          name.textContent = label;
+          name.textContent = it.nombre;
 
           const badge = document.createElement("div");
           badge.className = "status " + (
@@ -1581,7 +1627,22 @@
           badge.textContent = icon(st.estado);
 
           card.addEventListener("click", () => {
-            cycleItem(label);
+            const st2 = ensure(it.id);
+            const i = cycle.indexOf(st2.estado);
+            st2.estado = cycle[(i + 1) % cycle.length];
+            st2.touched = true;
+            card.className = "item " + (
+              st2.estado === "CUMPLE" ? "ok" :
+                st2.estado === "NO_CUMPLE" ? "bad" :
+                  st2.estado === "NO_APLICA" ? "na" : "none"
+            );
+            badge.className = "status " + (
+              st2.estado === "CUMPLE" ? "s-ok" :
+                st2.estado === "NO_CUMPLE" ? "s-bad" :
+                  st2.estado === "NO_APLICA" ? "s-na" : "s-none"
+            );
+            badge.textContent = icon(st2.estado);
+            updateChecklistCounter();
             saveSession();
           });
 
@@ -1596,39 +1657,33 @@
       });
     }
 
-    function cycleItem(label) {
-      const st = ensure(label);
-      const i = cycle.indexOf(st.estado);
-      st.estado = cycle[(i + 1) % cycle.length];
-      st.touched = true;
-
-      const card = document.querySelector(`.item[data-label="${CSS.escape(label)}"]`);
-      if (card) {
-        card.classList.remove("ok", "bad", "na", "none");
-        card.classList.add(
-          st.estado === "CUMPLE" ? "ok" :
-            st.estado === "NO_CUMPLE" ? "bad" :
-              st.estado === "NO_APLICA" ? "na" : "none"
-        );
-        const s = card.querySelector(".status");
-        s.className = "status " + (
-          st.estado === "CUMPLE" ? "s-ok" :
-            st.estado === "NO_CUMPLE" ? "s-bad" :
-              st.estado === "NO_APLICA" ? "s-na" : "s-none"
-        );
-        s.textContent = icon(st.estado);
-      }
+    function updateChecklistCounter() {
+      const el = $("checklistCounter");
+      if (!el || !CHECKLIST_ITEMS_DB.length) { if (el) el.style.display = 'none'; return; }
+      el.style.display = 'flex';
+      let pendientes = 0, completados = 0;
+      CHECKLIST_ITEMS_DB.forEach(it => {
+        const st = ensure(it.id);
+        if (st.estado === 'SIN_SELECCION') pendientes++;
+        else completados++;
+      });
+      const total = CHECKLIST_ITEMS_DB.length;
+      const cp = $("counterPending");
+      const cd = $("counterDone");
+      if (cp) { cp.textContent = pendientes; cp.className = 'num ' + (pendientes === 0 ? 'done' : 'warn'); }
+      if (cd) { cd.textContent = completados + '/' + total; cd.className = 'num ' + (pendientes === 0 ? 'done' : 'ok'); }
     }
+
     function setAllChecklistToNA() {
-      CHECK_ITEMS.forEach(it => {
-        const st = ensure(it.label);
+      CHECKLIST_ITEMS_DB.forEach(it => {
+        const st = ensure(it.id);
         st.estado = "NO_APLICA";
         st.touched = true;
       });
-      renderChecklist();
+      renderChecklistFromDB();
+      updateChecklistCounter();
       saveSession();
     }
-
 
     function resetAll() {
       Object.keys(state).forEach(k => { state[k].estado = "SIN_SELECCION"; state[k].touched = false; });
@@ -1642,14 +1697,12 @@
       currentRoomObservaciones = "";
       localStorage.removeItem(SESSION_KEY_ROOM(HK_ROOM_KEY));
       localStorage.removeItem(SESSION_KEY);
-      renderChecklist();
+      renderChecklistFromDB();
       clearFieldErrors();
       updateStartEndUI();
       renderFamiliarUI();
       renderAllNABtn();
     }
-
-    renderChecklist();
 
     function buildAreaLabel(habitacion) {
       const raw = String(habitacion || "").trim();
@@ -1658,35 +1711,17 @@
     }
 
     function checklistAllSelected() {
-      for (const it of CHECK_ITEMS) {
-        const st = ensure(it.label);
+      for (const it of CHECKLIST_ITEMS_DB) {
+        const st = ensure(it.id);
         if (st.estado === "SIN_SELECCION") return false;
       }
       return true;
     }
 
-    function buildObservacionesTexto(modulo, habitacion, fecha, camarera, tipoLimpieza, obsGeneral, inicioDT, finDT, checkDT) {
-      const lines = [];
-      lines.push(`Modulo: ${modulo}`);
-      lines.push(`Habitacion: ${habitacion}`);
-      lines.push(`Inspector (login): ${CTX.usuario || "-"}${CTX.dept ? " - " + CTX.dept : ""}`);
-      lines.push(`Camarera (quien limpia): ${camarera || "-"}`);
-      lines.push(`Fecha: ${fecha}`);
-      lines.push(`Tipo de limpieza: ${tipoLimpieza || "-"}`);
-      lines.push(`Hora inicio: ${inicioDT ? fmtTimeFromMySQL(inicioDT) : "-"}`);
-      lines.push(`Hora fin: ${finDT ? fmtTimeFromMySQL(finDT) : "-"}`);
-      lines.push(`Hora checklist: ${checkDT ? fmtTimeFromMySQL(checkDT) : "-"}`);
-      lines.push("");
-      lines.push("Observaciones generales:");
-      lines.push((obsGeneral || "").trim() || "-");
-      lines.push("");
-      lines.push("Checklist:");
-      CHECK_ITEMS.forEach(it => {
-        const st = ensure(it.label);
-        const val = st.estado === "SIN_SELECCION" ? "-" : toMondayLabelForColumn(it.id, st.estado);
-        lines.push(`- ${it.label}: ${val}`);
-      });
-      return lines.join("\n");
+    function getCamareraIdFromName(name) {
+      if (!name) return null;
+      if (/^\d+$/.test(String(name).trim())) return Number(name); // ya es ID
+      return CAMARERAS_MAP[normalizeLabel(name)] || null;
     }
 
 
@@ -1703,12 +1738,15 @@
     window.addEventListener("beforeunload", saveSession);
     window.addEventListener("pagehide", saveSession);
 
+    let isSyncingLimpieza = false;
     async function syncLimpiezaMeta() {
-      if (isGerencia()) return;
+      if (isReadOnlyRole()) return;
       if (!startAtDT || endAtDT) return;
+      if (isSyncingLimpieza) return;
       const camareraSel = $("camarera").value || null;
       const tipoSel = $("tipoLimpieza").value || null;
       if (!camareraSel && !tipoSel) return;
+      isSyncingLimpieza = true;
       try {
         await updateRoomDB(CTX.modulo, CTX.habitacion, {
           estado: "limpieza",
@@ -1717,12 +1755,13 @@
           inspector_asignado: CTX.usuario || null
         });
       } catch { }
+      finally { isSyncingLimpieza = false; }
     }
 
     $("camarera").addEventListener("change", syncLimpiezaMeta);
     $("tipoLimpieza").addEventListener("change", syncLimpiezaMeta);
     $("btnAllNA").addEventListener("click", () => {
-      if (isGerencia()) {
+      if (isReadOnlyRole()) {
         toast("Restringido", "Gerencia solo puede visualizar.", false, 3200);
         return;
       }
@@ -1731,7 +1770,7 @@
       toast("Listo", "Todos los checks quedaron en NA.", true, 2600);
     });
     $("btnFamiliar").addEventListener("click", () => {
-      if (isGerencia()) {
+      if (isReadOnlyRole()) {
         toast("Restringido", "Gerencia solo puede visualizar.", false, 3200);
         return;
       }
@@ -1754,6 +1793,14 @@
       );
       toast("Conexion recuperada", pendingSubmit?.itemId ? "Puedes reintentar liberar la habitacion." : "Ya puedes enviar el checklist.", true, 4200);
     });
+    // Cargar datos desde DB
+    // restoreFromDB() se ejecuta DESPUES de loadCamareras para que las opciones del select existan
+    loadCamareras().then(() => {
+      reapplyCamareraSel();
+      restoreFromDB();
+    });
+    loadChecklistItems();
+
     renderFamiliarUI();
     renderAllNABtn();
     $("btnBack").addEventListener("click", () => {
@@ -1762,7 +1809,7 @@
     });
 
     $("btnGuardar").addEventListener("click", async () => {
-      if (isGerencia()) {
+      if (isReadOnlyRole()) {
         toast("Restringido", "Gerencia solo puede visualizar.", false, 3200);
         return;
       }
@@ -1770,7 +1817,11 @@
         toast("En proceso", "Ya se esta enviando el checklist. Espera a que termine.", false, 3200);
         return;
       }
+      isSavingInspection = true;
+      setGuardarLoading(true, "📤 Guardando checklist...");
       if (isBrowserOffline()) {
+        isSavingInspection = false;
+        setGuardarLoading(false);
         setGuardarStatus("Sin conexion. Espera a recuperar internet antes de enviar.", "err");
         toast("Sin conexion", "No se enviara el checklist hasta que vuelva la conexion.", false, 5200);
         return;
@@ -1781,151 +1832,86 @@
       const habitacion = CTX.habitacion;
 
       const fecha = $("fecha").value;
-      const camareraSel = $("camarera").value;     // quien limpia
-      const tipoSel = $("tipoLimpieza").value;     // tipo
+      const camareraSel = $("camarera").value;
+      const tipoSel = $("tipoLimpieza").value;
       const obsGeneral = $("obsGeneral").value;
 
       if (!modulo || !habitacion) {
+        isSavingInspection = false; setGuardarLoading(false);
         toast("Falta contexto", "No llego Modulo/Habitacion desde index.html.", false, 5200);
         return;
       }
-
-      if (!fecha) { toast("Falta Fecha", "Elige la fecha de la limpieza.", false); return highlightAndFocus("fecha"); }
-      if (!camareraSel) { toast("Falta Camarera", "Selecciona la camarera (quien limpia).", false); return highlightAndFocus("camarera"); }
-      if (!isCamareraValida(camareraSel)) {
-        toast("Camarera invalida", `La camarera "${camareraSel}" no esta en la lista permitida.`, false, 5200);
-        return highlightAndFocus("camarera");
-      }
-      if (!tipoSel) { toast("Falta Tipo de Limpieza", "Selecciona Estadia / Media Estadia / etc.", false); return highlightAndFocus("tipoLimpieza"); }
-
-      if (!startAtDT) {
-        toast("Falta iniciar", "Presiona \"Empezar limpieza\" antes de guardar.", false, 4200);
-        return;
-      }
-      if (!endAtDT) {
-        toast("Falta terminar", "Presiona \"Terminar limpieza\" antes de guardar.", false, 4200);
-        return;
-      }
-
+      if (!fecha) { isSavingInspection = false; setGuardarLoading(false); toast("Falta Fecha", "Elige la fecha de la limpieza.", false); return highlightAndFocus("fecha"); }
+      if (!camareraSel) { isSavingInspection = false; setGuardarLoading(false); toast("Falta Camarera", "Selecciona la camarera.", false); return highlightAndFocus("camarera"); }
+      if (!isCamareraValida(camareraSel)) { isSavingInspection = false; setGuardarLoading(false); toast("Camarera invalida", `"${camareraSel}" no esta permitida.`, false, 5200); return highlightAndFocus("camarera"); }
+      if (!tipoSel) { isSavingInspection = false; setGuardarLoading(false); toast("Falta Tipo de Limpieza", "Selecciona Estadia / Media Estadia / etc.", false); return highlightAndFocus("tipoLimpieza"); }
+      if (!startAtDT) { isSavingInspection = false; setGuardarLoading(false); toast("Falta iniciar", "Presiona \"Empezar limpieza\" antes de guardar.", false, 4200); return; }
+      if (!endAtDT) { isSavingInspection = false; setGuardarLoading(false); toast("Falta terminar", "Presiona \"Terminar limpieza\" antes de guardar.", false, 4200); return; }
       if (!checklistAllSelected()) {
-        toast("Checklist incompleto", "Hay items en . (sin seleccionar). Revisalos antes de guardar.", false, 4200);
+        isSavingInspection = false; setGuardarLoading(false);
+        toast("Checklist incompleto", "Hay items en . (sin seleccionar).", false, 4200);
         const first = document.querySelector("details");
         if (first) first.open = true;
         $("sections").scrollIntoView({ behavior: "smooth", block: "start" });
         return;
       }
 
-      const areaLabel = getSelectedAreaLabel();
-      if (!AREA_LABELS_EXISTENTES_NORM.has(normalizeLabel(areaLabel))) {
-        toast("Area no existe en monday", `La Habitacion/area "${areaLabel}" no esta como label en la columna Area.`, false, 5200);
-        return;
-      }
-
       const checklistFinishedAtDT = nowLocalMySQL();
-      const itemName = `Inspeccion ${habitacion} (${fecha})`;
+      const camareraId = getCamareraIdFromName(camareraSel) || null;
 
-      const columnValues = {};
+      let tipoLimpiezaId = null;
+      try {
+        const rTipos = await fetch(`${API_BASE}/api/tipos-limpieza`);
+        const jTipos = await rTipos.json();
+        if (jTipos?.ok) {
+          const found = jTipos.data.find(t => normalizeLabel(t.nombre) === normalizeLabel(tipoSel));
+          if (found) tipoLimpiezaId = found.id;
+        }
+      } catch {}
 
-      // Dropdowns
-      columnValues[COL_AREA_DROPDOWN] = { labels: [areaLabel] };
-      columnValues[COL_CAMARERA_DROPDOWN] = { labels: [camareraSel] };
+      const detalles = CHECKLIST_ITEMS_DB.map(it => ({
+        item_id: it.id,
+        estado: ensure(it.id).estado === "CUMPLE" ? "CUMPLE" :
+                ensure(it.id).estado === "NO_CUMPLE" ? "NO_CUMPLE" : "NO_APLICA"
+      }));
 
-      // estado7: inspector (login)
-      columnValues[COL_ESTADO_CAMARERA] = { label: mapSupervisorLabel(CTX.usuario) };
-
-      // estado17: tipo
-      columnValues[COL_ESTADO_LIMPIEZA] = { label: tipoSel };
-
-      // fecha3
-      columnValues[COL_FECHA] = { date: fecha };
-
-      // horas
-      const hIni = toMondayHourObjFromMySQL(startAtDT);
-      const hFin = toMondayHourObjFromMySQL(endAtDT);
-      const hChk = toMondayHourObjFromMySQL(checklistFinishedAtDT);
-
-      if (hIni) columnValues[COL_HORA_INICIO] = hIni;
-      if (hFin) columnValues[COL_HORA_FIN] = hFin;
-      if (hChk) columnValues[COL_HORA_FIN_CHECK] = hChk;
-
-      // texto largo (long_text requiere { text: "..." })
-      columnValues[COL_TEXTO_LARGO] = {
-        text: buildObservacionesTexto(
-          modulo, habitacion, fecha, camareraSel, tipoSel, obsGeneral, startAtDT, endAtDT, checklistFinishedAtDT
-        )
+      const payload = {
+        modulo_id: modulo,
+        modulo_nombre: CTX_MOD_NAME,
+        habitacion_etiqueta: habitacion,
+        fecha: fecha,
+        camarera_id: camareraId,
+        tipo_limpieza_id: tipoLimpiezaId,
+        inspector_nombre: CTX.usuario || '',
+        inspector_dept: CTX.dept || '',
+        inicio_limpieza: startAtDT,
+        fin_limpieza: endAtDT,
+        hora_checklist: checklistFinishedAtDT,
+        observaciones: obsGeneral || null,
+        es_decorada: 0,
+        es_familiar: useFamiliarArea ? 1 : 0,
+        detalles
       };
 
-      // checklist
-      CHECK_ITEMS.forEach(it => {
-        const st = ensure(it.label);
-        columnValues[it.id] = { label: toMondayLabelForColumn(it.id, st.estado) };
-      });
-
-      isSavingInspection = true;
-      setGuardarLoading(true, "Enviando checklist. No cierres esta pantalla...");
+      setGuardarStatus("📤 Paso 1/2: Guardando checklist...");
       try {
-        toast("Enviando", "Guardando checklist. Espera un momento...", true, 1800);
-        const sendMondayItem = async (itemNameToSend, extraObsNote = "") => {
-          if (isBrowserOffline()) {
-            throw new Error("Sin conexion. Espera a recuperar internet y vuelve a intentar.");
-          }
-          const payloadCols = {
-            ...columnValues,
-            [COL_TEXTO_LARGO]: {
-              text: `${columnValues[COL_TEXTO_LARGO].text}${extraObsNote ? `\n\n${extraObsNote}` : ""}`
-            }
-          };
-          const resp = await fetch(API_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ boardId: BOARD_ID, itemName: itemNameToSend, columnValues: payloadCols })
-          });
-          const data = await resp.json().catch(() => ({}));
-          if (!resp.ok || !data?.ok) {
-            throw new Error(data?.error || "No se pudo enviar a monday");
-          }
-          return data;
-        };
+        toast("Guardando", "Guardando checklist en la base de datos...", true, 1800);
 
-        let pendingSubmit = getPendingInspectionSubmit();
-        if (pendingSubmit && (
-          pendingSubmit.inicio_limpieza !== startAtDT ||
-          pendingSubmit.fin_limpieza !== endAtDT ||
-          pendingSubmit.fecha !== fecha
-        )) {
-          clearPendingInspectionSubmit();
-          pendingSubmit = null;
-        }
-        let dataNormal = pendingSubmit?.itemId ? pendingSubmit : null;
-
-        if (dataNormal?.itemId) {
-          setGuardarStatus("Este checklist ya fue enviado a Monday. Intentando liberar la habitacion...", "warn");
-          toast("Pendiente", `Ya existe en Monday (Item ID: ${dataNormal.itemId}). Solo se intentara liberar la habitacion.`, false, 5200);
-        } else {
-          setGuardarStatus("Enviando checklist a Monday...");
-          dataNormal = await sendMondayItem(itemName);
-          setPendingInspectionSubmit({
-            itemId: dataNormal.itemId,
-            itemName,
-            modulo,
-            habitacion,
-            fecha,
-            camarera: camareraSel,
-            tipoLimpieza: tipoSel,
-            inicio_limpieza: startAtDT,
-            fin_limpieza: endAtDT
-          });
-          toast("Listo OK", `Enviado a Monday. Item ID: ${dataNormal.itemId}`, true, 2600);
+        const resp = await fetch(`${API_BASE}/api/inspecciones/guardar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data?.ok) {
+          throw new Error(data?.error || "No se pudo guardar la inspeccion");
         }
 
+        toast("Listo OK", `Inspeccion #${data.id} guardada.`, true, 2600);
 
-
-        // OK Liberar Habitacion en BD SOLO si Monday OK (sin borrar tiempos)
-        setGuardarStatus("Checklist enviado. Liberando habitacion en el sistema...");
+        // Liberar Habitacion en BD
+        setGuardarStatus("✅ Paso 1/2: Checklist guardado. Liberando habitación...");
         try {
-          if (isBrowserOffline()) {
-            throw new Error("Sin conexion al liberar habitacion");
-          }
           const nextEstado = (String(tipoSel || "").trim().toLowerCase() === "estadia")
             ? "ocupada limpia"
             : "libre";
@@ -1935,13 +1921,14 @@
             source: "inspeccion"
           });
         } catch (e) {
-          setGuardarStatus("Se envio a Monday, pero no se pudo liberar la habitacion. Cuando vuelva la conexion presiona Guardar otra vez; no se duplicara en Monday.", "err");
-          toast("Aviso", "Se envio a Monday, pero NO se pudo liberar en BD. Reintenta cuando tengas conexion; no se volvera a enviar a Monday.", false, 9000);
+          setGuardarStatus("Se guardo la inspeccion, pero no se pudo liberar la habitacion.", "err");
+          toast("Aviso", "Inspeccion guardada, pero no se pudo liberar la habitacion en BD.", false, 9000);
           console.error("Error liberando en BD:", e);
           return;
         }
         clearPendingInspectionSubmit();
-        // indicador local de "limpiada" (solo UI)
+
+        // indicador local de "limpiada"
         try {
           const k = `${CTX.modulo}::${CTX.habitacion}`;
           const map = JSON.parse(localStorage.getItem("hk_cleaned_rooms_v1") || "{}");
@@ -1951,20 +1938,15 @@
 
         localStorage.removeItem(SESSION_KEY);
         resetAll();
-
         window.location.href = "./index.html?done=1";
 
       } catch (e) {
-        setGuardarStatus("No se pudo completar el envio. Revisa la conexion y vuelve a intentar.", "err");
-        toast("Error de red", String(e), false, 6200);
+        setGuardarStatus("No se pudo guardar la inspeccion. Revisa e intenta de nuevo.", "err");
+        toast("Error", String(e), false, 6200);
         console.error(e);
       } finally {
         isSavingInspection = false;
-        const pendingSubmit = getPendingInspectionSubmit();
         setGuardarLoading(false);
-        if (pendingSubmit?.itemId) {
-          setGuardarStatus("Pendiente de liberar habitacion. Presiona Guardar otra vez cuando haya conexion; no se duplicara en Monday.", "warn");
-        }
       }
     });
   </script>

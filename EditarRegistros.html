@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/png" href="./Oficial_JDL_blanco.png?v=1">
+  <link rel="shortcut icon" href="./Oficial_JDL_blanco.png?v=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Editar Registros - Gestion Habitaciones</title>
+  <style>
+    :root {
+      --bg0: #070A12; --bg1: #0B1024;
+      --card: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.10);
+      --text: #EAF0FF; --muted: #A9B3D0;
+      --primary: #7C3AED; --primaryLight: rgba(124,58,237,.25);
+      --ok: #2EE59D; --warn: #FFB020; --bad: #FF4D6D;
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      --r: 18px; --r2: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: radial-gradient(1200px 700px at 15% 10%, rgba(124,58,237,.22), transparent 55%),
+                  radial-gradient(900px 600px at 85% 20%, rgba(34,211,238,.18), transparent 55%),
+                  linear-gradient(180deg, var(--bg0), var(--bg1));
+      min-height: 100vh;
+    }
+    .wrap { max-width: 1200px; margin: 22px auto; padding: 0 14px; }
+    .top {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin-bottom: 18px; flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logoImg { width: 48px; height: 48px; border-radius: 12px; object-fit: contain; background: rgba(255,255,255,.06); padding: 4px; border: 1px solid rgba(255,255,255,.12); }
+    h1 { font-size: 20px; margin: 0; letter-spacing: .2px; }
+    .hint { color: var(--muted); font-size: 12px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+    .badge.ok { background: rgba(46,229,157,.15); color: #2EE59D; }
+    .badge.no { background: rgba(255,77,109,.15); color: #FF4D6D; }
+    .badge.na { background: rgba(255,176,32,.15); color: #FFB020; }
+    .badge.fam { background: rgba(255,176,32,.15); color: #FFB020; }
+
+    button {
+      border: 1px solid rgba(255,255,255,.16);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      color: var(--text); padding: 10px 16px; border-radius: 12px;
+      cursor: pointer; font-weight: 600; font-size: 13px; line-height: 1.25;
+      transition: all .15s; white-space: nowrap;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,.3); }
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+    .primary {
+      border-color: rgba(124,58,237,.55);
+      background: linear-gradient(135deg, rgba(124,58,237,.85), rgba(139,92,246,.75));
+      color: #fff;
+    }
+    .success {
+      border-color: rgba(46,229,157,.45);
+      background: linear-gradient(135deg, rgba(46,229,157,.85), rgba(72,240,170,.75));
+      color: #0a1a14;
+    }
+    .danger {
+      border-color: rgba(255,77,109,.45);
+      background: linear-gradient(135deg, rgba(255,77,109,.85), rgba(255,100,130,.75));
+      color: #fff;
+    }
+
+    .panel {
+      background: var(--card); border: 1px solid var(--stroke);
+      border-radius: var(--r); box-shadow: var(--shadow);
+      backdrop-filter: blur(10px); overflow: hidden;
+      margin-bottom: 18px;
+    }
+    .panelHeader {
+      padding: 14px 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    }
+    .panelHeader h2 { margin: 0; font-size: 16px; font-weight: 700; }
+    .panelHeader .count { color: var(--muted); font-size: 12px; }
+    .panelBody { padding: 16px 18px; }
+
+    .filters {
+      display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;
+      padding: 14px; background: rgba(0,0,0,.2); border-radius: var(--r2);
+      margin-bottom: 16px;
+    }
+    .filterGroup { display: flex; flex-direction: column; }
+    .filterGroup label { display: block; margin: 0 0 4px; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+    .filterGroup input, .filterGroup select {
+      padding: 9px 12px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(10,14,28,.55); color: var(--text);
+      outline: none; font-size: 13px; min-width: 140px;
+    }
+    .filterGroup input:focus, .filterGroup select:focus { border-color: var(--primary); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 10px 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.06); }
+    th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; position: sticky; top: 0; background: rgba(10,14,28,.95); z-index: 2; }
+    tr:hover td { background: rgba(255,255,255,.04); }
+    .clickRow { cursor: pointer; }
+    .clickRow:hover td { background: rgba(124,58,237,.12) !important; }
+
+    .empty { text-align: center; padding: 30px; color: var(--muted); font-size: 13px; }
+    .loading { text-align: center; padding: 40px; color: var(--muted); }
+
+    .toastWrap { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 9999; display: grid; gap: 8px; width: min(560px, calc(100vw - 22px)); }
+    .toast { border-radius: 14px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.12); background: rgba(10,14,28,.92); font-size: 13px; }
+    .toast.ok { border-color: rgba(46,229,157,.45); }
+    .toast.err { border-color: rgba(255,77,109,.45); }
+
+    /* ===== EDITOR MODAL ===== */
+    .editOverlay {
+      position: fixed; inset:0;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(12px);
+      display:grid; place-items:center;
+      z-index:1000;
+      padding:18px;
+      animation: fadeIn .15s ease;
+    }
+    @keyframes fadeIn { from{ opacity:0 } to{ opacity:1 } }
+    .editCard {
+      width: min(800px, 100%);
+      max-height: 92vh;
+      overflow-y: auto;
+      border-radius: 22px;
+      background: rgba(12,16,34,.96);
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 30px 90px rgba(0,0,0,.55);
+      animation: slideIn .18s ease;
+    }
+    @keyframes slideIn { from{ transform:translateY(8px) scale(.98); opacity:0 } to{ transform:translateY(0) scale(1); opacity:1 } }
+    .editHead {
+      display:flex; align-items:flex-start; justify-content:space-between;
+      gap:12px; padding:16px 18px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      position: sticky; top:0;
+      background: rgba(12,16,34,.98);
+      z-index:2;
+    }
+    .editTitle { font-size: 18px; font-weight: 1000; }
+    .editSub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .editClose {
+      width: 36px; height: 36px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: linear-gradient(135deg, rgba(59,130,246,.2), rgba(124,58,237,.2));
+      color: var(--text); cursor: pointer;
+      display:grid; place-items:center;
+      font-size: 16px; font-weight: 700;
+      flex-shrink:0;
+    }
+    .editBody { padding: 14px 18px; }
+
+    .editGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .editField label { display: block; margin: 0 0 4px; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; }
+    .editField input, .editField select, .editField textarea {
+      width: 100%; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(10,14,28,.55); color: var(--text);
+      outline: none; font-size: 13px;
+    }
+    .editField input:focus, .editField select:focus, .editField textarea:focus { border-color: var(--primary); }
+    .editField textarea { resize: vertical; min-height: 70px; }
+
+    .checklistEdit {
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .checklistEdit h3 { margin: 0 0 10px; font-size: 14px; color: #C4B0FF; }
+    .checklistItemRow {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; border-radius: 8px;
+      margin: 2px 0; font-size: 13px;
+      cursor: pointer; transition: background .1s;
+    }
+    .checklistItemRow:hover { background: rgba(255,255,255,.06); }
+    .checklistItemName { font-weight: 600; }
+    .checklistItemBadge {
+      padding: 4px 12px; border-radius: 999px;
+      font-size: 11px; font-weight: 800; letter-spacing: .04em;
+      transition: all .12s; cursor: pointer; user-select: none;
+    }
+    .checklistItemBadge.ok { background: rgba(46,229,157,.15); color: #2EE59D; border: 1px solid rgba(46,229,157,.3); }
+    .checklistItemBadge.no { background: rgba(255,77,109,.15); color: #FF4D6D; border: 1px solid rgba(255,77,109,.3); }
+    .checklistItemBadge.na { background: rgba(255,176,32,.15); color: #FFB020; border: 1px solid rgba(255,176,32,.3); }
+    .checklistItemBadge:hover { transform: scale(1.05); }
+    .checklistItemBadge:active { transform: scale(.95); }
+
+    .editActions { display: flex; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.08); }
+
+    .editStatus { font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 18px; }
+
+    .fullWidth { grid-column: 1 / -1; }
+
+    @media (max-width: 767px) {
+      .filters { flex-direction: column; align-items: stretch; }
+      .filterGroup { width: 100%; }
+      .filterGroup input, .filterGroup select { width: 100%; min-width: 0; }
+      .editGrid { grid-template-columns: 1fr; }
+      th, td { padding: 8px 6px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="toasts" class="toastWrap"></div>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <img class="logoImg" src="./Oficial_JDL_blanco.png" alt="Logo" />
+        <div>
+          <h1>Editar Registros</h1>
+          <div class="hint">Buscar y corregir inspecciones registradas</div>
+        </div>
+      </div>
+      <button id="btnBack" type="button">&larr; Regresar</button>
+    </div>
+
+    <!-- Buscador -->
+    <div class="panel">
+      <div class="panelHeader">
+        <h2>🔍 Buscar Inspecciones</h2>
+        <span class="count" id="resultCount"></span>
+      </div>
+      <div class="panelBody">
+        <div class="filters">
+          <div class="filterGroup">
+            <label>Fecha desde</label>
+            <input id="filtroDesde" type="date" />
+          </div>
+          <div class="filterGroup">
+            <label>Fecha hasta</label>
+            <input id="filtroHasta" type="date" />
+          </div>
+          <div class="filterGroup">
+            <label>Camarera</label>
+            <select id="filtroCamarera">
+              <option value="">Todas</option>
+            </select>
+          </div>
+          <div class="filterGroup">
+            <label>Modulo</label>
+            <select id="filtroModulo">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div class="filterGroup">
+            <label>Habitacion</label>
+            <input id="filtroHabitacion" type="text" placeholder="Ej: 02, 10" style="min-width:80px" />
+          </div>
+          <button class="primary" id="btnBuscar" type="button" style="height:38px">Buscar</button>
+        </div>
+
+        <div id="resultsTableWrap" class="tableWrap">
+          <div id="resultsPlaceholder" class="empty">Usa los filtros y presiona "Buscar" para encontrar registros</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editor -->
+  <div id="editOverlay" class="editOverlay" style="display:none" onclick="if(event.target===this)closeEditor()">
+    <div class="editCard">
+      <div class="editHead">
+        <div>
+          <div class="editTitle" id="editTitle">Editando Inspeccion</div>
+          <div class="editSub" id="editSub">Cargando...</div>
+        </div>
+        <button class="editClose" onclick="closeEditor()" type="button">X</button>
+      </div>
+      <div class="editBody" id="editBody">
+        <div class="loading">Cargando...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const APP_BASE = window.location.pathname.replace(/\/[^/]*$/, "/").replace(/\/+$/, "");
+    const API_BASE = `${window.location.origin}${APP_BASE}`;
+
+    let CAMARERAS = [];
+    let MODULOS = [];
+    let TIPOS = [];
+    let CURRENT_INSPECCION = null;
+    let CURRENT_DETALLES = [];
+
+    // Ciclo de estados para el checklist
+    const CYCLE = ["CUMPLE", "NO_CUMPLE", "NO_APLICA"];
+    const CYCLE_LABELS = { "CUMPLE": "OK", "NO_CUMPLE": "NO", "NO_APLICA": "NA" };
+    const CYCLE_CLASSES = { "CUMPLE": "ok", "NO_CUMPLE": "no", "NO_APLICA": "na" };
+
+    // ===== HELPERS =====
+    function toast(msg, ok = true, ms = 3200) {
+      const t = document.createElement("div");
+      t.className = "toast " + (ok ? "ok" : "err");
+      t.textContent = msg;
+      $("toasts").appendChild(t);
+      setTimeout(() => t.remove(), ms);
+    }
+
+    function escHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function setToday() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const today = `${y}-${m}-${d}`;
+      const past = new Date(now);
+      past.setDate(past.getDate() - 60);
+      const py = past.getFullYear();
+      const pm = String(past.getMonth() + 1).padStart(2, '0');
+      const pd = String(past.getDate()).padStart(2, '0');
+      if (!$("filtroDesde").value) $("filtroDesde").value = `${py}-${pm}-${pd}`;
+      if (!$("filtroHasta").value) $("filtroHasta").value = today;
+    }
+
+    async function apiGET(path) {
+      const r = await fetch(`${API_BASE}${path}`);
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `GET ${path} failed`);
+      return j;
+    }
+    async function apiPOST(path, body) {
+      const r = await fetch(`${API_BASE}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body || {})
+      });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `POST ${path} failed`);
+      return j;
+    }
+
+    // ===== LOAD DATA =====
+    async function loadCamareras() {
+      const data = await apiGET("/api/camareras");
+      CAMARERAS = Array.isArray(data?.data) ? data.data : [];
+      const sel = $("filtroCamarera");
+      sel.innerHTML = '<option value="">Todas</option>';
+      CAMARERAS.forEach(c => {
+        const o = document.createElement("option");
+        o.value = c.id;
+        o.textContent = c.nombre;
+        sel.appendChild(o);
+      });
+    }
+
+    async function loadModulos() {
+      const resp = await apiGET("/api/modules");
+      MODULOS = Array.isArray(resp?.data) ? resp.data : [];
+      const sel = $("filtroModulo");
+      sel.innerHTML = '<option value="">Todos</option>';
+      MODULOS.forEach(m => {
+        const o = document.createElement("option");
+        o.value = String(m.id);
+        o.textContent = m.descripcion || m.id;
+        sel.appendChild(o);
+      });
+    }
+
+    async function loadTipos() {
+      const data = await apiGET("/api/tipos-limpieza");
+      TIPOS = Array.isArray(data?.data) ? data.data : [];
+    }
+
+    // ===== SEARCH =====
+    $("btnBuscar").addEventListener("click", buscarRegistros);
+    ["filtroDesde","filtroHasta","filtroCamarera","filtroModulo","filtroHabitacion"].forEach(id => {
+      const el = $(id);
+      if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") buscarRegistros(); });
+    });
+
+    async function buscarRegistros() {
+      const body = {
+        fecha_desde: $("filtroDesde").value || undefined,
+        fecha_hasta: $("filtroHasta").value || undefined,
+        camarera_id: $("filtroCamarera").value || undefined,
+        modulo_id: $("filtroModulo").value || undefined,
+        habitacion_etiqueta: $("filtroHabitacion").value.trim() || undefined
+      };
+
+      const btn = $("btnBuscar");
+      const origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Buscando...";
+
+      try {
+        const resp = await apiPOST("/api/inspecciones/buscar", body);
+        const rows = Array.isArray(resp?.data) ? resp.data : [];
+        renderResults(rows);
+        $("resultCount").textContent = `${rows.length} registros`;
+      } catch (e) {
+        toast("Error: " + (e?.message || e), false, 5200);
+        $("resultsPlaceholder").innerHTML = '<div class="empty">Error al buscar. Intenta de nuevo.</div>';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = origText;
+      }
+    }
+
+    function renderResults(rows) {
+      const wrap = $("resultsTableWrap");
+      if (!rows.length) {
+        wrap.innerHTML = '<div class="empty">No se encontraron registros con esos filtros.</div>';
+        return;
+      }
+
+      let html = `<table><thead><tr>
+        <th>ID</th>
+        <th>Fecha</th>
+        <th>Habitacion</th>
+        <th>Modulo</th>
+        <th>Camarera</th>
+        <th>Tipo</th>
+        <th>Fam</th>
+        <th>Inspector</th>
+        <th style="width:80px">Accion</th>
+      </tr></thead><tbody>`;
+
+      rows.forEach(r => {
+        const fam = Number(r.es_familiar) ? '<span class="badge fam">Fam</span>' : '';
+        html += `<tr class="clickRow" onclick="openEditor(${r.id})" title="Clic para editar">
+          <td style="color:var(--muted)">#${r.id}</td>
+          <td>${escHtml(r.fecha || "-")}</td>
+          <td><strong>${escHtml(r.habitacion_etiqueta || "-")}</strong></td>
+          <td style="color:var(--muted);font-size:12px">${escHtml(r.modulo_id || "-")}</td>
+          <td>${escHtml(r.camarera_nombre || "-")}</td>
+          <td>${escHtml(r.tipo_nombre || "-")}</td>
+          <td>${fam}</td>
+          <td style="font-size:12px">${escHtml(r.inspector_nombre || "-")}</td>
+          <td><button class="primary" onclick="event.stopPropagation();openEditor(${r.id})" style="font-size:11px;padding:6px 12px">✏️ Editar</button></td>
+        </tr>`;
+      });
+
+      html += `</tbody></table>`;
+      wrap.innerHTML = html;
+    }
+
+    // ===== EDITOR =====
+    function closeEditor() {
+      const modal = $("editOverlay");
+      if (modal) modal.style.display = "none";
+      CURRENT_INSPECCION = null;
+      CURRENT_DETALLES = [];
+    }
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeEditor();
+    });
+
+    async function openEditor(id) {
+      const modal = $("editOverlay");
+      const title = $("editTitle");
+      const sub = $("editSub");
+      const body = $("editBody");
+      if (!modal || !title || !sub || !body) return;
+
+      modal.style.display = "grid";
+      title.textContent = "Cargando...";
+      sub.textContent = "Inspeccion #" + id;
+      body.innerHTML = '<div class="loading">Cargando detalle...</div>';
+
+      try {
+        const resp = await apiGET("/api/inspecciones/" + id);
+        const data = resp?.data;
+        if (!data) throw new Error("No se encontro la inspeccion");
+
+        CURRENT_INSPECCION = data;
+        CURRENT_DETALLES = Array.isArray(data.detalles) ? data.detalles : [];
+
+        title.textContent = `Inspeccion #${data.id} - ${data.habitacion_etiqueta || "-"}`;
+        sub.textContent = `${data.camarera_nombre || "-"} | ${data.tipo_nombre || "-"} | ${data.fecha || "-"}`;
+
+        renderEditor(data);
+      } catch (e) {
+        title.textContent = "Error";
+        sub.textContent = "No se pudo cargar";
+        body.innerHTML = `<div class="empty">Error: ${escHtml(e?.message || "Desconocido")}</div>`;
+      }
+    }
+
+    function renderEditor(data) {
+      const body = $("editBody");
+      const familiarChecked = Number(data.es_familiar) ? 'checked' : '';
+      const familiarHtml = `
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 0">
+          <input type="checkbox" id="editFamiliar" ${familiarChecked} />
+          <span style="font-size:13px;color:var(--muted)">Habitacion Familiar</span>
+        </label>
+      `;
+
+      let html = `
+        <div class="editGrid">
+          <div class="editField">
+            <label>Fecha</label>
+            <input id="editFecha" type="date" value="${escHtml(data.fecha || '')}" />
+          </div>
+          <div class="editField">
+            <label>Modulo</label>
+            <input id="editModulo" type="text" value="${escHtml(data.modulo_id || '')}" />
+          </div>
+          <div class="editField">
+            <label>Habitacion</label>
+            <input id="editHabitacion" type="text" value="${escHtml(data.habitacion_etiqueta || '')}" />
+          </div>
+          <div class="editField">
+            <label>Camarera</label>
+            <select id="editCamarera">
+              <option value="">Seleccionar...</option>
+              ${CAMARERAS.map(c =>
+                `<option value="${c.id}" ${Number(c.id) === Number(data.camarera_id) ? 'selected' : ''}>${escHtml(c.nombre)}</option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="editField">
+            <label>Tipo de Limpieza</label>
+            <select id="editTipo">
+              <option value="">Seleccionar...</option>
+              ${TIPOS.map(t =>
+                `<option value="${t.id}" ${Number(t.id) === Number(data.tipo_limpieza_id) ? 'selected' : ''}>${escHtml(t.nombre)}</option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="editField">
+            <label>Inspector</label>
+            <input id="editInspector" type="text" value="${escHtml(data.inspector_nombre || '')}" />
+          </div>
+          <div class="editField fullWidth">
+            ${familiarHtml}
+          </div>
+          <div class="editField fullWidth">
+            <label>Observaciones</label>
+            <textarea id="editObs" rows="3">${escHtml(data.observaciones || '')}</textarea>
+          </div>
+        </div>
+        <div id="editChecklistArea"></div>
+        <div class="editActions">
+          <button class="primary" id="btnGuardarEdit" type="button">💾 Guardar Cambios</button>
+          <button id="btnCancelEdit" type="button" onclick="closeEditor()">Cancelar</button>
+        </div>
+        <div class="editStatus" id="editStatus"></div>
+      `;
+
+      body.innerHTML = html;
+      renderChecklistEditor();
+
+      // Event listeners
+      $("btnGuardarEdit").addEventListener("click", guardarCambios);
+    }
+
+    function renderChecklistEditor() {
+      const area = $("editChecklistArea");
+      if (!area || !CURRENT_DETALLES.length) {
+        if (area) area.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">Sin items de checklist.</div>';
+        return;
+      }
+
+      // Agrupar por categoria
+      const grouped = {};
+      CURRENT_DETALLES.forEach(d => {
+        const cat = d.categoria_nombre || "General";
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(d);
+      });
+
+      let html = '<div class="checklistEdit"><h3>📋 Checklist</h3><p style="font-size:11px;color:var(--muted);margin:-6px 0 10px">Clic en el badge para cambiar: OK → NO → NA → OK...</p>';
+      Object.keys(grouped).forEach(cat => {
+        const items = grouped[cat];
+        html += `<div style="margin-bottom:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)">
+          <div style="font-size:12px;font-weight:700;color:#C4B0FF;margin:0 0 4px 10px">${escHtml(cat)}</div>`;
+        items.forEach(d => {
+          const cls = CYCLE_CLASSES[d.estado] || "na";
+          const label = CYCLE_LABELS[d.estado] || "NA";
+          html += `<div class="checklistItemRow">
+            <span class="checklistItemName">${escHtml(d.item_nombre || "-")}</span>
+            <span class="checklistItemBadge ${cls}" data-detalle-id="${d.id}" data-estado="${d.estado}" onclick="toggleDetalleEstado(this)">${label}</span>
+          </div>`;
+        });
+        html += `</div>`;
+      });
+      html += '</div>';
+      area.innerHTML = html;
+    }
+
+    // Toggle estado del detalle
+    async function toggleDetalleEstado(el) {
+      const detalleId = Number(el.dataset.detalleId);
+      const currentEstado = el.dataset.estado;
+      const idx = CYCLE.indexOf(currentEstado);
+      const nextEstado = CYCLE[(idx + 1) % CYCLE.length];
+      const nextLabel = CYCLE_LABELS[nextEstado];
+      const nextClass = CYCLE_CLASSES[nextEstado];
+
+      // UI optimista
+      el.textContent = nextLabel;
+      el.className = `checklistItemBadge ${nextClass}`;
+      el.dataset.estado = nextEstado;
+
+      // Actualizar en memoria
+      const detalle = CURRENT_DETALLES.find(d => d.id === detalleId);
+      if (detalle) detalle.estado = nextEstado;
+
+      try {
+        await apiPOST("/api/inspecciones/detalle/actualizar", { id: detalleId, estado: nextEstado });
+      } catch (e) {
+        // Revertir
+        el.textContent = CYCLE_LABELS[currentEstado];
+        el.className = `checklistItemBadge ${CYCLE_CLASSES[currentEstado]}`;
+        el.dataset.estado = currentEstado;
+        if (detalle) detalle.estado = currentEstado;
+        toast("Error al actualizar item: " + (e?.message || e), false);
+      }
+    }
+
+    // Guardar cambios de cabecera
+    async function guardarCambios() {
+      const data = CURRENT_INSPECCION;
+      if (!data) return;
+
+      const payload = { id: data.id };
+      const fecha = $("editFecha")?.value;
+      const modulo_id = $("editModulo")?.value.trim();
+      const habitacion = $("editHabitacion")?.value.trim();
+      const camarera_id = $("editCamarera")?.value;
+      const tipo_limpieza_id = $("editTipo")?.value;
+      const inspector = $("editInspector")?.value.trim();
+      const observaciones = $("editObs")?.value.trim();
+      const es_familiar = $("editFamiliar")?.checked ? 1 : 0;
+
+      if (fecha) payload.fecha = fecha;
+      if (modulo_id) payload.modulo_id = modulo_id;
+      if (habitacion) payload.habitacion_etiqueta = habitacion;
+      payload.camarera_id = camarera_id ? Number(camarera_id) : null;
+      payload.tipo_limpieza_id = tipo_limpieza_id ? Number(tipo_limpieza_id) : null;
+      payload.inspector_nombre = inspector || '';
+      payload.observaciones = observaciones || '';
+      payload.es_familiar = es_familiar;
+
+      const btn = $("btnGuardarEdit");
+      const status = $("editStatus");
+      btn.disabled = true;
+      status.textContent = '⏳ Guardando...';
+
+      try {
+        await apiPOST("/api/inspecciones/actualizar", payload);
+        status.textContent = '✅ Guardado exitosamente';
+        status.style.color = '#2EE59D';
+        toast("Inspeccion #" + data.id + " actualizada.", true, 2500);
+        setTimeout(() => {
+          buscarRegistros();
+          closeEditor();
+        }, 800);
+      } catch (e) {
+        status.textContent = '❌ Error: ' + (e?.message || 'Error');
+        status.style.color = '#FF4D6D';
+        toast("Error al guardar: " + (e?.message || e), false);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ===== NAVEGACION =====
+    $("btnBack").addEventListener("click", () => {
+      window.location.href = "./Admin.html";
+    });
+
+    // ===== INIT =====
+    (async function init() {
+      setToday();
+      try {
+        await Promise.all([
+          loadCamareras(),
+          loadModulos(),
+          loadTipos()
+        ]);
+        // Auto-buscar con fechas por defecto
+        await buscarRegistros();
+      } catch (e) {
+        toast("Error cargando datos: " + (e?.message || e), false, 5200);
+      }
+    })();
+  </script>
+</body>
+</html>

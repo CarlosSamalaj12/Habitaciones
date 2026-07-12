@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="es">
-
 <head>
   <meta charset="utf-8" />
   <link rel="icon" type="image/png" href="./Oficial_JDL_blanco.png?v=1">
@@ -8,185 +7,32 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Formulario Decorada</title>
   <style>
-    :root {
-      --bg0: #070A12;
-      --bg1: #0B1024;
-      --card: rgba(255, 255, 255, .06);
-      --stroke: rgba(255, 255, 255, .10);
-      --text: #EAF0FF;
-      --muted: #A9B3D0;
-      --ok: #2EE59D;
-      --warn: #FFB020;
-      --bad: #FF4D6D;
-      --shadow: 0 18px 60px rgba(0, 0, 0, .45);
-      --r: 18px;
-      --r2: 14px;
-    }
-
-    * {
-      box-sizing: border-box
-    }
-
-    body {
-      margin: 0;
-      font-family: "Segoe UI", Tahoma, Verdana, sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(1200px 700px at 15% 10%, rgba(124, 58, 237, .22), transparent 55%),
-        radial-gradient(900px 600px at 85% 20%, rgba(34, 211, 238, .18), transparent 55%),
-        linear-gradient(180deg, var(--bg0), var(--bg1));
-      min-height: 100vh;
-    }
-
-    .wrap {
-      max-width: 900px;
-      margin: 24px auto;
-      padding: 0 14px;
-    }
-
-    .top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 12px
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px
-    }
-
-    .logo {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      object-fit: contain;
-      background: rgba(255, 255, 255, .06);
-      padding: 4px;
-      border: 1px solid rgba(255, 255, 255, .12)
-    }
-
-    h1 {
-      font-size: 19px;
-      margin: 0
-    }
-
-    .hint {
-      font-size: 12px;
-      color: var(--muted)
-    }
-
-    .panel {
-      background: var(--card);
-      border: 1px solid var(--stroke);
-      border-radius: var(--r);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
-      overflow: hidden;
-    }
-
-    .content {
-      padding: 14px
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    label {
-      display: block;
-      margin: 0 0 6px;
-      color: var(--muted);
-      font-size: 12.5px
-    }
-
-    input,
-    select {
-      width: 100%;
-      padding: 12px;
-      border-radius: var(--r2);
-      border: 1px solid rgba(255, 255, 255, .10);
-      background: rgba(10, 14, 28, .55);
-      color: var(--text);
-      outline: none;
-      font-size: 14px;
-    }
-
-    .boxNote {
-      margin-top: 12px;
-      padding: 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(255, 176, 32, .45);
-      background: rgba(255, 176, 32, .12);
-      color: #ffe4b5;
-      font-size: 13px;
-    }
-
-    .btns {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 14px
-    }
-
-    button {
-      border: 1px solid rgba(255, 255, 255, .16);
-      background: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .06));
-      color: var(--text);
-      padding: 10px 14px;
-      border-radius: 14px;
-      cursor: pointer;
-      font-weight: 700;
-      font-size: 14px;
-      line-height: 1.25;
-      letter-spacing: .2px;
-    }
-
-    .primary {
-      border: 1px solid rgba(255, 176, 32, .55);
-      background: linear-gradient(135deg, rgba(255, 176, 32, .92), rgba(255, 214, 102, .90));
-      color: #1f1700;
-    }
-
-    .toastWrap {
-      position: fixed;
-      top: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 9999;
-      display: grid;
-      gap: 8px;
-      width: min(560px, calc(100vw - 22px))
-    }
-
-    .toast {
-      border-radius: 14px;
-      padding: 10px 12px;
-      border: 1px solid rgba(255, 255, 255, .12);
-      background: rgba(10, 14, 28, .92);
-      font-size: 13px
-    }
-
-    .toast.ok {
-      border-color: rgba(46, 229, 157, .45)
-    }
-
-    .toast.err {
-      border-color: rgba(255, 77, 109, .45)
-    }
-
-    @media (max-width: 760px) {
-      .grid {
-        grid-template-columns: 1fr
-      }
-    }
+    :root{--bg0:#070A12;--bg1:#0B1024;--card:rgba(255,255,255,.06);--stroke:rgba(255,255,255,.10);--text:#EAF0FF;--muted:#A9B3D0;--ok:#2EE59D;--warn:#FFB020;--bad:#FF4D6D;--shadow:0 18px 60px rgba(0,0,0,.45);--r:18px;--r2:14px}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:"Segoe UI",Tahoma,Verdana,sans-serif;color:var(--text);background:radial-gradient(1200px 700px at 15% 10%,rgba(124,58,237,.22),transparent 55%),radial-gradient(900px 600px at 85% 20%,rgba(34,211,238,.18),transparent 55%),linear-gradient(180deg,var(--bg0),var(--bg1));min-height:100vh}
+    .wrap{max-width:900px;margin:24px auto;padding:0 14px}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{width:48px;height:48px;border-radius:12px;object-fit:contain;background:rgba(255,255,255,.06);padding:4px;border:1px solid rgba(255,255,255,.12)}
+    h1{font-size:19px;margin:0}
+    .hint{font-size:12px;color:var(--muted)}
+    .panel{background:var(--card);border:1px solid var(--stroke);border-radius:var(--r);box-shadow:var(--shadow);backdrop-filter:blur(10px);overflow:hidden}
+    .content{padding:14px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    label{display:block;margin:0 0 6px;color:var(--muted);font-size:12.5px}
+    input,select{width:100%;padding:12px;border-radius:var(--r2);border:1px solid rgba(255,255,255,.10);background:rgba(10,14,28,.55);color:var(--text);outline:none;font-size:14px}
+    .boxNote{margin-top:12px;padding:12px;border-radius:14px;border:1px solid rgba(255,176,32,.45);background:rgba(255,176,32,.12);color:#ffe4b5;font-size:13px}
+    .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+    button{border:1px solid rgba(255,255,255,.16);background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));color:var(--text);padding:10px 14px;border-radius:14px;cursor:pointer;font-weight:700;font-size:14px;line-height:1.25;letter-spacing:.2px}
+    .primary{border:1px solid rgba(255,176,32,.55);background:linear-gradient(135deg,rgba(255,176,32,.92),rgba(255,214,102,.90));color:#1f1700}
+    .loading{text-align:center;padding:40px 14px;color:var(--muted);font-size:14px}
+    .toastWrap{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;display:grid;gap:8px;width:min(560px,calc(100vw - 22px))}
+    .toast{border-radius:14px;padding:10px 12px;border:1px solid rgba(255,255,255,.12);background:rgba(10,14,28,.92);font-size:13px}
+    .toast.ok{border-color:rgba(46,229,157,.45)}
+    .toast.err{border-color:rgba(255,77,109,.45)}
+    @media(max-width:760px){.grid{grid-template-columns:1fr}}
   </style>
 </head>
-
 <body>
   <div id="toasts" class="toastWrap"></div>
   <div class="wrap">
@@ -195,57 +41,22 @@
         <img class="logo" src="./Oficial_JDL_blanco.png" alt="Logo">
         <div>
           <h1>Formulario Decorada</h1>
-          <div class="hint">Envia a Monday con tipo de limpieza fijo en Salida y checklist en NA.</div>
+          <div class="hint">Registra la decoracion. Tipo de limpieza fijo: Salida.</div>
         </div>
       </div>
     </div>
-
-    <div class="panel">
-      <div class="content">
+    <div class="panel" id="mainPanel">
+      <div class="loading" id="loadingMsg">Cargando datos...</div>
+      <div class="content" id="formContent" style="display:none">
         <div class="grid">
-          <div>
-            <label>Modulo</label>
-            <select id="moduloSel"></select>
-          </div>
-          <div>
-            <label>Habitacion (Area)</label>
-            <select id="habitacionSel"></select>
-          </div>
-          <div>
-            <label>Encargada (camarera)</label>
-            <select id="encargadaSel">
-              <option value="">Seleccionar...</option>
-              <option value="Yerly Rodriguez">Yerly Rodriguez</option>
-              <option value="Carolina De La Vega">Carolina De La Vega</option>
-              <option value="Aracely Julajuj">Aracely Julajuj</option>
-              <option value="Yessica Xep">Yessica Xep</option>
-              <option value="Reyna Saminez">Reyna Saminez</option>
-              <option value="Ester Baran">Ester Baran</option>
-              <option value="Yojana Aju">Yojana Aju</option>
-              <option value="Nelly Palacios">Nelly Palacios</option>
-              <option value="Jennifer Raxtun">Jennifer Raxtun</option>
-              <option value="Marilyn Lopic">Marilyn Lopic</option>
-            </select>
-          </div>
-          <div>
-            <label>Supervisor</label>
-            <input id="supervisorTxt" type="text" />
-          </div>
-          <div>
-            <label>Fecha</label>
-            <input id="fechaTxt" type="date" />
-          </div>
-          <div>
-            <label>Tipo limpieza</label>
-            <input id="tipoTxt" type="text" value="Salida" readonly />
-          </div>
+          <div><label>Modulo</label><select id="moduloSel"></select></div>
+          <div><label>Habitacion</label><select id="habitacionSel"></select></div>
+          <div><label>Encargada</label><select id="encargadaSel"><option value="">Cargando...</option></select></div>
+          <div><label>Supervisor</label><input id="supervisorTxt" type="text" /></div>
+          <div><label>Fecha</label><input id="fechaTxt" type="date" /></div>
+          <div><label>Tipo limpieza</label><input id="tipoTxt" type="text" value="Salida" readonly /></div>
         </div>
-
-        <div class="boxNote">
-          Los checks no se muestran en este formulario: se enviaran todos como <b>No Aplica</b>.
-          La hora de finalizacion se toma al presionar <b>Guardar Decorada</b>.
-        </div>
-
+        <div class="boxNote">Los checks no se muestran: se enviaran todos como <b>No Aplica</b>. La hora se toma al presionar <b>Guardar Decorada</b>.</div>
         <div class="btns">
           <button class="primary" id="btnGuardar" type="button">Guardar Decorada</button>
           <button id="btnBack" type="button">Regresar</button>
@@ -253,55 +64,13 @@
       </div>
     </div>
   </div>
-
   <script>
     const $ = (id) => document.getElementById(id);
-    const APP_BASE = window.location.pathname
-      .replace(/\/[^/]*$/, "/")
-      .replace(/\/+$/, "");
-    const API_BASE = `${window.location.origin}${APP_BASE}`;
-    const API_URL = `${API_BASE}/api/enviar-inspeccion`;
-    const BOARD_ID = "18398162991";
-
-    const COL_AREA_DROPDOWN = "dropdown_mkzw93qc";
-    const COL_CAMARERA_DROPDOWN = "camarera__1";
-    const COL_FECHA = "fecha3";
-    const COL_TEXTO_LARGO = "texto_largo2";
-    const COL_ESTADO_CAMARERA = "estado7";
-    const COL_ESTADO_LIMPIEZA = "estado17";
-    const COL_MODULO = "color_mm05zyc3";
-    const COL_HORA_FIN = "hour_mm05y6f1";
-    const COL_HORA_FIN_CHECK = "hour_mm05bza8";
-
-    const CHECK_ITEMS = [
-      { id: "limpieza_y_desinfecci_n_de_puerta", label: "Alfombra Plastica Bano" },
-      { id: "limpieza_y_desinfecci_n_de_controles", label: "Amenidades Bano" },
-      { id: "limpieza_y_desinfecci_n_de_manijas", label: "Bano" },
-      { id: "dup__of_ba_o5", label: "Toallas de Mano" },
-      { id: "dup__of_toallas_de_mano2", label: "Toallas De Pies" },
-      { id: "dup__of_toallas_de_mano", label: "Toallas de Cuerpo" },
-      { id: "dup__of_ba_o", label: "Ciza" },
-      { id: "ducha_tina", label: "Closet" },
-      { id: "lavamanos", label: "Mesas" },
-      { id: "wc", label: "Camas" },
-      { id: "dup__of_camas", label: "Blancos De Cama" },
-      { id: "dup__of_blancos_de_cama", label: "Edredon y Almohadas Extra" },
-      { id: "ventana_ba_o", label: "TV y Control" },
-      { id: "puerta_ba_o", label: "Ventana y Puerta" },
-      { id: "luminarias", label: "Amenidades Habitacion" },
-      { id: "espejo", label: "Habitacion" },
-      { id: "color_mkr8bns6", label: "Cocineta" },
-    ];
-
-    let TIME_OFFSET_MS = 0;
-    let MODULES = [];
-    let ROOMS_BY_MODULE = new Map();
+    const APP_BASE = window.location.pathname.replace(/\/[^/]*$/, "/").replace(/\/+$/, "");
+    const API_BASE = window.location.origin + APP_BASE;
+    let TIME_OFFSET_MS = 0, MODULES = [], ROOMS_BY_MODULE = new Map(), CAMARERAS = [];
     const qs = new URLSearchParams(window.location.search);
-    const CTX = {
-      moduleId: String(qs.get("m") || "").trim(),
-      user: String(qs.get("u") || "").trim(),
-      dept: String(qs.get("d") || "").trim()
-    };
+    const CTX = { moduleId: (qs.get("m") || "").trim(), user: (qs.get("u") || "").trim(), dept: (qs.get("d") || "").trim() };
 
     function nowServerMs() { return Date.now() + TIME_OFFSET_MS; }
     function toast(msg, ok = true, ms = 3200) {
@@ -311,184 +80,152 @@
       $("toasts").appendChild(t);
       setTimeout(() => t.remove(), ms);
     }
-    function isGerencia() {
-      return String(CTX.dept || "").toLowerCase().includes("gerencia");
+    function isReadOnlyRole() {
+      const d = (CTX.dept || "").toLowerCase();
+      return d.includes("gerencia") || d.includes("reportes");
     }
     function normalizeRoom(v) {
       const s = String(v || "").trim();
       if (/^\d+$/.test(s) && s.length === 1) return s.padStart(2, "0");
       return s;
     }
-    function toMondayLabelForColumn(columnId) {
-      if (columnId === "luminarias") return "No APlica";
-      return "No Aplica";
-    }
-    function mapSupervisorLabel(loginName) {
-      const x = String(loginName || "").trim().toLowerCase();
-      if (x === "carolina de la vega") return "Carolina De La Vega";
-      if (x === "Maria Del Carmen Matzul") return "Maria Del Carmen Matzul";
-      if (x === "diana chavez") return "Diana Chavez";
-      return "ADMINISTRATIVO";
-    }
-    function toMondayHourObjNow() {
-      const d = new Date(nowServerMs());
-      const parts = new Intl.DateTimeFormat("es-GT", {
-        timeZone: "America/Guatemala",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-      }).formatToParts(d);
-      const get = (t) => Number(parts.find(p => p.type === t)?.value || 0);
-      return { hour: get("hour"), minute: get("minute") };
-    }
     function todayYMD() {
       const d = new Date(nowServerMs());
-      const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "America/Guatemala",
-        year: "numeric", month: "2-digit", day: "2-digit"
-      }).formatToParts(d);
-      const get = (t) => parts.find(p => p.type === t)?.value || "00";
-      return `${get("year")}-${get("month")}-${get("day")}`;
+      const p = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guatemala", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(d);
+      const g = t => p.find(x => x.type === t)?.value || "00";
+      return g("year") + "-" + g("month") + "-" + g("day");
+    }
+    function nowGT() {
+      const d = new Date(nowServerMs());
+      const p = new Intl.DateTimeFormat("es-GT", { timeZone: "America/Guatemala", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).formatToParts(d);
+      const g = t => p.find(x => x.type === t)?.value || "00";
+      return g("hour") + ":" + g("minute") + ":" + g("second");
     }
     async function syncServerTime() {
-      try {
-        const r = await fetch(`${API_BASE}/api/time`, { cache: "no-store" });
-        const j = await r.json().catch(() => null);
-        const serverMs = Number(j?.serverMs);
-        if (Number.isFinite(serverMs)) TIME_OFFSET_MS = serverMs - Date.now();
-      } catch { }
+      try { const r = await fetch(API_BASE + "/api/time", { cache: "no-store" }); const j = await r.json(); const ms = Number(j?.serverMs); if (Number.isFinite(ms)) TIME_OFFSET_MS = ms - Date.now(); } catch {}
     }
     async function apiGET(path) {
-      const r = await fetch(`${API_BASE}${path}`);
-      const j = await r.json().catch(() => null);
-      if (!r.ok || !j?.ok) throw new Error(j?.error || `GET ${path} failed`);
+      const r = await fetch(API_BASE + path);
+      const j = await r.json();
+      if (!r.ok || !j?.ok) throw new Error(j?.error || "GET " + path + " failed");
       return j.data || [];
     }
     async function apiPOST(path, body) {
-      const r = await fetch(`${API_BASE}${path}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body || {})
-      });
-      const j = await r.json().catch(() => null);
-      if (!r.ok || !j?.ok) throw new Error(j?.error || `POST ${path} failed`);
+      const r = await fetch(API_BASE + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+      const j = await r.json();
+      if (!r.ok || !j?.ok) throw new Error(j?.error || "POST " + path + " failed");
       return j;
     }
+
     function renderModules() {
       const sel = $("moduloSel");
-      sel.innerHTML = `<option value="">Seleccionar...</option>`;
+      sel.innerHTML = '<option value="">Seleccionar...</option>';
       MODULES.forEach(m => {
         const o = document.createElement("option");
         o.value = String(m.id);
         o.textContent = String(m.descripcion);
         sel.appendChild(o);
       });
-      if (CTX.moduleId && MODULES.some(m => String(m.id) === CTX.moduleId)) {
-        sel.value = CTX.moduleId;
-      } else if (MODULES[0]) {
-        sel.value = String(MODULES[0].id);
-      }
+      if (CTX.moduleId && MODULES.some(m => String(m.id) === CTX.moduleId)) sel.value = CTX.moduleId;
+      else if (MODULES[0]) sel.value = String(MODULES[0].id);
     }
-    async function loadRoomsByModule(moduleId) {
-      const mod = String(moduleId || "");
-      if (!mod) return [];
-      if (!ROOMS_BY_MODULE.has(mod)) {
-        const rows = await apiGET(`/api/rooms?modulo_id=${encodeURIComponent(mod)}`);
-        ROOMS_BY_MODULE.set(mod, Array.isArray(rows) ? rows : []);
-      }
-      return ROOMS_BY_MODULE.get(mod) || [];
+
+    function renderCamareras() {
+      const sel = $("encargadaSel");
+      sel.innerHTML = '<option value="">Seleccionar...</option>';
+      CAMARERAS.forEach(c => {
+        const o = document.createElement("option");
+        o.value = String(c.id);
+        o.textContent = c.nombre;
+        sel.appendChild(o);
+      });
     }
-    async function renderRoomsForModule(moduleId) {
+
+    async function loadRoomsByModule(mod) {
+      const m = String(mod || "");
+      if (!m) return [];
+      if (!ROOMS_BY_MODULE.has(m)) {
+        const rows = await apiGET("/api/rooms?modulo_id=" + encodeURIComponent(m));
+        ROOMS_BY_MODULE.set(m, Array.isArray(rows) ? rows : []);
+      }
+      return ROOMS_BY_MODULE.get(m) || [];
+    }
+
+    async function renderRoomsForModule(mod) {
       const sel = $("habitacionSel");
-      sel.innerHTML = `<option value="">Seleccionar...</option>`;
-      const rows = await loadRoomsByModule(moduleId);
-      rows
-        .map(r => normalizeRoom(r?.etiqueta))
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b, "es", { numeric: true }))
-        .forEach(h => {
-          const o = document.createElement("option");
-          o.value = h;
-          o.textContent = h;
-          sel.appendChild(o);
-        });
-    }
-    function buildObservaciones(areaLabel, encargada, supervisor, fecha) {
-      const lines = [];
-      lines.push(`Area: ${areaLabel}`);
-      lines.push(`Encargada: ${encargada}`);
-      lines.push(`Supervisor: ${supervisor || "-"}`);
-      lines.push(`Tipo de limpieza: Salida`);
-      lines.push(`Fecha: ${fecha}`);
-      lines.push("Checklist: Todos en No Aplica (Decorada).");
-      return lines.join("\n");
+      sel.innerHTML = '<option value="">Seleccionar...</option>';
+      const rows = await loadRoomsByModule(mod);
+      rows.map(r => normalizeRoom(r?.etiqueta)).filter(Boolean).sort((a, b) => a.localeCompare(b, "es", { numeric: true })).forEach(h => {
+        const o = document.createElement("option");
+        o.value = h;
+        o.textContent = h;
+        sel.appendChild(o);
+      });
     }
 
-    async function sendDecorada() {
-      const moduleId = $("moduloSel").value;
-      const moduleName = String($("moduloSel").selectedOptions?.[0]?.textContent || "").trim();
-      const areaLabel = String($("habitacionSel").value || "").trim();
-      const encargada = String($("encargadaSel").value || "").trim();
-      const supervisor = String($("supervisorTxt").value || "").trim();
-      const fecha = String($("fechaTxt").value || "").trim();
+    async function saveDecoradaLocal() {
+      const modulo_id = $("moduloSel").value;
+      const etiqueta = $("habitacionSel").value;
+      const encargada_id = $("encargadaSel").value;
+      const supervisor = $("supervisorTxt").value.trim();
+      const fecha = $("fechaTxt").value;
 
-      if (!moduleId) { toast("Selecciona un modulo.", false); return; }
-      if (!areaLabel) { toast("Selecciona una habitacion.", false); return; }
-      if (!encargada) { toast("Selecciona la encargada.", false); return; }
+      if (!modulo_id) { toast("Selecciona un modulo.", false); return; }
+      if (!etiqueta) { toast("Selecciona una habitacion.", false); return; }
+      if (!encargada_id) { toast("Selecciona la encargada.", false); return; }
       if (!fecha) { toast("Selecciona la fecha.", false); return; }
 
-      const hFin = toMondayHourObjNow();
-      const itemName = `Decorada ${areaLabel} (${fecha})`;
+      const encargada = CAMARERAS.find(c => String(c.id) === String(encargada_id));
+      const encargadaName = encargada ? encargada.nombre : "";
+      const ahoraGT = nowGT();
+      const obsLines = [
+        "Area: " + etiqueta,
+        "Encargada: " + encargadaName,
+        "Supervisor: " + (supervisor || "-"),
+        "Tipo de limpieza: Salida",
+        "Fecha: " + fecha,
+        "Hora: " + ahoraGT,
+        "Checklist: Todos en No Aplica (Decorada)."
+      ];
+      const observaciones = obsLines.join("\n");
 
-      const columnValues = {};
-      columnValues[COL_AREA_DROPDOWN] = { labels: [areaLabel] };
-      columnValues[COL_CAMARERA_DROPDOWN] = { labels: [encargada] };
-      columnValues[COL_ESTADO_CAMARERA] = { label: mapSupervisorLabel(supervisor || CTX.user) };
-      columnValues[COL_ESTADO_LIMPIEZA] = { label: "Salida" };
-      if (moduleName) columnValues[COL_MODULO] = { label: moduleName };
-      columnValues[COL_FECHA] = { date: fecha };
-      columnValues[COL_HORA_FIN] = hFin;
-      columnValues[COL_HORA_FIN_CHECK] = hFin;
-      columnValues[COL_TEXTO_LARGO] = { text: buildObservaciones(areaLabel, encargada, supervisor, fecha) };
-      CHECK_ITEMS.forEach(it => { columnValues[it.id] = { label: toMondayLabelForColumn(it.id) }; });
+      // Obtener habitacion_id desde la cache
+      const rooms = await loadRoomsByModule(modulo_id);
+      const room = rooms.find(r => normalizeRoom(r?.etiqueta) === normalizeRoom(etiqueta));
+      const habitacion_id = room?.habitacion_id || null;
 
-      const resp = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ boardId: BOARD_ID, itemName, columnValues })
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok || !data?.ok) throw new Error(data?.error || "No se pudo enviar a Monday");
-      return data;
-    }
-    async function markRoomDecoradaInDB() {
-      const modulo_id = String($("moduloSel").value || "").trim();
-      const etiqueta = String($("habitacionSel").value || "").trim();
-      if (!modulo_id || !etiqueta) return;
-      const rows = await apiGET(`/api/rooms?modulo_id=${encodeURIComponent(modulo_id)}`);
-      const current = (Array.isArray(rows) ? rows : []).find(r => normalizeRoom(r?.etiqueta) === normalizeRoom(etiqueta));
-      const patch = current ? {
-        estado: current.estado ?? "libre",
-        adultos: Number.isFinite(Number(current.adultos)) ? Number(current.adultos) : 0,
-        ninos: Number.isFinite(Number(current.ninos)) ? Number(current.ninos) : 0,
-        observaciones: current.observaciones ?? "",
-        desde: current.desde ?? null,
-        inicio_limpieza: current.inicio_limpieza ?? null,
-        fin_limpieza: current.fin_limpieza ?? null,
-        inicio_repaso: current.inicio_repaso ?? null,
-        repaso: current.repaso ?? null,
-        camarera_asignada: current.camarera_asignada ?? null,
-        tipo_limpieza: current.tipo_limpieza ?? null,
-        inspector_asignado: current.inspector_asignado ?? null,
-        prioridad_limpieza: current.prioridad_limpieza ?? null,
-        decorada: 1
-      } : { decorada: 1 };
-      await apiPOST("/api/room/update", {
-        modulo_id,
-        etiqueta,
-        patch,
-        source: "decorada_form"
-      });
+      // 1. Guardar inspeccion local con es_decorada=1
+      const inspeccionData = {
+        modulo_id: modulo_id,
+        modulo_nombre: MODULES.find(m => String(m.id) === modulo_id)?.descripcion || "",
+        habitacion_etiqueta: etiqueta,
+        fecha: fecha,
+        camarera_id: encargada_id ? Number(encargada_id) : null,
+        tipo_limpieza_id: null,
+        inspector_nombre: supervisor || CTX.user || "",
+        inspector_dept: CTX.dept || "",
+        inicio_limpieza: null,
+        fin_limpieza: null,
+        hora_checklist: new Date(nowServerMs()).toISOString(),
+        observaciones: observaciones,
+        es_decorada: 1,
+        es_familiar: 0
+      };
+
+      await apiPOST("/api/inspecciones/guardar", inspeccionData);
+
+      // 2. Marcar habitacion como decorada en estados_habitacion
+      if (habitacion_id) {
+        await apiPOST("/api/room/update", {
+          modulo_id,
+          etiqueta,
+          patch: { decorada: 1, observaciones: observaciones },
+          actor: { name: CTX.user || "", dept: CTX.dept || "" },
+          source: "decorada"
+        });
+      }
+
+      return true;
     }
 
     $("moduloSel").addEventListener("change", async () => {
@@ -498,21 +235,18 @@
       window.location.href = "./index.html";
     });
     $("btnGuardar").addEventListener("click", async () => {
-      if (isGerencia()) {
-        toast("Gerencia solo puede visualizar.", false);
+      if (isReadOnlyRole()) {
+        toast("Restringido: solo visualizacion.", false);
         return;
       }
       $("btnGuardar").disabled = true;
       try {
-        toast("Enviando Decorada...", true, 1600);
-        await sendDecorada();
-        await markRoomDecoradaInDB();
-        toast("Enviado y guardado.", true, 1200);
-        setTimeout(() => {
-          window.location.href = "./index.html";
-        }, 900);
+        toast("Guardando Decorada...", true, 1500);
+        await saveDecoradaLocal();
+        toast("Decorada guardada correctamente.", true, 1200);
+        setTimeout(() => { window.location.href = "./index.html"; }, 1000);
       } catch (e) {
-        toast(String(e?.message || e || "Error"), false, 5200);
+        toast(String(e?.message || e || "Error al guardar"), false, 5200);
       } finally {
         $("btnGuardar").disabled = false;
       }
@@ -523,14 +257,22 @@
       $("fechaTxt").value = todayYMD();
       $("supervisorTxt").value = CTX.user || "";
       try {
-        const mods = await apiGET("/api/modules");
+        const [mods, camas] = await Promise.all([
+          apiGET("/api/modules"),
+          apiGET("/api/camareras")
+        ]);
         MODULES = Array.isArray(mods) ? mods : [];
+        CAMARERAS = Array.isArray(camas) ? camas : [];
         renderModules();
+        renderCamareras();
         await renderRoomsForModule($("moduloSel").value);
+        // Mostrar formulario
+        $("loadingMsg").style.display = "none";
+        $("formContent").style.display = "block";
       } catch (e) {
-        toast(e?.message || "No se pudieron cargar modulos/habitaciones", false, 5200);
+        toast("Error cargando datos: " + (e?.message || e), false, 5200);
       }
-      if (isGerencia()) {
+      if (isReadOnlyRole()) {
         $("moduloSel").disabled = true;
         $("habitacionSel").disabled = true;
         $("encargadaSel").disabled = true;
@@ -541,5 +283,4 @@
     })();
   </script>
 </body>
-
 </html>

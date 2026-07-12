@@ -113,20 +113,24 @@ function roleOf(sess) {
   const d = normalizeDept(sess?.dept);
   if (d === "administrador" || d === "admin") return "ADMIN";
   if (d.includes("gerencia")) return "GERENCIA";
-  if (d.includes("camar")) return "CAMARERIA";
+  if (d.includes("reportes")) return "REPORTES";
+  if (d.includes("ama") || d.includes("camar")) return "AMA_LLAVES";
   return "RECEPCION";
 }
 function canReception(role) {
   return role === "RECEPCION" || role === "ADMIN";
 }
 function canUseMantenimiento(role) {
-  return canReception(role) || role === "CAMARERIA";
+  return canReception(role) || role === "AMA_LLAVES";
 }
 function canUseLiberar(role) {
-  return canReception(role) || role === "CAMARERIA";
+  return canReception(role) || role === "AMA_LLAVES";
 }
 function canUseDecorada(role) {
-  return role === "CAMARERIA" || role === "ADMIN";
+  return role === "AMA_LLAVES" || role === "ADMIN";
+}
+function canViewReports(role) {
+  return role === "ADMIN" || role === "GERENCIA" || role === "REPORTES";
 }
 function isAdmin(role) {
   return role === "ADMIN";
@@ -154,14 +158,48 @@ function renderActiveUser() {
   updateAdminUI();
   updateDecoradaUI();
 }
+function openAdminPanel() {
+  if (isLocked()) { showLogin(); return; }
+  const role = roleOf(getSession());
+  if (!isAdmin(role)) {
+    toast("err", "Restringido", "Solo administrador puede acceder.");
+    return;
+  }
+  window.location.href = "./Admin.html";
+}
+function openReportes() {
+  if (isLocked()) { showLogin(); return; }
+  window.location.href = "./Reportes.html";
+}
+function openEditarRegistros() {
+  if (isLocked()) { showLogin(); return; }
+  window.location.href = "./EditarRegistros.html";
+}
+
 function updateAdminUI() {
-  const btn = $("btnConfig");
-  if (!btn) return;
+  const btnAdmin = $("btnAdmin");
+  const btnReportes = $("btnReportes");
+  const btnEditarReg = $("btnEditarReg");
   const sess = getSession();
   const role = roleOf(sess);
-  if (sess?.name && isAdmin(role)) btn.classList.remove("hidden");
-  else btn.classList.add("hidden");
+  const visible = sess?.name && isAdmin(role);
+  if (btnAdmin) {
+    if (visible) btnAdmin.classList.remove("hidden");
+    else btnAdmin.classList.add("hidden");
+  }
+  if (btnReportes) {
+    if (sess?.name && canViewReports(role)) btnReportes.classList.remove("hidden");
+    else btnReportes.classList.add("hidden");
+  }
+  if (btnEditarReg) {
+    if (sess?.name && canViewReports(role)) btnEditarReg.classList.remove("hidden");
+    else btnEditarReg.classList.add("hidden");
+  }
 }
+
+$("btnAdmin")?.addEventListener("click", openAdminPanel);
+$("btnReportes")?.addEventListener("click", openReportes);
+$("btnEditarReg")?.addEventListener("click", openEditarRegistros);
 function isLocked() {
   const sess = getSession();
   if (!sess) return true;
@@ -192,7 +230,16 @@ function toast(type, title, msg) {
 /* =========================
    API
 ========================= */
+function requireOnline() {
+  if (!navigator.onLine) {
+    toast("err", "Sin conexion", "No hay conexion a internet. Verifica tu señal y vuelve a intentar.");
+    return false;
+  }
+  return true;
+}
+
 async function apiGET(path) {
+  if (!navigator.onLine) throw new Error("Sin conexion a internet. Verifica tu señal.");
   const r = await fetch(`${API_BASE}${path}`, { method: "GET" });
   const j = await r.json().catch(() => null);
   if (!r.ok || !j) throw new Error(j?.error || `GET ${path} failed`);
@@ -200,6 +247,7 @@ async function apiGET(path) {
   return j;
 }
 async function apiPOST(path, body) {
+  if (!navigator.onLine) throw new Error("Sin conexion a internet. Verifica tu señal.");
   const r = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -281,7 +329,11 @@ function startFallbackSync(intervalMs = 4000) {
     try {
       if (!activeModuleId) return;
       if (isLoginVisible()) return;
-      await loadRooms(activeModuleId);
+      if (socket?.connected) return;
+      const resp = await apiGET(`/api/rooms?modulo_id=${encodeURIComponent(String(activeModuleId))}`);
+      if (socket?.connected) return;
+      const rows = (resp.data || []).map(normalizeRoom);
+      roomsCache.set(String(activeModuleId), rows);
       scheduleRenderRooms();
       updateSummaryCounts();
     } catch {}
@@ -503,7 +555,10 @@ $("btnLogin").addEventListener("click", async () => {
       $("loginPass").focus();
       return;
     }
+    if (!requireOnline()) return;
 
+    const btn = $("btnLogin");
+    btn.disabled = true;
     const resp = await apiPOST("/api/login", { nombre: selName, clave });
     const u = resp.user;
     if (String(u.name) !== selName) {
@@ -513,7 +568,7 @@ $("btnLogin").addEventListener("click", async () => {
       return;
     }
 
-    setSession({ id: u.id, name: u.name, dept: u.dept, at: Date.now() });
+    setSession({ id: u.id, name: u.name, dept: u.dept, token: resp.token, at: Date.now() });
     setActivity();
     hideLogin();
     toast("ok", "Bienvenido", `${u.name} - ${u.dept}`);
@@ -521,118 +576,21 @@ $("btnLogin").addEventListener("click", async () => {
     await bootData();
     renderAll();
     renderActiveUser();
+    adjustMobileLayout();
   } catch (e) {
     $("loginErr").classList.remove("hidden");
     toast("err", "Error", e.message || "Contrasena incorrecta");
     $("loginPass").focus();
+  } finally {
+    $("btnLogin").disabled = false;
   }
 });
-
 $("loginPass").addEventListener("keydown", (e) => {
   if (e.key === "Enter") $("btnLogin").click();
 });
 
 $("btnLock").addEventListener("click", () => showLogin());
 
-
-/* =========================
-   CONFIG (ADMIN)
-========================= */
-const btnConfig = $("btnConfig");
-const configOverlay = $("configOverlay");
-const configClose = $("configClose");
-const configCancel = $("configCancel");
-const configSave = $("configSave");
-const cfgName = $("cfgName");
-const cfgDept = $("cfgDept");
-const cfgPass = $("cfgPass");
-const cfgPass2 = $("cfgPass2");
-const cfgErr = $("cfgErr");
-
-function resetConfigForm() {
-  if (cfgName) cfgName.value = "";
-  if (cfgDept) cfgDept.value = cfgDept.value || "RECEPCION";
-  if (cfgPass) cfgPass.value = "";
-  if (cfgPass2) cfgPass2.value = "";
-  if (cfgErr) {
-    cfgErr.classList.add("hidden");
-    cfgErr.textContent = "";
-  }
-}
-
-function openConfig() {
-  if (isLocked()) { showLogin(); return; }
-  const role = roleOf(getSession());
-  if (!isAdmin(role)) {
-    toast("err", "Restringido", "Solo administrador puede configurar.");
-    return;
-  }
-  if (!configOverlay) return;
-  resetConfigForm();
-  configOverlay.classList.remove("hidden");
-  if (cfgName) cfgName.focus();
-}
-
-function closeConfig() {
-  if (!configOverlay) return;
-  configOverlay.classList.add("hidden");
-}
-
-if (btnConfig) btnConfig.addEventListener("click", openConfig);
-if (configClose) configClose.addEventListener("click", closeConfig);
-if (configCancel) configCancel.addEventListener("click", closeConfig);
-if (configOverlay) configOverlay.addEventListener("click", (e) => { if (e.target === configOverlay) closeConfig(); });
-if (configSave) configSave.addEventListener("click", async () => {
-  try {
-    if (isLocked()) { showLogin(); return; }
-    const role = roleOf(getSession());
-    if (!isAdmin(role)) {
-      toast("err", "Restringido", "Solo administrador puede configurar.");
-      return;
-    }
-
-    const nombre = String(cfgName?.value || "").trim();
-    const dept = String(cfgDept?.value || "").trim();
-    const pass = String(cfgPass?.value || "");
-    const pass2 = String(cfgPass2?.value || "");
-
-    if (!nombre || !dept || !pass) {
-      if (cfgErr) {
-        cfgErr.textContent = "Completa todos los campos";
-        cfgErr.classList.remove("hidden");
-      }
-      return;
-    }
-    if (pass.length < 4) {
-      if (cfgErr) {
-        cfgErr.textContent = "La contrasena debe tener al menos 4 caracteres";
-        cfgErr.classList.remove("hidden");
-      }
-      return;
-    }
-    if (pass !== pass2) {
-      if (cfgErr) {
-        cfgErr.textContent = "Las contrasenas no coinciden";
-        cfgErr.classList.remove("hidden");
-      }
-      return;
-    }
-
-    const resp = await apiPOST("/api/users/create", { nombre, departamento: dept, clave: pass });
-    if (resp?.ok) {
-      toast("ok", "Usuario creado", `${nombre} - ${dept}`);
-      closeConfig();
-      resetConfigForm();
-      loadLoginUsers();
-    }
-  } catch (e) {
-    if (cfgErr) {
-      cfgErr.textContent = e.message || "No se pudo crear usuario";
-      cfgErr.classList.remove("hidden");
-    }
-    toast("err", "Error", e.message || "No se pudo crear usuario");
-  }
-});
 
 /* =========================
    UI MODULES
@@ -810,6 +768,40 @@ async function updateRoom(modulo_id, etiqueta, patch, source = "app") {
 }
 
 /* =========================
+   MOBILE LAYOUT ADJUST
+========================= */
+function adjustMobileLayout() {
+  const isMobile = window.innerWidth <= 767;
+  const $summary = $('#summaryBar');
+  const $progAll = $('#summaryProgressAll');
+  const $modulesBar = document.querySelector('.modulesBar');
+
+  if (!$summary || !$progAll || !$modulesBar) return;
+
+  const alreadyMobile = $summary.dataset.mobilePlaced === '1';
+
+  if (isMobile && !alreadyMobile) {
+    // Move summary elements after modules bar
+    $modulesBar.after($progAll);
+    $modulesBar.after($summary);
+    $summary.dataset.mobilePlaced = '1';
+    $progAll.dataset.mobilePlaced = '1';
+    document.body.classList.add('layout-mobile');
+  } else if (!isMobile && alreadyMobile) {
+    // Move them back to the header
+    const $brandText = document.querySelector('.brandText');
+    const $userLabel = $('#activeUserLabel');
+    if ($brandText && $userLabel) {
+      $userLabel.before($progAll);
+      $userLabel.before($summary);
+    }
+    delete $summary.dataset.mobilePlaced;
+    delete $progAll.dataset.mobilePlaced;
+    document.body.classList.remove('layout-mobile');
+  }
+}
+
+/* =========================
    TIMERS LIVE
 ========================= */
 function updateTimersLive() {
@@ -826,6 +818,7 @@ function updateTimersLive() {
     let iso = null;
     if (type === "lista") iso = r.desde;
     if (type === "limpieza") iso = r.inicio_limpieza;
+    if (type === "inspeccion") iso = r.fin_limpieza;
     if (type === "repaso") iso = r.inicio_repaso;
 
     el.textContent = iso ? fmtDur(msSince(iso)) : "0m 00s";
@@ -840,15 +833,16 @@ function roomClassByEstado(estado) {
   if (estado === "ocupada limpia") return { cls: "ocupado", badge: "OCUPADO" };
   if (estado === "lista") return { cls: "lista", badge: "LISTA PARA LIMPIEZA" };
   if (estado === "limpieza") return { cls: "limpieza cleaning", badge: "LIMPIEZA" };
+  if (estado === "inspeccion") return { cls: "inspeccion", badge: "INSPECCION" };
   if (estado === "mantenimiento") return { cls: "mantenimiento", badge: "MANT" };
   if (estado === "repaso") return { cls: "repaso", badge: "REPASO" };
   return { cls: "libre", badge: "LIBRE" };
 }
 // Ajusta estos estados si quieres otro criterio para el resumen.
-// Ajusta estos estados si quieres otro criterio para el resumen.
 const SUMMARY_STATUS_MAP = {
-  sucias: new Set(["ocupado","ocupada limpia"]),
+  sucias: new Set(["ocupado"]),
   limpieza: new Set(["limpieza"]),
+  inspeccion: new Set(["inspeccion"]),
   lista: new Set(["lista"]),
   mantenimiento: new Set(["mantenimiento"]),
   repaso: new Set(["repaso"]),
@@ -856,16 +850,23 @@ const SUMMARY_STATUS_MAP = {
 };
 
 function calcCounts(rooms) {
-  const counts = { sucias: 0, limpieza: 0, lista: 0, limpias: 0, mantenimiento: 0, prioridad: 0, repaso: 0 };
+  const counts = { sucias: 0, limpieza: 0, inspeccion: 0, lista: 0, limpias: 0, limpiadas: 0, mantenimiento: 0, prioridad: 0, repaso: 0 };
 
   rooms.forEach(r => {
     if (SUMMARY_STATUS_MAP.sucias.has(r.estado)) counts.sucias++;
     if (SUMMARY_STATUS_MAP.limpieza.has(r.estado)) counts.limpieza++;
+    if (SUMMARY_STATUS_MAP.inspeccion.has(r.estado)) counts.inspeccion++;
     if (SUMMARY_STATUS_MAP.lista.has(r.estado)) counts.lista++;
     if (SUMMARY_STATUS_MAP.mantenimiento.has(r.estado)) counts.mantenimiento++;
     if (SUMMARY_STATUS_MAP.repaso.has(r.estado)) counts.repaso++;
     if (SUMMARY_STATUS_MAP.limpias.has(r.estado)) counts.limpias++;
     if (String(r.prioridad_limpieza || "").toLowerCase() === "alta") counts.prioridad++;
+
+    // Limpiadas: todas las habitaciones que estan limpias (libre, ocupada limpia, o estadia con fin_limpieza)
+    if (r.estado === "libre" || r.estado === "ocupada limpia" ||
+        (r.estado === "ocupado" && String(r.tipo_limpieza || "").toLowerCase() === "estadia" && r.fin_limpieza)) {
+      counts.limpiadas++;
+    }
   });
 
   return counts;
@@ -876,17 +877,13 @@ function setSummary(counts, total) {
 
   set("sumSucias", counts.sucias);
   set("sumLimpieza", counts.limpieza);
+  set("sumInspeccion", counts.inspeccion);
   set("sumLista", counts.lista);
+  set("sumLimpiadas", counts.limpiadas);
   set("sumLimpias", counts.limpias);
   set("sumMant", counts.mantenimiento);
   set("sumRepaso", counts.repaso);
   set("sumPrio", counts.prioridad);
-
-  const pct = total ? Math.round((counts.limpias / total) * 100) : 0;
-  const progText = $("sumProgText");
-  if (progText) progText.textContent = `${counts.limpias}/${total} (${pct}%)`;
-  const progFill = $("sumProgFill");
-  if (progFill) progFill.style.width = `${pct}%`;
 }
 
 function setProgressAll(counts, total) {
@@ -910,11 +907,13 @@ function updateSummaryCounts() {
 function renderRooms() {
   const grid = $("roomsGrid");
   grid.innerHTML = "";
+  const frag = document.createDocumentFragment();
 
   const sess = getSession();
   const role = roleOf(sess);
 
   const rooms = roomsCache.get(String(activeModuleId)) || [];
+  if (!rooms.length) return;
   rooms.sort((a, b) => String(a.etiqueta).localeCompare(String(b.etiqueta), "es", { numeric: true }));
 
   const moduleName = MODULES.find(m => String(m.id) === String(activeModuleId))?.descripcion || "";
@@ -979,6 +978,14 @@ function renderRooms() {
           <div class="timerText" data-timer-roomkey="${k}" data-timer-type="limpieza">${fmtDur(msSince(room.inicio_limpieza))}</div>
         </div>`;
     }
+    if (room.estado === "inspeccion" && parseAnyDate(room.fin_limpieza)) {
+      timerHTML = `
+        <div class="timerBadge">
+          <img class="timerIcon" src="./cronografo.png" alt="" />
+          ${prioIconHTML}
+          <div class="timerText" data-timer-roomkey="${k}" data-timer-type="inspeccion">${fmtDur(msSince(room.fin_limpieza))}</div>
+        </div>`;
+    }
     if (room.estado === "repaso" && parseAnyDate(room.inicio_repaso)) {
       timerHTML = `
         <div class="timerBadge">
@@ -989,6 +996,8 @@ function renderRooms() {
     }
 
     const prioTopHTML = "";
+    const showOccupied = room.estado === "ocupado" || room.estado === "ocupada limpia" || room.estado === "lista";
+    const precioStr = "";
     btn.innerHTML = `
       ${timerHTML}
       ${prioTopHTML}
@@ -997,7 +1006,8 @@ function renderRooms() {
       ${decoradaTagHTML}
       <div class="roomNum">${room.etiqueta}</div>
       <div class="roomState">${moduleName}</div>
-      <div class="roomOcc">${room.estado === "ocupado" ? `&#128101; ${room.adultos || 0} / ${room.ninos || 0}` : ""}</div>
+      <div class="roomOcc">${(showOccupied) && (room.adultos > 0 || room.ninos > 0) ? `&#128101; ${room.adultos || 0} / ${room.ninos || 0}` : ""}</div>
+      ${precioStr}
       ${obsChips}
 
       <div class="roomDetails">
@@ -1021,19 +1031,13 @@ function renderRooms() {
       </div>
     `;
 
+    // Click on card toggles details panel (actions always visible)
     btn.addEventListener("click", () => {
       const wasSelected = selectedRoomKey === k;
       document.querySelectorAll(".roomBtn.selected").forEach(x => x.classList.remove("selected"));
       selectedRoomKey = wasSelected ? null : k;
       if (!wasSelected) btn.classList.add("selected");
     });
-    if (window.matchMedia && window.matchMedia("(hover: hover)").matches) {
-      btn.addEventListener("mouseleave", () => {
-        if (selectedRoomKey !== k) return;
-        selectedRoomKey = null;
-        btn.classList.remove("selected");
-      });
-    }
     if (selectedRoomKey === k) btn.classList.add("selected");
 
     const bObsPeek = btn.querySelector(".obsPeekBtn");
@@ -1043,19 +1047,20 @@ function renderRooms() {
     });
 
     const [bOcc, bLimp, bMant, bFree, bPrio, bRep] = btn.querySelectorAll(".raBtn");
-    if (role === "GERENCIA") {
+    const isReadOnlyRole = role === "GERENCIA" || role === "REPORTES";
+    if (isReadOnlyRole) {
       bOcc.disabled = true;
       bLimp.disabled = true;
       bMant.disabled = true;
       bFree.disabled = true;
       bPrio.disabled = true;
       bRep.disabled = true;
-      bOcc.title = "Solo lectura (Gerencia)";
-      bLimp.title = "Solo lectura (Gerencia)";
-      bMant.title = "Solo lectura (Gerencia)";
-      bFree.title = "Solo lectura (Gerencia)";
-      bPrio.title = "Solo lectura (Gerencia)";
-      bRep.title = "Solo lectura (Gerencia)";
+      bOcc.title = "Solo lectura";
+      bLimp.title = "Solo lectura";
+      bMant.title = "Solo lectura";
+      bFree.title = "Solo lectura";
+      bPrio.title = "Solo lectura";
+      bRep.title = "Solo lectura";
     }
     if (!canUseLiberar(role)) bFree.classList.add("hidden");
     if (!canReception(role)) {
@@ -1073,7 +1078,7 @@ function renderRooms() {
       }
 
       if (!canReception(role)) {
-        toast("err", "Restringido", "Camareria no puede poner OCUPADO.");
+        toast("err", "Restringido", "Solo Recepcion puede poner OCUPADO.");
         return;
       }
       openOccModal(room);
@@ -1098,7 +1103,9 @@ function renderRooms() {
           toast("err", "No permitido", "Solo podes poner LISTA cuando estaba OCUPADO.");
           return;
         }
+        if (!requireOnline()) return;
 
+        bLimp.disabled = true;
         try {
           await updateRoom(current.modulo_id, current.etiqueta, {
             estado: "lista",
@@ -1118,13 +1125,17 @@ function renderRooms() {
           toast("warn", "Lista para limpieza", `Habitacion ${current.etiqueta} lista.`);
         } catch (err) {
           toast("err", "Error", err.message || "No se pudo cambiar a LISTA");
+        } finally {
+          bLimp.disabled = false;
         }
       }
-      // CAMARERIA: LISTA -> LIMPIEZA y abre inspeccion
-      if (role2 === "CAMARERIA") {
+      // AMA DE LLAVES: LISTA -> LIMPIEZA y abre inspeccion
+      if (role2 === "AMA_LLAVES") {
         if (current.estado === "repaso") {
           const ok = await confirmDialog(`Seguro de liberar la habitacion ${current.etiqueta}?`);
           if (!ok) return;
+          if (!requireOnline()) return;
+          bLimp.disabled = true;
           try {
             await updateRoom(current.modulo_id, current.etiqueta, {
               estado: "libre",
@@ -1138,15 +1149,16 @@ function renderRooms() {
             toast("ok", "Habitacion liberada", `${current.etiqueta} -> LIBRE`);
           } catch (err) {
             toast("err", "Error", err.message || "No se pudo liberar");
+          } finally {
+            bLimp.disabled = false;
           }
           return;
         }
 
-        if (current.estado !== "lista" && current.estado !== "limpieza") {
+        if (current.estado !== "lista" && current.estado !== "limpieza" && current.estado !== "inspeccion") {
           toast("err", "No disponible", "Recepcion debe poner LISTA primero.");
           return;
         }
-
         try {
           // OK No poner en LIMPIEZA aqui. Solo se pondra azul cuando en Inspeccion
           // se seleccione camarera y tipo de limpieza y se presione "Empezar limpieza".
@@ -1167,15 +1179,18 @@ function renderRooms() {
       }
 
       if (!canUseMantenimiento(role)) {
-        toast("err", "Restringido", "Solo Recepcion o Camareria puede poner MANTENIMIENTO.");
+        toast("err", "Restringido", "Solo Recepcion o Ama de llaves puede poner MANTENIMIENTO.");
         return;
       }
 
+      if (room.estado === "ocupado" || room.estado === "ocupada limpia") {
+        toast("err", "No permitido", "No podes poner MANTENIMIENTO si esta OCUPADO.");
+        return;
+      }
+      if (!requireOnline()) return;
+
+      bMant.disabled = true;
       try {
-        if (room.estado === "ocupado" || room.estado === "ocupada limpia") {
-          toast("err", "No permitido", "No podes poner MANTENIMIENTO si esta OCUPADO.");
-          return;
-        }
         await updateRoom(room.modulo_id, room.etiqueta, {
           estado: "mantenimiento",
           camarera_asignada: null,
@@ -1187,6 +1202,8 @@ function renderRooms() {
         toast("warn", "Mantenimiento", `Habitacion ${room.etiqueta} en mantenimiento.`);
       } catch (err) {
         toast("err", "Error", err.message || "No se pudo poner mantenimiento");
+      } finally {
+        bMant.disabled = false;
       }
     });
     // ? REPASO (solo Recepcion/Admin, desde LIBRE)
@@ -1206,6 +1223,9 @@ function renderRooms() {
         toast("err", "No permitido", "Solo se puede poner REPASO si esta LIBRE.");
         return;
       }
+      if (!requireOnline()) return;
+
+      bRep.disabled = true;
       try {
         await updateRoom(room.modulo_id, room.etiqueta, {
           estado: "repaso",
@@ -1216,6 +1236,8 @@ function renderRooms() {
         toast("warn", "Repaso", `Habitacion ${room.etiqueta} en repaso.`);
       } catch (err) {
         toast("err", "Error", err.message || "No se pudo poner repaso");
+      } finally {
+        bRep.disabled = false;
       }
     });
     // OK LIBERAR (volver a LIBRE con confirmacion)
@@ -1232,32 +1254,38 @@ function renderRooms() {
       const st = String(current.estado || "").toLowerCase();
       const isAdminRole = role === "ADMIN";
       const isReceptionRole = role === "RECEPCION";
-      const isCamareriaRole = role === "CAMARERIA";
+      const isAmaLlavesRole = role === "AMA_LLAVES";
 
       if (st === "limpieza" && !isAdminRole) {
         toast("err", "No permitido", "Solo Administrador puede liberar si esta en LIMPIEZA.");
         return;
       }
-      if (isCamareriaRole && st !== "mantenimiento") {
-        toast("err", "No permitido", "Camareria solo puede liberar si esta en MANTENIMIENTO.");
+      if (st === "inspeccion" && !isAdminRole && !isAmaLlavesRole) {
+        toast("err", "No permitido", "Solo Administrador o Ama de llaves puede liberar desde INSPECCION.");
+        return;
+      }
+      if (isAmaLlavesRole && st !== "mantenimiento" && st !== "inspeccion") {
+        toast("err", "No permitido", "Ama de llaves solo puede liberar si esta en MANTENIMIENTO o INSPECCION.");
         return;
       }
       if (isReceptionRole && !["ocupado", "ocupada limpia", "mantenimiento", "lista"].includes(st)) {
         toast("err", "No permitido", "Recepcion solo puede liberar si esta OCUPADA, en MANTENIMIENTO o LISTA.");
         return;
       }
-      if (isAdminRole && !["ocupado", "ocupada limpia", "mantenimiento", "lista", "limpieza"].includes(st)) {
+      if (isAdminRole && !["ocupado", "ocupada limpia", "mantenimiento", "lista", "limpieza", "inspeccion"].includes(st)) {
         toast("err", "No permitido", "Administrador solo puede liberar estados permitidos.");
         return;
       }
-      if (!isAdminRole && !isReceptionRole && !isCamareriaRole) {
+      if (!isAdminRole && !isReceptionRole && !isAmaLlavesRole) {
         toast("err", "Restringido", "No tenes permiso para liberar habitaciones.");
         return;
       }
 
       const ok = await confirmDialog(`Seguro de liberar la habitacion ${current.etiqueta}?`);
       if (!ok) return;
+      if (!requireOnline()) return;
 
+      bFree.disabled = true;
       try {
         await updateRoom(current.modulo_id, current.etiqueta, {
           estado: "libre",
@@ -1272,6 +1300,8 @@ function renderRooms() {
         toast("ok", "Habitacion liberada", `${current.etiqueta} -> LIBRE`);
       } catch (err) {
         toast("err", "Error", err.message || "No se pudo liberar");
+      } finally {
+        bFree.disabled = false;
       }
     });
 
@@ -1293,6 +1323,9 @@ function renderRooms() {
         return;
       }
       const next = (String(cur.prioridad_limpieza || "").toLowerCase() === "alta") ? "baja" : "alta";
+      if (!requireOnline()) return;
+
+      bPrio.disabled = true;
       try {
         await updateRoom(cur.modulo_id, cur.etiqueta, {
           prioridad_limpieza: next,
@@ -1306,11 +1339,15 @@ function renderRooms() {
         else toast("ok", "Prioridad", `Habitacion ${cur.etiqueta} sin prioridad.`);
       } catch (err) {
         toast("err", "Error", err.message || "No se pudo cambiar prioridad");
+      } finally {
+        bPrio.disabled = false;
       }
     });
 
-    grid.appendChild(btn);
+    frag.appendChild(btn);
   });
+
+  grid.appendChild(frag);
 
   if (cleanedDirty) saveCleanedMap(cleanedMap);
 
@@ -1337,7 +1374,7 @@ if (btnDecorada) {
     const sess = getSession();
     const role = roleOf(sess);
     if (!canUseDecorada(role)) {
-      toast("err", "Restringido", "Solo Camareria o Administrador puede usar Decorada.");
+      toast("err", "Restringido", "Solo Ama de llaves o Administrador puede usar Decorada.");
       return;
     }
     openDecoradaForm(activeModuleId);
@@ -1357,6 +1394,7 @@ async function loadRooms(modulo_id) {
   const resp = await apiGET(`/api/rooms?modulo_id=${encodeURIComponent(String(modulo_id))}`);
   const rows = (resp.data || []).map(normalizeRoom);
   roomsCache.set(String(modulo_id), rows);
+  return rows;
 }
 
 async function loadAllRooms() {
@@ -1387,6 +1425,7 @@ modalSave.onclick = async () => {
   try {
     if (!modalRoom) return;
     if (isLocked()) { showLogin(); return; }
+    if (!requireOnline()) return;
 
     const sess2 = getSession();
     if (!canReception(roleOf(sess2))) {
@@ -1401,16 +1440,21 @@ modalSave.onclick = async () => {
       return;
     }
 
-    await updateRoom(modalRoom.modulo_id, modalRoom.etiqueta, {
-      estado: "ocupado",
-      adultos: adultsVal,
-      ninos: clampNonNegInt(kidsInput.value),
-      observaciones: appendActionObs(String(obsInput.value || "").trim(), "OCUPADO"),
-      camarera_asignada: null
-    });
+    modalSave.disabled = true;
+    try {
+      await updateRoom(modalRoom.modulo_id, modalRoom.etiqueta, {
+        estado: "ocupado",
+        adultos: adultsVal,
+        ninos: clampNonNegInt(kidsInput.value),
+        observaciones: appendActionObs(String(obsInput.value || "").trim(), "OCUPADO"),
+        camarera_asignada: null
+      });
 
-    toast("ok", "Actualizado", `${modalRoom.etiqueta} -> OCUPADO`);
-    closeOccModal();
+      toast("ok", "Actualizado", `${modalRoom.etiqueta} -> OCUPADO`);
+      closeOccModal();
+    } finally {
+      modalSave.disabled = false;
+    }
   } catch (err) {
     toast("err", "Error", err.message || "No se pudo guardar");
   }
@@ -1432,6 +1476,13 @@ window.addEventListener("online", refreshOnResume);
 // Re-sync de reloj con servidor cada 5 min
 setInterval(syncServerTime, 5 * 60 * 1000);
 
+// Mobile layout adjustments on resize
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(adjustMobileLayout, 200);
+});
+
 (async function init() {
   initSocket();
 
@@ -1445,6 +1496,7 @@ setInterval(syncServerTime, 5 * 60 * 1000);
     await bootData();
     renderAll();
     renderActiveUser();
+    adjustMobileLayout();
   } catch (e) {
     console.error(e);
     toast("err", "Error", e.message || "No cargo data");

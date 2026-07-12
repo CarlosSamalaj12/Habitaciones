@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Gestion Habitaciones</title>
 
-  <link rel="stylesheet" href="./styles.css?v=20260213d" />
+  <link rel="stylesheet" href="./styles.css?v=20260214a" />
 </head>
 <body>
 
@@ -61,22 +61,15 @@
         <div class="t1">Gestion de Habitaciones</div>
         <div class="t2">Recepcion / Camareria - Control de limpieza</div>
         <div class="summaryBar" id="summaryBar">
-          <div class="summaryPill sucias"><span>Ocupadas</span><b id="sumSucias">0</b></div>
+          <div class="summaryPill sucias"><span>Ocupadas Sucias</span><b id="sumSucias">0</b></div>
           <div class="summaryPill limpieza"><span>En limpieza</span><b id="sumLimpieza">0</b></div>
           <div class="summaryPill lista"><span>Lista para limpiar</span><b id="sumLista">0</b></div>
+          <div class="summaryPill limpiadas"><span>Limpiadas</span><b id="sumLimpiadas">0</b></div>
           <div class="summaryPill limpias"><span>Libres</span><b id="sumLimpias">0</b></div>
           <div class="summaryPill mantenimiento"><span>Mantenimiento</span><b id="sumMant">0</b></div>
           <div class="summaryPill prioridad"><span>Prioridad</span><b id="sumPrio">0</b></div>
+          <div class="summaryPill inspeccion"><span>Inspeccion</span><b id="sumInspeccion">0</b></div>
           <div class="summaryPill repaso"><span>Repaso</span><b id="sumRepaso">0</b></div>
-          <div class="summaryProgress">
-            <div class="summaryProgTop">
-              <span>Progreso de limpieza</span>
-              <b id="sumProgText">0%</b>
-            </div>
-            <div class="summaryProgTrack">
-              <div class="summaryProgFill" id="sumProgFill"></div>
-            </div>
-          </div>
         </div>
 
         <div class="summaryProgress" id="summaryProgressAll">
@@ -95,7 +88,10 @@
 
     <div class="rightTop">
       <button id="btnLock" class="btnGhost" type="button">BLOQUEAR</button>
-      <button id="btnConfig" class="btnGhost hidden" type="button">CONFIGURAR</button>
+      <button id="btnReportes" class="btnGhost hidden" type="button">REPORTES</button>
+      <button id="btnEditarReg" class="btnGhost hidden" type="button">EDITAR</button>
+      <button id="btnAdmin" class="btnGhost hidden" type="button">ADMIN</button>
+
     </div>
   </div>
 
@@ -191,50 +187,9 @@
     </div>
   </div>
 
-<!-- Modal configuracion (solo admin) -->
-<div id="configOverlay" class="modalOverlay hidden">
-  <div class="modalCard">
-    <div class="modalHeader">
-      <div>
-        <div class="modalTitle">Configuracion</div>
-        <div class="modalSub">Crear usuario</div>
-      </div>
-      <button id="configClose" class="iconBtn" type="button">X</button>
-    </div>
-
-    <div class="modalBody">
-      <div class="configForm">
-        <label class="loginLabel" for="cfgName">Nombre</label>
-        <input id="cfgName" class="loginInput" type="text" placeholder="Nombre completo" autocomplete="off" />
-
-        <label class="loginLabel" for="cfgDept">Rol / Departamento</label>
-        <select id="cfgDept" class="loginInput loginSelect">
-          <option value="RECEPCION">Recepcion</option>
-          <option value="CAMARERIA">Camareria</option>
-          <option value="GERENCIA">Gerencia</option>
-          <option value="ADMINISTRADOR">Administrador</option>
-        </select>
-
-        <label class="loginLabel" for="cfgPass">Contrasena</label>
-        <input id="cfgPass" class="loginInput" type="password" placeholder="********" autocomplete="new-password" />
-
-        <label class="loginLabel" for="cfgPass2">Confirmar contrasena</label>
-        <input id="cfgPass2" class="loginInput" type="password" placeholder="********" autocomplete="new-password" />
-
-        <div class="loginHint">La contrasena se guarda encriptada (hash).</div>
-        <div id="cfgErr" class="loginErr hidden">Error</div>
-      </div>
-    </div>
-
-    <div class="modalFooter">
-      <button id="configCancel" class="btnModal" type="button">Cancelar</button>
-      <button id="configSave" class="btnModal primary" type="button">Crear usuario</button>
-    </div>
-  </div>
-</div>
 
   <script src="./socket.io/socket.io.js"></script>
-  <script src="./app.js?v=20260213e"></script>
+  <script src="./app.js?v=20260213f"></script>
 </body>
 </html>
 

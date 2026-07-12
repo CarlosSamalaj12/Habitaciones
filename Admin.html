@@ -1,0 +1,1338 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/png" href="./Oficial_JDL_blanco.png?v=1">
+  <link rel="shortcut icon" href="./Oficial_JDL_blanco.png?v=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Administracion - Gestion Habitaciones</title>
+  <style>
+    :root {
+      --bg0: #070A12; --bg1: #0B1024;
+      --card: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.10);
+      --text: #EAF0FF; --muted: #A9B3D0;
+      --primary: #7C3AED; --primaryLight: rgba(124,58,237,.25);
+      --ok: #2EE59D; --warn: #FFB020; --bad: #FF4D6D;
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      --r: 18px; --r2: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: radial-gradient(1200px 700px at 15% 10%, rgba(124,58,237,.22), transparent 55%),
+                  radial-gradient(900px 600px at 85% 20%, rgba(34,211,238,.18), transparent 55%),
+                  linear-gradient(180deg, var(--bg0), var(--bg1));
+      min-height: 100vh;
+    }
+    .wrap { max-width: 1100px; margin: 22px auto; padding: 0 14px; }
+    .top {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin-bottom: 18px; flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .logoImg { width: 48px; height: 48px; border-radius: 12px; object-fit: contain; background: rgba(255,255,255,.06); padding: 4px; border: 1px solid rgba(255,255,255,.12); }
+    h1 { font-size: 20px; margin: 0; letter-spacing: .2px; }
+    .hint { color: var(--muted); font-size: 12px; }
+
+    button {
+      border: 1px solid rgba(255,255,255,.16);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      color: var(--text); padding: 10px 16px; border-radius: 12px;
+      cursor: pointer; font-weight: 600; font-size: 13px; line-height: 1.25;
+      transition: all .15s; white-space: nowrap;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,.3); }
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+    .primary {
+      border-color: rgba(124,58,237,.55);
+      background: linear-gradient(135deg, rgba(124,58,237,.85), rgba(139,92,246,.75));
+      color: #fff;
+    }
+    .primary:hover { border-color: rgba(124,58,237,.8); }
+    .danger {
+      border-color: rgba(255,77,109,.45);
+      background: linear-gradient(135deg, rgba(255,77,109,.85), rgba(255,100,130,.75));
+      color: #fff;
+    }
+    .success {
+      border-color: rgba(46,229,157,.45);
+      background: linear-gradient(135deg, rgba(46,229,157,.85), rgba(72,240,170,.75));
+      color: #0a1a14;
+    }
+    .ghost {
+      background: transparent; border-color: transparent;
+    }
+    .ghost:hover { background: rgba(255,255,255,.06); transform: none; }
+
+    .panel {
+      background: var(--card); border: 1px solid var(--stroke);
+      border-radius: var(--r); box-shadow: var(--shadow);
+      backdrop-filter: blur(10px); overflow: hidden;
+      margin-bottom: 18px;
+    }
+    .panelHeader {
+      padding: 14px 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .panelHeader h2 { margin: 0; font-size: 16px; font-weight: 700; }
+    .panelHeader .count { color: var(--muted); font-size: 12px; }
+    .panelBody { padding: 16px 18px; }
+
+    .tabs {
+      display: flex; gap: 4px; margin-bottom: 18px; background: rgba(0,0,0,.25);
+      padding: 4px; border-radius: 14px; overflow-x: auto;
+    }
+    .tab {
+      padding: 8px 16px; border-radius: 10px; border: none;
+      background: transparent; color: var(--muted); cursor: pointer;
+      font-size: 13px; font-weight: 600; white-space: nowrap;
+      transition: all .15s;
+    }
+    .tab:hover { color: var(--text); background: rgba(255,255,255,.06); }
+    .tab.active { background: var(--primaryLight); color: #B8A0FF; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.06); }
+    th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+    tr:hover td { background: rgba(255,255,255,.03); }
+    .actions { display: flex; gap: 6px; }
+    .actions button { padding: 6px 10px; font-size: 11px; }
+
+    .formInline {
+      display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;
+      padding: 14px; background: rgba(0,0,0,.2); border-radius: var(--r2);
+      margin-bottom: 14px;
+    }
+    .formInline label { display: block; margin: 0 0 4px; color: var(--muted); font-size: 11px; }
+    .formInline input, .formInline select {
+      padding: 8px 12px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(10,14,28,.55); color: var(--text);
+      outline: none; font-size: 13px;
+    }
+    .formInline input:focus, .formInline select:focus { border-color: var(--primary); }
+    .formGroup { display: flex; flex-direction: column; }
+
+    .empty { text-align: center; padding: 30px; color: var(--muted); font-size: 13px; }
+    .loading { text-align: center; padding: 40px; color: var(--muted); }
+
+    .toastWrap { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 9999; display: grid; gap: 8px; width: min(560px, calc(100vw - 22px)); }
+    .toast { border-radius: 14px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.12); background: rgba(10,14,28,.92); font-size: 13px; }
+    .toast.ok { border-color: rgba(46,229,157,.45); }
+    .toast.err { border-color: rgba(255,77,109,.45); }
+
+    .priceCell { display: flex; align-items: center; gap: 8px; }
+    .priceCell input { width: 100px; padding: 6px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,.10); background: rgba(10,14,28,.55); color: var(--text); outline: none; font-size: 13px; text-align: right; }
+    .priceCell input:focus { border-color: var(--primary); }
+    .familiarBadge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; background: rgba(255,176,32,.15); color: var(--warn); }
+
+    @media (max-width: 767px) {
+      .formInline { flex-direction: column; align-items: stretch; }
+      .formGroup { width: 100%; }
+      .formInline input, .formInline select { width: 100%; }
+      .tabs { overflow-x: auto; }
+      th, td { padding: 8px 6px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="toasts" class="toastWrap"></div>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <img class="logoImg" src="./Oficial_JDL_blanco.png" alt="Logo" />
+        <div>
+          <h1>Administracion</h1>
+          <div class="hint">Gestion de camareras, checklist, precios y registros</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button id="btnEditarReg" class="success" type="button" style="font-size:12px">✏️ Editar Registros</button>
+        <button id="btnBack" type="button">&larr; Regresar</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="camareras">Camareras</button>
+      <button class="tab" data-tab="tipos">Tipos</button>
+      <button class="tab" data-tab="checklist">Checklist</button>
+      <button class="tab" data-tab="configpago">Config Pago</button>
+      <button class="tab" data-tab="preciosesp">Precios</button>
+      <button class="tab" data-tab="modulos">Modulos/Hab</button>
+      <button class="tab" data-tab="usuarios">Usuarios</button>
+    </div>
+
+    <!-- ===== TAB: CAMARERAS ===== -->
+    <div class="panel tabContent" id="tabCamareras">
+      <div class="panelHeader">
+        <h2>Camareras</h2>
+        <span class="count" id="camarerasCount">0</span>
+      </div>
+      <div class="panelBody">
+        <div class="formInline">
+          <div class="formGroup">
+            <label>Nombre</label>
+            <input id="camNombre" type="text" placeholder="Nombre completo" />
+          </div>
+          <button class="primary" id="btnAddCam" type="button">+ Agregar</button>
+        </div>
+        <div id="camarerasList" class="loading">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: TIPOS DE LIMPIEZA ===== -->
+    <div class="panel tabContent" id="tabTipos" style="display:none">
+      <div class="panelHeader">
+        <h2>Tipos de Limpieza</h2>
+        <span class="count" id="tiposCount">0</span>
+      </div>
+      <div class="panelBody">
+        <div class="formInline">
+          <div class="formGroup">
+            <label>Nombre</label>
+            <input id="tipoNombre" type="text" placeholder="Ej: Ultra Profunda" />
+          </div>
+          <button class="primary" id="btnAddTipo" type="button">+ Agregar</button>
+        </div>
+        <div id="tiposList" class="loading">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: CHECKLIST ===== -->
+    <div class="panel tabContent" id="tabChecklist" style="display:none">
+      <div class="panelHeader">
+        <h2>Checklist - Categorias y Puntos</h2>
+        <span class="count" id="checklistCount">0</span>
+      </div>
+      <div class="panelBody">
+        <div class="formInline" style="border:1px solid rgba(124,58,237,.3);margin-bottom:16px;padding:12px;background:rgba(124,58,237,.08)">
+          <div class="formGroup">
+            <label>Nueva Categoria</label>
+            <input id="catNombre" type="text" placeholder="Nombre de la categoria" />
+          </div>
+          <button class="primary" id="btnAddCat" type="button" style="font-size:12px">+ Crear Categoria</button>
+        </div>
+        <div id="categoriasList"></div>
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08)">
+          <div class="formInline">
+            <div class="formGroup">
+              <label>Nuevo Item</label>
+              <input id="checkNombre" type="text" placeholder="Nombre del punto" />
+            </div>
+            <div class="formGroup">
+              <label>Categoria</label>
+              <select id="checkCategoria"></select>
+            </div>
+            <button class="primary" id="btnAddCheck" type="button">+ Agregar</button>
+          </div>
+        </div>
+        <div id="checklistList" class="loading">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: CONFIG PAGO ===== -->
+    <div class="panel tabContent" id="tabConfigpago" style="display:none">
+      <div class="panelHeader">
+        <h2>Configuracion de Pagos - Factura</h2>
+        <span class="count">Parametros globales</span>
+      </div>
+      <div class="panelBody">
+        <div class="formInline" style="flex-direction:column;align-items:stretch;gap:14px">
+          <div style="color:var(--muted);font-size:12px;background:rgba(255,176,32,.08);padding:10px 14px;border-radius:12px;border:1px solid rgba(255,176,32,.25)">
+            <strong>🧮 Formula de pago:</strong><br>
+            <strong>Si factura:</strong> (Precio base × (1 + % / 100)) + Extra factura<br>
+            <strong>Si NO factura:</strong> Precio base + Extra no factura
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:14px">
+            <div class="formGroup">
+              <label>% Aumento si factura</label>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input id="cfgPorcentaje" type="number" step="0.5" min="0" max="1000" value="33" style="width:100px" />
+                <span style="color:var(--muted);font-size:13px">%</span>
+              </div>
+            </div>
+            <div class="formGroup">
+              <label>Extra si factura (Q)</label>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="color:var(--muted);font-weight:700">Q</span>
+                <input id="cfgExtraSi" type="number" step="0.50" min="0" value="46.00" style="width:120px" />
+              </div>
+            </div>
+            <div class="formGroup">
+              <label>Extra NO factura (Q)</label>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="color:var(--muted);font-weight:700">Q</span>
+                <input id="cfgExtraNo" type="number" step="0.50" min="0" value="36.00" style="width:120px" />
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="primary" id="btnGuardarConfigPago" type="button">Guardar Configuracion</button>
+            <span id="configPagoStatus" style="font-size:12px;color:var(--muted)"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: MODULOS Y HABITACIONES ===== -->
+    <div class="panel tabContent" id="tabModulos" style="display:none">
+      <div class="panelHeader" style="flex-wrap:wrap;gap:8px">
+        <h2>Modulos y Habitaciones</h2>
+        <span class="count">Gestion de modulos y habitaciones familiares</span>
+      </div>
+      <div class="panelBody">
+        <!-- MODULOS -->
+        <div style="border:1px solid rgba(124,58,237,.25);border-radius:12px;padding:14px;margin-bottom:14px;background:rgba(124,58,237,.06)">
+          <h3 style="margin:0 0 10px;font-size:15px">🏢 Modulos</h3>
+          <div class="formInline" style="margin-bottom:12px">
+            <div class="formGroup">
+              <label>ID del modulo</label>
+              <input id="modIdTxt" type="text" placeholder="Ej: M1, PISO1, etc" style="width:120px" />
+            </div>
+            <div class="formGroup">
+              <label>Descripcion</label>
+              <input id="modDescTxt" type="text" placeholder="Ej: Hotel Principal 1er" />
+            </div>
+            <button class="primary" id="btnAddMod" type="button">+ Crear Modulo</button>
+          </div>
+          <div id="modulosList" class="loading">Cargando modulos...</div>
+        </div>
+
+        <!-- HABITACIONES -->
+        <div style="border:1px solid rgba(255,176,32,.25);border-radius:12px;padding:14px;background:rgba(255,176,32,.06)">
+          <h3 style="margin:0 0 10px;font-size:15px">🛏️ Habitaciones</h3>
+          <div class="formInline" style="margin-bottom:12px">
+            <div class="formGroup">
+              <label>Modulo</label>
+              <select id="habModuloSel">
+                <option value="">Seleccionar modulo...</option>
+              </select>
+            </div>
+            <div class="formGroup">
+              <label>Etiqueta (numero)</label>
+              <input id="habEtiquetaTxt" type="text" placeholder="Ej: 101, 02" style="width:100px" />
+            </div>
+            <div class="formGroup">
+              <label style="display:flex;align-items:center;gap:6px">
+                <input type="checkbox" id="habFamiliarCbx" />
+                <span>Familiar</span>
+              </label>
+            </div>
+            <button class="primary" id="btnAddHab" type="button">+ Agregar Hab</button>
+          </div>
+          <div id="habitacionesList" class="loading">Selecciona un modulo para ver sus habitaciones.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: USUARIOS ===== -->
+    <div class="panel tabContent" id="tabUsuarios" style="display:none">
+      <div class="panelHeader">
+        <h2>Usuarios del Sistema</h2>
+        <span class="count" id="usuariosCount">0</span>
+      </div>
+      <div class="panelBody">
+        <div class="formInline" style="border:1px solid rgba(124,58,237,.3);background:rgba(124,58,237,.08)">
+          <div class="formGroup">
+            <label>Nombre</label>
+            <input id="usrNombre" type="text" placeholder="Nombre completo" />
+          </div>
+          <div class="formGroup">
+            <label>Rol / Departamento</label>
+            <select id="usrDept">
+              <option value="Ama de llaves">Ama de llaves</option>
+              <option value="Recepción">Recepcion</option>
+              <option value="Gerencia">Gerencia</option>
+              <option value="Administrador">Administrador</option>
+              <option value="Reportes">Reportes</option>
+            </select>
+          </div>
+          <div class="formGroup">
+            <label>Contrasena</label>
+            <input id="usrPass" type="password" placeholder="Min. 4 caracteres" />
+          </div>
+          <div class="formGroup">
+            <label>Confirmar</label>
+            <input id="usrPass2" type="password" placeholder="Repetir contrasena" />
+          </div>
+          <button class="primary" id="btnCrearUsuario" type="button" style="margin-top:auto">+ Crear Usuario</button>
+        </div>
+        <div id="usrErr" style="display:none;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,77,109,.35);background:rgba(255,77,109,.10);color:#ffb0b8;font-weight:700;font-size:13px;margin-bottom:12px"></div>
+        <div id="usuariosList" class="loading">Cargando usuarios...</div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: PRECIOS ESPECIALES (MATRIZ HABITACION x TIPO) ===== -->
+    <div class="panel tabContent" id="tabPreciosesp" style="display:none">
+      <div class="panelHeader">
+        <h2>Precios</h2>
+        <span class="count">Matriz editable</span>
+      </div>
+      <div class="panelBody">
+        <div style="padding:12px 14px;border-radius:12px;border:1px solid rgba(124,58,237,.35);background:rgba(124,58,237,.10);margin-bottom:16px;font-size:13px;line-height:1.6">
+          <strong>🧮 Precio por Habitacion y Tipo de Limpieza</strong><br>
+          Cada <strong>celda</strong> es el precio que se le pagara a la camarera
+          por limpiar esa habitacion con ese tipo de limpieza.<br>
+          Usa el toggle <strong>Normal / Familiar</strong> para cambiar entre precios normales y familiares.
+        </div>
+        <div class="formInline" style="margin-bottom:14px">
+          <div class="formGroup">
+            <label>Modulo</label>
+            <select id="pespModulo">
+              <option value="">Cargando...</option>
+            </select>
+          </div>
+          <button class="primary" id="btnCargarPesp" type="button" style="height:38px">Cargar Matriz</button>
+          <div class="formGroup" style="margin-left:12px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+              <input type="checkbox" id="pespFamiliarToggle" />
+              <span id="pespFamiliarLabel">Mostrar precios <strong>Familiares</strong></span>
+            </label>
+          </div>
+        </div>
+        <div id="pespList" class="loading">Selecciona un modulo y presiona "Cargar Matriz"</div>
+        <div style="margin-top:12px;padding:10px 14px;border-radius:10px;background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.2);color:var(--warn);font-size:12px;text-align:center">
+          ⚡ Celda vacia = Q0.00 (sin pago).<br>
+          Los cambios se guardan automaticamente al presionar <kbd style="padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);font-size:11px">Enter</kbd> o al salir del campo.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const APP_BASE = window.location.pathname.replace(/\/[^/]*$/, "/").replace(/\/+$/, "");
+    const API_BASE = `${window.location.origin}${APP_BASE}`;
+    const qs = new URLSearchParams(window.location.search);
+
+    let CAMARERAS = [];
+    let CATEGORIAS = [];
+    let CHECK_ITEMS = [];
+    let TIPOS = [];
+
+    function toast(msg, ok = true, ms = 3200) {
+      const t = document.createElement("div");
+      t.className = "toast " + (ok ? "ok" : "err");
+      t.textContent = msg;
+      $("toasts").appendChild(t);
+      setTimeout(() => t.remove(), ms);
+    }
+
+    // Leer token de sesion guardado por app.js
+    function getAuthToken() {
+      try {
+        const sess = JSON.parse(localStorage.getItem("hk_session_v3") || "null");
+        if (sess?.token) return sess.token;
+      } catch (e) {}
+      return null;
+    }
+
+    async function apiGET(path) {
+      const headers = {};
+      const token = getAuthToken();
+      if (token) headers["Authorization"] = "Bearer " + token;
+      const r = await fetch(`${API_BASE}${path}`, { headers });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `GET ${path} failed`);
+      return j.data || [];
+    }
+    async function apiPOST(path, body) {
+      const headers = { "Content-Type": "application/json" };
+      const token = getAuthToken();
+      if (token) headers["Authorization"] = "Bearer " + token;
+      const r = await fetch(`${API_BASE}${path}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body || {})
+      });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j?.ok) throw new Error(j?.error || `POST ${path} failed`);
+      return j;
+    }
+
+    // ===== TABS =====
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        document.querySelectorAll(".tabContent").forEach(c => c.style.display = "none");
+        const target = document.getElementById("tab" + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1));
+        if (target) target.style.display = "block";
+      });
+    });
+
+    $("btnBack").addEventListener("click", () => {
+      window.location.href = "./index.html";
+    });
+    $("btnEditarReg").addEventListener("click", () => {
+      window.location.href = "./EditarRegistros.html";
+    });
+
+    // ===== CAMARERAS =====
+    async function loadCamareras() {
+      CAMARERAS = await apiGET("/api/camareras");
+      renderCamareras();
+    }
+    function renderCamareras() {
+      const container = $("camarerasList");
+      $("camarerasCount").textContent = CAMARERAS.length;
+      if (!CAMARERAS.length) {
+        container.innerHTML = '<div class="empty">No hay camareras registradas.</div>';
+        return;
+      }
+      let html = `<table><thead><tr><th>Nombre</th><th>Factura</th><th style="width:180px">Accion</th></tr></thead><tbody>`;
+      CAMARERAS.forEach(c => {
+        const facturaChecked = Number(c.factura) === 1 ? 'checked' : '';
+        html += `<tr>
+          <td><strong>${escHtml(c.nombre)}</strong></td>
+          <td>
+            <label class="toggleSwitch" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer" title="Factura activa = aplica % extra + extra grande">
+              <input type="checkbox" class="facturaToggle" data-id="${c.id}" ${facturaChecked} />
+              <span style="font-size:12px;${facturaChecked ? 'color:#2EE59D;font-weight:700' : 'color:var(--muted)'}">${facturaChecked ? 'SI factura' : 'NO factura'}</span>
+            </label>
+          </td>
+          <td class="actions">
+            <button class="danger" onclick="deleteCam(${c.id})" style="font-size:11px">Eliminar</button>
+          </td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    }
+    function escHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
+    }
+    async function deleteCam(id) {
+      const c = CAMARERAS.find(c => c.id === id);
+      if (!c) return;
+      if (!confirm(`Eliminar camarera "${c.nombre}"?\n\nSe marcará como inactiva (no se borra físicamente).`)) return;
+      try {
+        await apiPOST("/api/camareras/delete", { id });
+        toast("Camarera eliminada (inactiva).", true);
+        await loadCamareras();
+      } catch (e) {
+        toast(e?.message || "Error", false, 5200);
+      }
+    }
+    $("btnAddCam").addEventListener("click", async () => {
+      const nombre = $("camNombre").value.trim();
+      if (!nombre) { toast("Ingresa un nombre.", false); return; }
+      $("btnAddCam").disabled = true;
+      try {
+        await apiPOST("/api/camareras/create", { nombre });
+        toast("Camarera agregada.", true);
+        $("camNombre").value = "";
+        await loadCamareras();
+      } catch (e) {
+        toast(e?.message || "Error", false);
+      } finally {
+        $("btnAddCam").disabled = false;
+      }
+    });
+
+    // ===== TIPOS DE LIMPIEZA =====
+    async function loadTipos() {
+      TIPOS = await apiGET("/api/tipos-limpieza");
+      renderTipos();
+    }
+    function renderTipos() {
+      const container = $("tiposList");
+      $("tiposCount").textContent = TIPOS.length;
+      if (!TIPOS.length) {
+        container.innerHTML = '<div class="empty">No hay tipos de limpieza.</div>';
+        return;
+      }
+      let html = `<table><thead><tr><th>Nombre</th><th style="width:120px">Accion</th></tr></thead><tbody>`;
+      TIPOS.forEach(t => {
+        html += `<tr>
+          <td><strong>${escHtml(t.nombre)}</strong></td>
+          <td class="actions">
+            <button class="danger" onclick="deleteTipo(${t.id})" style="font-size:11px">Eliminar</button>
+          </td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    }
+    async function deleteTipo(id) {
+      if (!confirm("Eliminar este tipo de limpieza? Los precios asociados se mantendran.")) return;
+      try {
+        await apiPOST("/api/tipos-limpieza/delete", { id });
+        toast("Tipo eliminado.", true);
+        await loadTipos();
+      } catch (e) {
+        toast(e?.message || "Error", false);
+      }
+    }
+    $("btnAddTipo").addEventListener("click", async () => {
+      const nombre = $("tipoNombre").value.trim();
+      if (!nombre) { toast("Ingresa un nombre.", false); return; }
+      $("btnAddTipo").disabled = true;
+      try {
+        await apiPOST("/api/tipos-limpieza/create", { nombre });
+        toast("Tipo creado.", true);
+        $("tipoNombre").value = "";
+        await loadTipos();
+      } catch (e) {
+        toast(e?.message || "Error", false);
+      } finally {
+        $("btnAddTipo").disabled = false;
+      }
+    });
+
+    // ===== CHECKLIST =====
+    async function loadChecklist() {
+      const [items, categorias] = await Promise.all([
+        apiGET("/api/checklist/items"),
+        apiGET("/api/checklist/categorias")
+      ]);
+      CHECK_ITEMS = items;
+      CATEGORIAS = categorias;
+      renderCategorias();
+      renderChecklist();
+      // Also populate select
+      const sel = $("checkCategoria");
+      sel.innerHTML = `<option value="">Seleccionar...</option>`;
+      CATEGORIAS.forEach(c => {
+        const o = document.createElement("option");
+        o.value = c.id;
+        o.textContent = c.nombre;
+        sel.appendChild(o);
+      });
+    }
+    function renderCategorias() {
+      const container = $("categoriasList");
+      if (!CATEGORIAS.length) {
+        container.innerHTML = '<div class="empty">No hay categorias. Crea una arriba.</div>';
+        return;
+      }
+      let html = `<table><thead><tr><th>Categoria</th><th style="width:100px">Accion</th></tr></thead><tbody>`;
+      CATEGORIAS.forEach(c => {
+        html += `<tr>
+          <td><strong>${escHtml(c.nombre)}</strong> <span style="color:var(--muted);font-size:11px">${escHtml(c.ayuda||'')}</span></td>
+          <td class="actions">
+            <button class="danger" onclick="deleteCat(${c.id})" style="font-size:11px">Eliminar</button>
+          </td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    }
+    async function deleteCat(id) {
+      if (!confirm("Eliminar esta categoria? Los items asociados tambien se eliminaran.")) return;
+      try {
+        await apiPOST("/api/checklist/categorias/delete", { id });
+        toast("Categoria eliminada.", true);
+        await loadChecklist();
+      } catch (e) {
+        toast(e?.message || "Error", false);
+      }
+    }
+    $("btnAddCat").addEventListener("click", async () => {
+      const nombre = $("catNombre").value.trim();
+      if (!nombre) { toast("Ingresa un nombre para la categoria.", false); return; }
+      $("btnAddCat").disabled = true;
+      try {
+        await apiPOST("/api/checklist/categorias/create", { nombre, ayuda: '' });
+        toast("Categoria creada.", true);
+        $("catNombre").value = "";
+        await loadChecklist();
+      } catch (e) {
+        toast(e?.message || "Error", false);
+      } finally {
+        $("btnAddCat").disabled = false;
+      }
+    });
+
+    function renderChecklist() {
+      const container = $("checklistList");
+      $("checklistCount").textContent = CHECK_ITEMS.length;
+      if (!CHECK_ITEMS.length && !CATEGORIAS.length) {
+        container.innerHTML = '<div class="empty">Crea una categoria y luego agrega items.</div>';
+        return;
+      }
+      if (!CHECK_ITEMS.length) {
+        container.innerHTML = '<div class="empty">No hay items. Agrega uno arriba.</div>';
+        return;
+      }
+      // Group by category
+      const grouped = {};
+      CHECK_ITEMS.forEach(item => {
+        const catName = item.categoria_nombre || "Sin categoria";
+        if (!grouped[catName]) grouped[catName] = [];
+        grouped[catName].push(item);
+      });
+
+      let html = `<table><thead><tr><th>Categoria</th><th>Item</th><th style="width:100px">Accion</th></tr></thead><tbody>`;
+      Object.keys(grouped).forEach(catName => {
+        const items = grouped[catName];
+        items.forEach((item, idx) => {
+          html += `<tr>
+            <td>${idx === 0 ? `<strong>${escHtml(catName)}</strong>` : ''}</td>
+            <td>${escHtml(item.nombre)}</td>
+            <td class="actions">
+              <button class="danger" onclick="deleteCheck(${item.id})" style="font-size:11px">Eliminar</button>
+            </td>
+          </tr>`;
+        });
+      });
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    }
+    async function deleteCheck(id) {
+      if (!confirm("Eliminar este item del checklist?")) return;
+      try {
+        await apiPOST("/api/checklist/items/delete", { id });
+        toast("Item eliminado.", true);
+        await loadChecklist();
+      } catch (e) {
+        toast(e?.message || "Error", false);
+      }
+    }
+    $("btnAddCheck").addEventListener("click", async () => {
+      const nombre = $("checkNombre").value.trim();
+      const categoria_id = Number($("checkCategoria").value);
+      if (!nombre) { toast("Ingresa el nombre del item.", false); return; }
+      if (!categoria_id) { toast("Selecciona una categoria.", false); return; }
+      $("btnAddCheck").disabled = true;
+      try {
+        await apiPOST("/api/checklist/items/create", { categoria_id, nombre });
+        toast("Item agregado.", true);
+        $("checkNombre").value = "";
+        await loadChecklist();
+      } catch (e) {
+        toast(e?.message || "Error", false);
+      } finally {
+        $("btnAddCheck").disabled = false;
+      }
+    });
+
+    // ===== PRECIOS =====
+    // ===== FACTURA TOGGLE =====
+    document.addEventListener('change', async (e) => {
+      if (e.target.classList.contains('facturaToggle')) {
+        const id = Number(e.target.dataset.id);
+        const factura = e.target.checked ? 1 : 0;
+        const camarera = CAMARERAS.find(c => c.id === id);
+        if (!camarera) return;
+        // Show loading
+        const label = e.target.nextElementSibling;
+        const origText = label.textContent;
+        label.textContent = '⏳';
+        try {
+          await apiPOST("/api/camareras/update", { id, nombre: camarera.nombre, factura });
+          camarera.factura = factura;
+          label.textContent = factura ? 'SI factura' : 'NO factura';
+          label.style.color = factura ? '#2EE59D' : '';
+          label.style.fontWeight = factura ? '700' : '';
+          toast(factura ? 'Factura activada' : 'Factura desactivada', true, 2000);
+        } catch (err) {
+          e.target.checked = !factura;
+          label.textContent = factura ? 'NO factura' : 'SI factura';
+          toast('Error al actualizar factura: ' + (err?.message || err), false);
+        }
+      }
+    });
+
+    // ===== CONFIG PAGO =====
+    async function loadConfigPago() {
+      try {
+        const r = await fetch(`${API_BASE}/api/config-pagos`);
+        const j = await r.json();
+        if (!j?.ok) throw new Error(j?.error || 'Error');
+        const data = j.data || {};
+        $("cfgPorcentaje").value = Number(data.porcentaje_factura || 33).toFixed(1);
+        $("cfgExtraSi").value = Number(data.extra_factura_si || 46).toFixed(2);
+        $("cfgExtraNo").value = Number(data.extra_factura_no || 36).toFixed(2);
+      } catch (e) {
+        console.warn('No se pudo cargar config pagos:', e);
+      }
+    }
+
+    $("btnGuardarConfigPago").addEventListener("click", async () => {
+      const porcentaje_factura = parseFloat($("cfgPorcentaje").value);
+      const extra_factura_si = parseFloat($("cfgExtraSi").value);
+      const extra_factura_no = parseFloat($("cfgExtraNo").value);
+
+      if (!Number.isFinite(porcentaje_factura) || porcentaje_factura < 0) {
+        toast("Porcentaje invalido", false); $("cfgPorcentaje").focus(); return;
+      }
+      if (!Number.isFinite(extra_factura_si) || extra_factura_si < 0) {
+        toast("Extra factura si invalido", false); $("cfgExtraSi").focus(); return;
+      }
+      if (!Number.isFinite(extra_factura_no) || extra_factura_no < 0) {
+        toast("Extra no factura invalido", false); $("cfgExtraNo").focus(); return;
+      }
+
+      $("btnGuardarConfigPago").disabled = true;
+      $("configPagoStatus").textContent = 'Guardando...';
+      try {
+        await apiPOST("/api/config-pagos/update", { porcentaje_factura, extra_factura_si, extra_factura_no });
+        toast("Configuracion de pagos guardada.", true);
+        $("configPagoStatus").textContent = '✅ Guardado';
+        setTimeout(() => { $("configPagoStatus").textContent = ''; }, 3000);
+      } catch (e) {
+        toast("Error: " + (e?.message || e), false);
+        $("configPagoStatus").textContent = '❌ Error';
+      } finally {
+        $("btnGuardarConfigPago").disabled = false;
+      }
+    });
+
+    // ===== PRECIOS ESPECIALES (MATRIZ HABITACION x TIPO) =====
+    let PESP_ROOMS = [];
+    let PESP_TIPOS = [];
+    let PESP_DATA = {}; // key: "habId_tipoId" => { id, precio }
+
+    async function loadPespModulos() {
+      try {
+        const resp = await apiGET("/api/modules");
+        const mods = Array.isArray(resp?.data) ? resp.data : (Array.isArray(resp) ? resp : []);
+        const sel = $("pespModulo");
+        sel.innerHTML = '<option value="">Seleccionar...</option>';
+        mods.forEach(m => {
+          const o = document.createElement("option");
+          o.value = String(m.id);
+          o.textContent = m.descripcion || m.id;
+          sel.appendChild(o);
+        });
+      } catch (e) {
+        console.warn('Error cargando modulos:', e);
+      }
+    }
+
+    // Cargar tipos de limpieza al inicio
+    async function loadPespTipos() {
+      try {
+        PESP_TIPOS = await apiGET("/api/tipos-limpieza");
+      } catch (e) {
+        console.warn('Error cargando tipos:', e);
+      }
+    }
+
+    let PESP_ES_FAMILIAR = 0;
+
+    async function cargarPespMatriz() {
+      const moduloId = $("pespModulo").value;
+      if (!moduloId) { toast("Selecciona un modulo.", false); return; }
+      $("btnCargarPesp").disabled = true;
+      try {
+        const esFam = PESP_ES_FAMILIAR;
+        const [roomsResp, dataResp] = await Promise.all([
+          fetch(`${API_BASE}/api/rooms?modulo_id=${encodeURIComponent(moduloId)}`),
+          fetch(`${API_BASE}/api/precios-especiales-habitacion?modulo_id=${encodeURIComponent(moduloId)}&es_familiar=${esFam}`)
+        ]);
+        const roomsJ = await roomsResp.json();
+        const dataJ = await dataResp.json();
+        if (!roomsJ?.ok) throw new Error(roomsJ?.error || 'Error rooms');
+        if (!dataJ?.ok) throw new Error(dataJ?.error || 'Error data');
+
+        PESP_ROOMS = Array.isArray(roomsJ.data) ? roomsJ.data : [];
+        const rawData = Array.isArray(dataJ.data) ? dataJ.data : [];
+
+        // Indexar data por habitacion_id + tipo_limpieza_id
+        PESP_DATA = {};
+        rawData.forEach(d => {
+          const key = d.habitacion_id + '_' + d.tipo_limpieza_id;
+          PESP_DATA[key] = d;
+        });
+
+        renderPespMatriz();
+      } catch (e) {
+        toast("Error: " + (e?.message || e), false);
+      } finally {
+        $("btnCargarPesp").disabled = false;
+      }
+    }
+
+    $("btnCargarPesp").addEventListener("click", cargarPespMatriz);
+
+    $("pespFamiliarToggle").addEventListener("change", () => {
+      PESP_ES_FAMILIAR = $("pespFamiliarToggle").checked ? 1 : 0;
+      $("pespFamiliarLabel").innerHTML = PESP_ES_FAMILIAR
+        ? 'Mostrar precios <strong style="color:#FFB020">Familiares</strong>'
+        : 'Mostrar precios <strong>Normales</strong>';
+      if ($("pespModulo").value) cargarPespMatriz();
+    });
+
+    $("pespModulo").addEventListener("keydown", e => {
+      if (e.key === "Enter") $("btnCargarPesp").click();
+    });
+
+    function renderPespMatriz() {
+      const container = $("pespList");
+      if (!PESP_ROOMS.length || !PESP_TIPOS.length) {
+        container.innerHTML = '<div class="empty">No hay habitaciones o tipos de limpieza.</div>';
+        return;
+      }
+
+      // Header: fija + columnas por tipo
+      let html = `<div style="overflow-x:auto;border-radius:12px;border:1px solid rgba(255,255,255,.08)">`;
+      html += `<table style="min-width:600px"><thead><tr>`;
+      html += `<th style="position:sticky;left:0;background:rgba(10,14,28,.95);z-index:1">Habitacion</th>`;
+      PESP_TIPOS.forEach(t => {
+        html += `<th style="text-align:center;white-space:nowrap;padding:8px 6px;font-size:11px">${escHtml(t.nombre)}</th>`;
+      });
+      html += `</tr></thead><tbody>`;
+
+      PESP_ROOMS.forEach(h => {
+        const habId = h.habitacion_id || h.id;
+        const etiqueta = h.etiqueta || '-';
+        html += `<tr>`;
+        html += `<td style="position:sticky;left:0;background:rgba(10,14,28,.95);z-index:1;font-weight:700;white-space:nowrap">${escHtml(etiqueta)}</td>`;
+
+        PESP_TIPOS.forEach(tipo => {
+          const key = habId + '_' + tipo.id;
+          const entry = PESP_DATA[key];
+          const val = entry?.precio;
+          const hasVal = val !== null && val !== undefined && Number(val) > 0;
+          const valStr = hasVal ? Number(val).toFixed(2) : '';
+          const cellId = `pespCell_${habId}_${tipo.id}`;
+
+          html += `<td style="text-align:center;padding:4px 4px;min-width:80px">`;
+          html += `<div class="priceCell" style="justify-content:center">`;
+          html += `<span style="font-weight:700;font-size:12px;color:var(--muted)">Q</span>`;
+          html += `<input type="number" step="0.50" min="0" value="${valStr}"
+            id="${cellId}"
+            data-pesp-hab="${habId}"
+            data-pesp-tipo="${tipo.id}"
+            style="width:70px;padding:4px 6px;font-size:12px;text-align:right"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();savePespCelda('${cellId}')}"
+            onblur="savePespCelda('${cellId}')" />`;
+          html += `</div>`;
+          html += `<div id="${cellId}_status" style="font-size:10px;margin-top:2px;min-height:16px">`;
+          if (hasVal) {
+            html += `<span style="color:#2EE59D;font-weight:700">✅ Q${Number(val).toFixed(2)}</span>`;
+          } else {
+            html += `<span style="color:var(--muted)">—</span>`;
+          }
+          html += `</div></td>`;
+        });
+
+        html += `</tr>`;
+      });
+      html += `</tbody></table></div>`;
+      container.innerHTML = html;
+    }
+
+    let savingPespCelda = {};
+    async function savePespCelda(cellId) {
+      if (savingPespCelda[cellId]) return;
+      const input = document.getElementById(cellId);
+      const statusEl = document.getElementById(cellId + '_status');
+      if (!input || !statusEl) return;
+
+      const habId = Number(input.dataset.pespHab);
+      const tipoId = Number(input.dataset.pespTipo);
+      const rawVal = input.value.trim();
+
+      if (!habId || !tipoId) return;
+
+      let precio = null;
+      if (rawVal !== '' && rawVal !== '0') {
+        const num = parseFloat(rawVal);
+        if (!Number.isFinite(num) || num < 0) {
+          statusEl.innerHTML = '<span style="color:#FF4D6D">❌ Invalido</span>';
+          input.focus();
+          return;
+        }
+        precio = num;
+      }
+
+      savingPespCelda[cellId] = true;
+      statusEl.innerHTML = '<span style="color:var(--muted)">⏳</span>';
+      input.style.opacity = '0.5';
+
+      try {
+        await apiPOST("/api/precios-especiales-habitacion/update", {
+          habitacion_id: habId,
+          tipo_limpieza_id: tipoId,
+          es_familiar: PESP_ES_FAMILIAR,
+          precio
+        });
+
+        // Actualizar cache
+        const key = habId + '_' + tipoId;
+        if (precio !== null && precio > 0) {
+          if (!PESP_DATA[key]) {
+            PESP_DATA[key] = { id: null, habitacion_id: habId, tipo_limpieza_id: tipoId, es_familiar: PESP_ES_FAMILIAR };
+          }
+          PESP_DATA[key].precio = precio;
+          statusEl.innerHTML = `<span style="color:#2EE59D;font-weight:700">✅ Q${precio.toFixed(2)}</span>`;
+        } else {
+          delete PESP_DATA[key];
+          statusEl.innerHTML = '<span style="color:var(--muted)">—</span>';
+        }
+
+        input.style.borderColor = 'rgba(46,229,157,.45)';
+        setTimeout(() => { input.style.borderColor = ''; }, 1500);
+      } catch (e) {
+        statusEl.innerHTML = `<span style="color:#FF4D6D">❌ ${escHtml(e?.message || 'Error')}</span>`;
+        toast('Error: ' + (e?.message || e), false);
+      } finally {
+        savingPespCelda[cellId] = false;
+        input.style.opacity = '1';
+      }
+    }
+
+    // ===== USUARIOS =====
+    let USUARIOS = [];
+
+    async function loadUsuarios() {
+      const resp = await apiGET("/api/users");
+      USUARIOS = Array.isArray(resp) ? resp : [];
+      renderUsuarios();
+    }
+
+    const DEPT_OPTIONS = ['Ama de llaves','Recepción','Gerencia','Administrador','Reportes'];
+
+    function renderUsuarios() {
+      const container = $("usuariosList");
+      $("usuariosCount").textContent = USUARIOS.length;
+      if (!USUARIOS.length) {
+        container.innerHTML = '<div class="empty">No hay usuarios registrados.</div>';
+        return;
+      }
+      let html = `<table><thead><tr><th>Nombre</th><th>Rol</th><th style="width:100px">Accion</th></tr></thead><tbody>`;
+      USUARIOS.forEach(u => {
+        const dept = String(u.departamento || u.dept || '');
+        const id = u.id;
+        const nameVal = escHtml(u.nombre || u.name);
+        const deptOpts = DEPT_OPTIONS.map(d =>
+          `<option value="${d}" ${d === dept ? 'selected' : ''}>${d.charAt(0) + d.slice(1).toLowerCase()}</option>`
+        ).join('');
+        html += `<tr>
+          <td>
+            <input type="text" id="usrNameInput_${id}" value="${nameVal}"
+              data-usr-id="${id}"
+              style="padding:4px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.10);background:rgba(10,14,28,.55);color:var(--text);outline:none;font-size:13px;font-weight:700;width:100%;min-width:120px"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();saveUsuario(${id})}"
+              onblur="saveUsuario(${id})" />
+          </td>
+          <td>
+            <select id="usrDeptSelect_${id}" data-usr-id="${id}"
+              style="padding:4px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.10);background:rgba(10,14,28,.55);color:var(--text);outline:none;font-size:12px;max-width:140px"
+              onchange="saveUsuario(${id})">
+              ${deptOpts}
+            </select>
+          </td>
+          <td class="actions">
+            <button class="danger" onclick="deleteUsuario(${id})" style="font-size:11px">Eliminar</button>
+          </td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    }
+
+    let savingUsuario = {};
+    async function saveUsuario(id) {
+      if (savingUsuario[id]) return;
+      const nameInput = document.getElementById(`usrNameInput_${id}`);
+      const deptSelect = document.getElementById(`usrDeptSelect_${id}`);
+      if (!nameInput || !deptSelect) return;
+
+      const usr = USUARIOS.find(u => u.id === id);
+      if (!usr) return;
+
+      const newName = nameInput.value.trim();
+      const newDept = deptSelect.value;
+
+      // Skip if nothing changed
+      const oldName = usr.nombre || usr.name || '';
+      const oldDept = usr.departamento || usr.dept || '';
+      if (newName === oldName && newDept === oldDept) return;
+
+      savingUsuario[id] = true;
+      nameInput.style.opacity = '0.5';
+      deptSelect.style.opacity = '0.5';
+
+      try {
+        await apiPOST("/api/users/update", { id, nombre: newName, departamento: newDept });
+        usr.nombre = newName;
+        usr.departamento = newDept;
+        nameInput.style.borderColor = 'rgba(46,229,157,.45)';
+        deptSelect.style.borderColor = 'rgba(46,229,157,.45)';
+        setTimeout(() => {
+          nameInput.style.borderColor = '';
+          deptSelect.style.borderColor = '';
+        }, 1500);
+        toast("Usuario actualizado: " + newName, true, 2000);
+      } catch (e) {
+        nameInput.value = oldName;
+        deptSelect.value = oldDept;
+        toast(e?.message || "Error al actualizar", false);
+      } finally {
+        savingUsuario[id] = false;
+        nameInput.style.opacity = '1';
+        deptSelect.style.opacity = '1';
+      }
+    }
+
+    $("btnCrearUsuario").addEventListener("click", async () => {
+      const nombre = $("usrNombre").value.trim();
+      const dept = $("usrDept").value;
+      const pass = $("usrPass").value;
+      const pass2 = $("usrPass2").value;
+      const errEl = $("usrErr");
+
+      if (!nombre || !dept || !pass) {
+        errEl.textContent = "Completa todos los campos.";
+        errEl.style.display = 'block';
+        return;
+      }
+      if (pass.length < 4) {
+        errEl.textContent = "La contrasena debe tener al menos 4 caracteres.";
+        errEl.style.display = 'block';
+        return;
+      }
+      if (pass !== pass2) {
+        errEl.textContent = "Las contrasenas no coinciden.";
+        errEl.style.display = 'block';
+        return;
+      }
+
+      errEl.style.display = 'none';
+      $("btnCrearUsuario").disabled = true;
+      try {
+        await apiPOST("/api/users/create", { nombre, departamento: dept, clave: pass });
+        toast("Usuario creado: " + nombre + " - " + dept, true);
+        $("usrNombre").value = '';
+        $("usrPass").value = '';
+        $("usrPass2").value = '';
+        await loadUsuarios();
+      } catch (e) {
+        errEl.textContent = e?.message || "No se pudo crear usuario";
+        errEl.style.display = 'block';
+        toast(e?.message || "Error", false);
+      } finally {
+        $("btnCrearUsuario").disabled = false;
+      }
+    });
+
+    async function deleteUsuario(id) {
+      const usr = USUARIOS.find(u => u.id === id);
+      if (!usr) return;
+      if (!confirm(`Eliminar usuario "${usr.nombre || usr.name}"?`)) return;
+      try {
+        await apiPOST("/api/users/delete", { id });
+        toast("Usuario eliminado: " + (usr.nombre || usr.name), true);
+        await loadUsuarios();
+      } catch (e) {
+        toast(e?.message || "Error al eliminar usuario", false);
+      }
+    }
+
+    // Clear error on input
+    ["usrNombre", "usrDept", "usrPass", "usrPass2"].forEach(id => {
+      $(id)?.addEventListener("input", () => { $("usrErr").style.display = 'none'; });
+    });
+
+    // ===== MODULOS Y HABITACIONES =====
+    let MODULOS_MH = [];
+    let HABITACIONES_MH = [];
+
+    async function loadModulosMH() {
+      const data = await apiGET("/api/modules");
+      MODULOS_MH = Array.isArray(data) ? data : [];
+      renderModulosMH();
+      renderHabModuloSelect();
+    }
+
+    function renderModulosMH() {
+      const container = $("modulosList");
+      if (!MODULOS_MH.length) {
+        container.innerHTML = '<div class="empty">No hay modulos. Crea uno arriba.</div>';
+        return;
+      }
+      let html = `<table><thead><tr><th>ID</th><th>Descripcion</th><th style="width:120px">Accion</th></tr></thead><tbody>`;
+      MODULOS_MH.forEach(m => {
+        html += `<tr>
+          <td><strong>${escHtml(m.id)}</strong></td>
+          <td>${escHtml(m.descripcion || '')}</td>
+          <td class="actions">
+            <button class="danger" onclick="deleteMod('${escHtml(m.id)}')" style="font-size:11px">Eliminar</button>
+          </td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    }
+
+    async function deleteMod(id) {
+      const mod = MODULOS_MH.find(m => m.id === id);
+      if (!mod) return;
+      const habCount = HABITACIONES_MH.filter(h => h.modulo_id === id).length;
+      const msg = habCount > 0
+        ? `Eliminar modulo "${mod.descripcion}" y sus ${habCount} habitaciones?`
+        : `Eliminar modulo "${mod.descripcion}"?`;
+      if (!confirm(msg)) return;
+      try {
+        await apiPOST("/api/modulos/delete", { id });
+        toast("Modulo eliminado.", true);
+        await loadModulosMH();
+        await loadHabitacionesMH($("habModuloSel").value);
+      } catch (e) {
+        toast(e?.message || "Error", false, 5200);
+      }
+    }
+
+    $("btnAddMod").addEventListener("click", async () => {
+      const id = $("modIdTxt").value.trim();
+      const desc = $("modDescTxt").value.trim();
+      if (!id || !desc) { toast("ID y descripcion requeridos.", false); return; }
+      $("btnAddMod").disabled = true;
+      try {
+        await apiPOST("/api/modulos/create", { id, descripcion: desc });
+        toast("Modulo creado.", true);
+        $("modIdTxt").value = "";
+        $("modDescTxt").value = "";
+        await loadModulosMH();
+      } catch (e) {
+        toast(e?.message || "Error", false);
+      } finally {
+        $("btnAddMod").disabled = false;
+      }
+    });
+
+    // ===== HABITACIONES =====
+    function renderHabModuloSelect() {
+      const sel = $("habModuloSel");
+      const currentVal = sel.value;
+      sel.innerHTML = '<option value="">Seleccionar modulo...</option>';
+      MODULOS_MH.forEach(m => {
+        const o = document.createElement("option");
+        o.value = m.id;
+        o.textContent = m.descripcion || m.id;
+        sel.appendChild(o);
+      });
+      if (currentVal && MODULOS_MH.some(m => m.id === currentVal)) {
+        sel.value = currentVal;
+      }
+    }
+
+    async function loadHabitacionesMH(moduloId) {
+      if (!moduloId) {
+        HABITACIONES_MH = [];
+        $("habitacionesList").innerHTML = '<div class="empty">Selecciona un modulo para ver sus habitaciones.</div>';
+        return;
+      }
+      const data = await apiGET(`/api/rooms?modulo_id=${encodeURIComponent(moduloId)}`);
+      HABITACIONES_MH = Array.isArray(data) ? data : [];
+      renderHabitacionesMH();
+    }
+
+    function renderHabitacionesMH() {
+      const container = $("habitacionesList");
+      if (!HABITACIONES_MH.length) {
+        container.innerHTML = '<div class="empty">No hay habitaciones en este modulo.</div>';
+        return;
+      }
+      let html = `<table><thead><tr><th>Habitacion</th><th>Familiar</th><th style="width:120px">Accion</th></tr></thead><tbody>`;
+      HABITACIONES_MH.forEach(h => {
+        const habId = h.habitacion_id || h.id;
+        const famChecked = Number(h.es_familiar) === 1;
+        html += `<tr>
+          <td><strong>${escHtml(h.etiqueta)}</strong></td>
+          <td>
+            <label class="toggleSwitch" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+              <input type="checkbox" class="habFamiliarToggle" data-id="${habId}" ${famChecked ? 'checked' : ''} />
+              <span style="font-size:12px;${famChecked ? 'color:#FFB020;font-weight:700' : 'color:var(--muted)'}">${famChecked ? '✅ Familiar' : 'Normal'}</span>
+            </label>
+          </td>
+          <td class="actions">
+            <button class="danger" onclick="deleteHab(${habId})" style="font-size:11px">Eliminar</button>
+          </td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    }
+
+    async function deleteHab(id) {
+      const hab = HABITACIONES_MH.find(h => (h.habitacion_id || h.id) === id);
+      if (!hab) return;
+      if (!confirm(`Eliminar habitacion "${hab.etiqueta}" del modulo "${$("habModuloSel").selectedOptions?.[0]?.textContent || ""}"?\n\nEsta acción no se puede deshacer.`)) return;
+      try {
+        await apiPOST("/api/habitaciones/delete", { id });
+        toast("Habitacion eliminada.", true);
+        await loadHabitacionesMH($("habModuloSel").value);
+      } catch (e) {
+        toast(e?.message || "Error", false, 5200);
+      }
+    }
+
+    $("habModuloSel").addEventListener("change", async () => {
+      await loadHabitacionesMH($("habModuloSel").value);
+    });
+
+    $("btnAddHab").addEventListener("click", async () => {
+      const modulo_id = $("habModuloSel").value;
+      const etiqueta = $("habEtiquetaTxt").value.trim();
+      const es_familiar = $("habFamiliarCbx").checked ? 1 : 0;
+      if (!modulo_id) { toast("Selecciona un modulo.", false); return; }
+      if (!etiqueta) { toast("Ingresa la etiqueta de la habitacion.", false); return; }
+      $("btnAddHab").disabled = true;
+      try {
+        await apiPOST("/api/habitaciones/create", { modulo_id, etiqueta, es_familiar });
+        toast("Habitacion agregada.", true);
+        $("habEtiquetaTxt").value = "";
+        $("habFamiliarCbx").checked = false;
+        await loadHabitacionesMH(modulo_id);
+      } catch (e) {
+        toast(e?.message || "Error", false);
+      } finally {
+        $("btnAddHab").disabled = false;
+      }
+    });
+
+    // Toggle es_familiar en tabla habitaciones
+    document.addEventListener('change', async (e) => {
+      if (e.target.classList.contains('habFamiliarToggle')) {
+        const id = Number(e.target.dataset.id);
+        const es_familiar = e.target.checked ? 1 : 0;
+        const label = e.target.nextElementSibling;
+        const origText = label.textContent;
+        label.textContent = '⏳';
+        try {
+          await apiPOST("/api/habitaciones/update", { id, es_familiar });
+          label.textContent = es_familiar ? '✅ Familiar' : 'Normal';
+          label.style.color = es_familiar ? '#FFB020' : '';
+          label.style.fontWeight = es_familiar ? '700' : '';
+          toast(es_familiar ? 'Marcada como Familiar' : 'Marcada como Normal', true, 2000);
+        } catch (err) {
+          e.target.checked = !es_familiar;
+          label.textContent = es_familiar ? 'Normal' : '✅ Familiar';
+          toast('Error al actualizar: ' + (err?.message || err), false);
+        }
+      }
+    });
+
+    // ===== INIT =====
+    (async function init() {
+      try {
+        await Promise.all([
+          loadCamareras(),
+          loadTipos(),
+          loadChecklist(),
+          loadConfigPago(),
+          loadPespModulos(),
+          loadPespTipos(),
+          loadModulosMH(),
+          loadUsuarios()
+        ]);
+      } catch (e) {
+        toast("Error cargando datos: " + (e?.message || e), false, 5200);
+      }
+    })();
+  </script>
+</body>
+</html>
