@@ -104,8 +104,17 @@
   <!-- MAIN -->
   <div class="main">
     <div class="headRow">
-      <h2>Habitaciones</h2>
+      <div class="headLeft">
+        <h2>Habitaciones</h2>
+        <div class="searchWrap">
+          <input id="roomSearch" class="searchInput" type="text" placeholder="Buscar habitacion..." autocomplete="off" />
+        </div>
+      </div>
       <div class="headActions">
+        <button id="btnNotifBell" class="notifBell" type="button" title="Notificaciones recientes">
+          <span class="bellIcon">🔔</span>
+          <span class="bellDot" id="bellDot" style="display:none"></span>
+        </button>
         <button id="btnDecorada" class="btnDecoradaHead hidden" type="button">Decorada</button>
         <div class="selected" id="selectedInfo">Modulo: <b id="selModule">-</b></div>
       </div>
@@ -188,13 +197,48 @@
     </div>
   </div>
 
+  <!-- Panel notificaciones recientes -->
+  <div id="notifPanel" class="notifPanel hidden">
+    <div class="notifPanelHead">
+      <span class="notifPanelTitle">Cambios recientes</span>
+      <button id="notifPanelClose" class="notifPanelClose" type="button">X</button>
+    </div>
+    <div class="notifPanelBody" id="notifPanelBody">
+      <div class="notifEmpty">Sin cambios recientes</div>
+    </div>
+  </div>
 
   <script src="./socket.io/socket.io.js"></script>
   <script src="./app.js?v=20260213f"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch(function(err) {
+      navigator.serviceWorker.register('./sw.js').then(function(reg) {
+        // Detectar nueva version del SW
+        reg.addEventListener('updatefound', function() {
+          var newSW = reg.installing;
+          if (!newSW) return;
+          newSW.addEventListener('statechange', function() {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              // Nueva version esperando
+              var existing = document.getElementById('swUpdateToast');
+              if (existing) return;
+              var toast = document.createElement('div');
+              toast.id = 'swUpdateToast';
+              toast.className = 'swUpdateToast';
+              toast.innerHTML = '<span class="swUpdateIcon">🔄</span><span class="swUpdateText">Nueva version disponible.</span><button class="swUpdateBtn" onclick="location.reload()">Actualizar</button>';
+              document.body.appendChild(toast);
+            }
+          });
+        });
+      }).catch(function(err) {
         console.warn('[SW] No se pudo registrar:', err);
+      });
+
+      // Cuando el nuevo SW toma el control, recargar
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        if (document.getElementById('swUpdateToast')) {
+          location.reload();
+        }
       });
     }
   </script>

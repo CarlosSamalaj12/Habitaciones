@@ -640,6 +640,8 @@ function applyRoomUpdate(updatedRow) {
           oldLabel + " → " + newLabel,
           "room-" + modId + "-" + updated.etiqueta
         );
+        // Agregar a notificaciones recientes
+        addRecentNotification(modId, updated.etiqueta, oldEstado, newEstado);
       }
       arr[idx] = updated;
     } else {
@@ -1025,6 +1027,140 @@ function updateTimersLive() {
 }
 
 /* =========================
+   BUSCADOR DE HABITACIONES
+========================= */
+let roomSearchQuery = "";
+
+$("roomSearch")?.addEventListener("input", (e) => {
+  roomSearchQuery = String(e.target.value || "").trim().toLowerCase();
+  scheduleRenderRooms();
+});
+
+/* =========================
+   PANEL DE NOTIFICACIONES RECIENTES
+========================= */
+const NOTIF_MAX = 20;
+const recentNotifications = [];
+
+function addRecentNotification(modulo, etiqueta, oldEstado, newEstado) {
+  const oldLabel = ESTADO_LABELS[oldEstado] || oldEstado.toUpperCase();
+  const newLabel = ESTADO_LABELS[newEstado] || newEstado.toUpperCase();
+  const now = new Date(nowServerMs());
+  const timeStr = now.toLocaleTimeString("es-GT", { timeZone: "America/Guatemala", hour: "2-digit", minute: "2-digit", hour12: false });
+
+  recentNotifications.unshift({
+    modulo,
+    etiqueta,
+    oldEstado,
+    newEstado,
+    oldLabel,
+    newLabel,
+    time: timeStr,
+    ts: ts.getTime(),
+    id: modulo + "-" + etiqueta + "-" + now.getTime()
+  });
+
+  if (recentNotifications.length > NOTIF_MAX) recentNotifications.pop();
+  updateBellDot();
+}
+
+function updateBellDot() {
+  const dot = $("bellDot");
+  if (!dot) return;
+  const hasNew = recentNotifications.length > 0 && !notifPanelOpen;
+  dot.style.display = hasNew ? "block" : "none";
+}
+
+let notifPanelOpen = false;
+
+function renderNotifPanel() {
+  const body = $("notifPanelBody");
+  const panel = $("notifPanel");
+  if (!body || !panel) return;
+
+  if (!recentNotifications.length) {
+    body.innerHTML = '<div class="notifEmpty">Sin cambios recientes</div>';
+    return;
+  }
+
+  const estadoIcon = {
+    "ocupado": "🔴",
+    "ocupada limpia": "🔴",
+    "lista": "🟡",
+    "limpieza": "🔵",
+    "inspeccion": "🟢",
+    "libre": "🟢",
+    "mantenimiento": "🟣",
+    "repaso": "🟤"
+  };
+
+  let html = "";
+  recentNotifications.forEach(n => {
+    const icon = estadoIcon[n.newEstado] || "🔔";
+    const changeDir = n.oldEstado !== n.newEstado 
+      ? `<span style="color:var(--muted);font-size:10px">${n.oldLabel} → </span><span style="font-weight:700">${n.newLabel}</span>`
+      : `<span style="font-weight:700">${n.newLabel}</span>`;
+
+    html += `<div class="notifItem" data-notif-id="${n.id}">
+      <div class="notifItemIcon ${n.newEstado}">${icon}</div>
+      <div class="notifItemContent">
+        <div class="notifItemRoom">${n.modulo} - ${n.etiqueta}</div>
+        <div class="notifItemChange">${changeDir}</div>
+        <div class="notifItemTime">${n.time}</div>
+      </div>
+      <button class="notifItemClose" data-notif-close="${n.id}" title="Descartar">X</button>
+    </div>`;
+  });
+
+  body.innerHTML = html;
+
+  // Event listeners para descartar individualmente
+  body.querySelectorAll("[data-notif-close]").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.notifClose;
+      const idx = recentNotifications.findIndex(n => n.id === id);
+      if (idx >= 0) recentNotifications.splice(idx, 1);
+      renderNotifPanel();
+      updateBellDot();
+    });
+  });
+}
+
+$("btnNotifBell")?.addEventListener("click", () => {
+  notifPanelOpen = !notifPanelOpen;
+  const panel = $("notifPanel");
+  if (!panel) return;
+  if (notifPanelOpen) {
+    panel.classList.remove("hidden");
+    renderNotifPanel();
+    updateBellDot();
+  } else {
+    panel.classList.add("hidden");
+  }
+});
+
+$("notifPanelClose")?.addEventListener("click", () => {
+  notifPanelOpen = false;
+  const panel = $("notifPanel");
+  if (panel) panel.classList.add("hidden");
+  updateBellDot();
+});
+
+// Cerrar panel al hacer click fuera
+document.addEventListener("click", (e) => {
+  if (!notifPanelOpen) return;
+  const panel = $("notifPanel");
+  const bell = $("btnNotifBell");
+  if (!panel || !bell) return;
+  if (!panel.contains(e.target) && !bell.contains(e.target)) {
+    notifPanelOpen = false;
+    panel.classList.add("hidden");
+    updateBellDot();
+  }
+});
+
+/* =========================
    ROOMS RENDER
 ========================= */
 function roomClassByEstado(estado) {
@@ -1112,8 +1248,26 @@ function renderRooms() {
   const role = roleOf(sess);
 
   const rooms = roomsCache.get(String(activeModuleId)) || [];
-  if (!rooms.length) return;
+  if (!rooms.length) {
+    grid.innerHTML = '<div class="emptyRooms">No hay habitaciones en este modulo.</div>';
+    return;
+  }
+
   rooms.sort((a, b) => String(a.etiqueta).localeCompare(String(b.etiqueta), "es", { numeric: true }));
+
+  // Filtrar por busqueda
+  let filteredRooms = rooms;
+  if (roomSearchQuery) {
+    filteredRooms = rooms.filter(r => {
+      const etiqueta = String(r.etiqueta).toLowerCase();
+      return etiqueta.includes(roomSearchQuery);
+    });
+    if (!filteredRooms.length) {
+      grid.innerHTML = '<div class="emptyRooms">Sin resultados para "' + roomSearchQuery + '"</div>';
+      updateSummaryCounts();
+      return;
+    }
+  }
 
   const moduleName = MODULES.find(m => String(m.id) === String(activeModuleId))?.descripcion || "";
 
@@ -1128,7 +1282,7 @@ function renderRooms() {
     prio: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L3 14h6l-1 8 10-12h-6z"/></svg>`
   };
 
-  rooms.forEach(room => {
+  filteredRooms.forEach(room => {
     const k = roomKey(room.modulo_id, room.etiqueta);
     const { cls, badge } = roomClassByEstado(room.estado);
 
