@@ -443,6 +443,122 @@ function normalizeRoom(row) {
   };
 }
 
+/* =========================
+   NOTIFICACIONES (Desktop + Push)
+========================= */
+let notifPermission = "Notification" in window ? Notification.permission : "denied";
+let pushSubscription = null;
+
+function requestNotifPermission() {
+  if ("Notification" in window && notifPermission !== "granted") {
+    Notification.requestPermission().then(function(p) {
+      notifPermission = p;
+      // Si el usuario acepta, suscribir a push
+      if (p === "granted") subscribeToPush();
+    }).catch(function() {});
+  } else if (notifPermission === "granted") {
+    // Ya tiene permiso, suscribir directamente
+    subscribeToPush();
+  }
+}
+
+/** Suscribir al usuario a Push Notifications via Service Worker */
+async function subscribeToPush() {
+  try {
+    if (!("serviceWorker" in navigator && "PushManager" in window)) return;
+
+    // Obtener la clave publica del servidor
+    const resp = await fetch(API_BASE + "/api/push/vapid-key");
+    const data = await resp.json();
+    if (!data.ok || !data.publicKey) return;
+
+    const registration = await navigator.serviceWorker.ready;
+    const existingSub = await registration.pushManager.getSubscription();
+
+    // Si ya hay una suscripcion activa, no duplicar
+    if (existingSub) {
+      pushSubscription = existingSub;
+      return;
+    }
+
+    // Convertir la clave VAPID de base64 a Uint8Array
+    const vapidPublicKey = urlBase64ToUint8Array(data.publicKey);
+
+    const sub = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: vapidPublicKey
+    });
+
+    pushSubscription = sub;
+
+    // Enviar la suscripcion al servidor
+    const sess = getSession();
+    await fetch(API_BASE + "/api/push/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        usuario_nombre: sess?.name || "desconocido",
+        usuario_dept: sess?.dept || "",
+        subscription: sub.toJSON()
+      })
+    });
+  } catch (e) {
+    console.warn("No se pudo suscribir a push:", e);
+  }
+}
+
+/** Convertir base64 url-safe a Uint8Array (requerido por PushManager) */
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+/** Desuscribir push (al hacer logout/bloquear) */
+function unsubscribeFromPush() {
+  if (!pushSubscription) return;
+  const endpoint = pushSubscription.endpoint;
+  fetch(API_BASE + "/api/push/unsubscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ endpoint })
+  }).catch(() => {});
+  pushSubscription.unsubscribe().catch(() => {});
+  pushSubscription = null;
+}
+
+function showRoomNotification(title, body, tag) {
+  if (!("Notification" in window && notifPermission === "granted")) return;
+  try {
+    const n = new Notification(title, {
+      body: body,
+      icon: "./Oficial_JDL_blanco.png",
+      badge: "./Oficial_JDL_blanco.png",
+      tag: tag || "room-update",
+      silent: false
+    });
+    setTimeout(function() { n.close(); }, 5000);
+  } catch(e) {
+    console.warn("Notificacion fallo:", e);
+  }
+}
+
+const ESTADO_LABELS = {
+  "libre": "LIBRE",
+  "ocupado": "OCUPADO",
+  "ocupada limpia": "OCUPADA LIMPIA",
+  "lista": "LISTA PARA LIMPIEZA",
+  "limpieza": "EN LIMPIEZA",
+  "inspeccion": "INSPECCION",
+  "mantenimiento": "MANTENIMIENTO",
+  "repaso": "REPASO"
+};
+
 function applyRoomUpdate(updatedRow) {
   const updated = normalizeRoom(updatedRow);
   const modId = String(updated.modulo_id);
@@ -450,12 +566,30 @@ function applyRoomUpdate(updatedRow) {
   const arr = roomsCache.get(modId);
   if (arr) {
     const idx = arr.findIndex(x => String(x.etiqueta).toUpperCase() === String(updated.etiqueta).toUpperCase());
-    if (idx >= 0) arr[idx] = updated;
-    else arr.push(updated);
+    if (idx >= 0) {
+      // Detectar cambio de estado para notificar
+      const oldEstado = arr[idx].estado;
+      const newEstado = updated.estado;
+      if (oldEstado !== newEstado) {
+        const roomLabel = modId + " - " + updated.etiqueta;
+        const oldLabel = ESTADO_LABELS[oldEstado] || oldEstado.toUpperCase();
+        const newLabel = ESTADO_LABELS[newEstado] || newEstado.toUpperCase();
+        showRoomNotification(
+          roomLabel,
+          oldLabel + " → " + newLabel,
+          "room-" + modId + "-" + updated.etiqueta
+        );
+      }
+      arr[idx] = updated;
+    } else {
+      arr.push(updated);
+    }
   }
 
   if (activeModuleId === modId) scheduleRenderRooms();
 }
+
+
 
 /* =========================
    LOGIN (BD)
@@ -571,6 +705,7 @@ $("btnLogin").addEventListener("click", async () => {
     setSession({ id: u.id, name: u.name, dept: u.dept, token: resp.token, at: Date.now() });
     setActivity();
     hideLogin();
+    requestNotifPermission();
     toast("ok", "Bienvenido", `${u.name} - ${u.dept}`);
 
     await bootData();
@@ -589,7 +724,10 @@ $("loginPass").addEventListener("keydown", (e) => {
   if (e.key === "Enter") $("btnLogin").click();
 });
 
-$("btnLock").addEventListener("click", () => showLogin());
+$("btnLock").addEventListener("click", () => {
+  unsubscribeFromPush();
+  showLogin();
+});
 
 
 /* =========================
@@ -1462,7 +1600,10 @@ modalSave.onclick = async () => {
 
 // Auto lock check
 setInterval(() => {
-  if (isLocked() && !isLoginVisible()) showLogin();
+  if (isLocked() && !isLoginVisible()) {
+    unsubscribeFromPush();
+    showLogin();
+  }
 }, 8000);
 
 // OK Este reloj live se mantiene igual
@@ -1497,6 +1638,8 @@ window.addEventListener('resize', () => {
     renderAll();
     renderActiveUser();
     adjustMobileLayout();
+    // Suscribir a push si ya hay sesion activa
+    requestNotifPermission();
   } catch (e) {
     console.error(e);
     toast("err", "Error", e.message || "No cargo data");

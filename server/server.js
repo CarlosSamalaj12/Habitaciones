@@ -2,6 +2,7 @@
 require("dotenv").config();
 console.log("🔥 SERVER NUEVO CARGADO:", __filename);
 
+const os = require("os");
 const express = require("express");
 const http = require("http");
 const path = require("path");
@@ -10,6 +11,14 @@ const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Server } = require("socket.io");
+const webpush = require("web-push");
+
+// ===== VAPID Keys (Push Notifications) =====
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "BBNU_k9XBvfFRjyb-J6o4pWRtkBjT4jIeecqU9XoNPk5-fzEhlK_wC-d0AlUr8gBoTZ2wQQ4O57mjZ8idcB5yFI";
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "n5Zb8cj0nuMVkfaHs8jqC0n1i8R7uaBgn0q-K_V7g4U";
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:admin@habitaciones.local";
+
+webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
 const app = express();
 app.get("/api/whoami", (req, res) => res.json({ ok: true, file: __filename }));
@@ -275,6 +284,36 @@ async function initDB(){
     console.warn("⚠️ No se pudo eliminar precios_limpieza:", e.message);
   }
 
+  // Migración: crear tabla push_subscriptions
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        usuario_nombre VARCHAR(255) NOT NULL,
+        usuario_dept VARCHAR(100) DEFAULT NULL,
+        endpoint TEXT NOT NULL,
+        auth VARCHAR(255) NOT NULL,
+        p256dh VARCHAR(255) NOT NULL,
+        user_agent VARCHAR(500) DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_endpoint (endpoint(255))
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    console.log("✅ Tabla push_subscriptions creada/verificada");
+  } catch (e) {
+    console.warn("⚠️ No se pudo crear push_subscriptions:", e.message);
+  }
+
+  // Migration: agregar columna usuario_dept si no existe (para tablas ya creadas)
+  try {
+    await pool.query("ALTER TABLE push_subscriptions ADD COLUMN usuario_dept VARCHAR(100) DEFAULT NULL AFTER usuario_nombre");
+    console.log("✅ Columna usuario_dept agregada a push_subscriptions");
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME') {
+      console.warn("⚠️ No se pudo agregar usuario_dept:", e.message);
+    }
+  }
+
   await pool.query("SELECT 1");
   console.log("✅ MariaDB conectada");
 }
@@ -310,6 +349,49 @@ function toMySQLDatetime(value){
   return `${YYYY}-${MM}-${DD} ${hh}:${mm}:${ss}`;
 }
 
+
+// ===== PUSH SUBSCRIPTIONS =====
+
+// GET /api/push/vapid-key - Devuelve la clave publica para que el frontend se suscriba
+app.get("/api/push/vapid-key", (req, res) => {
+  res.json({ ok: true, publicKey: VAPID_PUBLIC_KEY });
+});
+
+// POST /api/push/subscribe - Guardar suscripcion
+app.post("/api/push/subscribe", requireAuthIfEnabled, async (req, res) => {
+  try {
+    const { usuario_nombre, usuario_dept, subscription } = req.body;
+    if (!usuario_nombre || !subscription?.endpoint || !subscription?.keys?.auth || !subscription?.keys?.p256dh) {
+      return res.status(400).json({ ok: false, error: "Faltan datos de suscripcion" });
+    }
+
+    // Eliminar suscripcion anterior por si cambio
+    await pool.query("DELETE FROM push_subscriptions WHERE endpoint=?", [subscription.endpoint]);
+
+    await pool.query(
+      "INSERT INTO push_subscriptions (usuario_nombre, usuario_dept, endpoint, auth, p256dh, user_agent) VALUES (?,?,?,?,?,?)",
+      [usuario_nombre, usuario_dept || null, subscription.endpoint, subscription.keys.auth, subscription.keys.p256dh, req.headers['user-agent'] || null]
+    );
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("Error guardando suscripcion push:", e);
+    res.status(500).json({ ok: false, error: "Error interno" });
+  }
+});
+
+// POST /api/push/unsubscribe - Eliminar suscripcion (logout)
+app.post("/api/push/unsubscribe", requireAuthIfEnabled, async (req, res) => {
+  try {
+    const { endpoint } = req.body;
+    if (!endpoint) return res.status(400).json({ ok: false, error: "Falta endpoint" });
+    await pool.query("DELETE FROM push_subscriptions WHERE endpoint=?", [endpoint]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error("Error eliminando suscripcion:", e);
+    res.status(500).json({ ok: false, error: "Error interno" });
+  }
+});
 
 // ===== HEALTH =====
 app.get("/", (req,res)=> res.send("OK. Backend Habitaciones. Usa /health o /api/modules"));
@@ -1821,12 +1903,140 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
     await logRoomEvent({ before: cur, after: updated, patch, actor, source });
 
     io.emit("room:update", updated);
+
+    // Enviar push notifications segun el tipo de cambio
+    const oldEstado = cur?.estado || "";
+    const newEstado = updated?.estado || "";
+    const src = String(source || "").trim().toLowerCase();
+
+    // OCUPADO → Notificar a Admin + Ama de llaves
+    if (newEstado === "ocupado") {
+      sendPushToRoles(
+        modulo_id + " - " + etiqueta,
+        "OCUPADO - Habitacion ocupada",
+        "./index.html",
+        ["ADMIN", "AMA_LLAVES"]
+      ).catch(() => {});
+    }
+    // LISTA (liberada para limpieza) → Notificar a Admin + Ama de llaves
+    else if ((oldEstado === "ocupado" || oldEstado === "ocupada limpia") && newEstado === "lista") {
+      sendPushToRoles(
+        modulo_id + " - " + etiqueta,
+        "LISTA PARA LIMPIEZA - Habitacion liberada para limpieza",
+        "./index.html",
+        ["ADMIN", "AMA_LLAVES"]
+      ).catch(() => {});
+    }
+    // INSPECCION COMPLETADA (inspeccion → libre desde flujo inspeccion) → Notificar a Recepcion + Admin
+    else if (oldEstado === "inspeccion" && newEstado === "libre" && src === "inspeccion") {
+      sendPushToRoles(
+        modulo_id + " - " + etiqueta,
+        "INSPECCION COMPLETADA - Habitacion liberada",
+        "./index.html",
+        ["ADMIN", "RECEPCION"]
+      ).catch(() => {});
+    }
+    // Otros cambios: notificar a todos
+    else {
+      sendRoomPushNotification(updated).catch(() => {});
+    }
+
     res.json({ ok:true, data: updated });
   }catch(e){
     console.error("❌ Error en /api/room/update:", e);
     res.status(500).json({ ok:false, error: e.message || "Error interno del servidor" });
   }
 });
+
+// ===== PUSH NOTIFICATIONS =====
+
+/** Enviar push notification solo a usuarios con ciertos roles */
+async function sendPushToRoles(title, body, url, targetRoles) {
+  try {
+    const [rows] = await pool.query("SELECT id, endpoint, auth, p256dh, usuario_dept FROM push_subscriptions");
+    if (!rows.length) return;
+
+    const targets = (targetRoles || []).map(r => String(r).trim().toLowerCase());
+
+    const payload = JSON.stringify({ title, body, url: url || "./index.html" });
+
+    for (const sub of rows) {
+      const subRole = normalizeRole(sub.usuario_dept || "");
+      if (!targets.includes(subRole.toLowerCase())) continue;
+
+      try {
+        const pushSub = {
+          endpoint: sub.endpoint,
+          keys: {
+            auth: sub.auth,
+            p256dh: sub.p256dh
+          }
+        };
+        await webpush.sendNotification(pushSub, payload);
+      } catch (err) {
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          await pool.query("DELETE FROM push_subscriptions WHERE id=?", [sub.id]);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Error enviando push por roles:", e.message);
+  }
+}
+
+/** Enviar push notification a todos los usuarios suscritos */
+async function sendPushToAll(title, body, url) {
+  try {
+    const [rows] = await pool.query("SELECT id, endpoint, auth, p256dh FROM push_subscriptions");
+    if (!rows.length) return;
+
+    const payload = JSON.stringify({ title, body, url: url || "./index.html" });
+
+    for (const sub of rows) {
+      try {
+        const pushSub = {
+          endpoint: sub.endpoint,
+          keys: {
+            auth: sub.auth,
+            p256dh: sub.p256dh
+          }
+        };
+        await webpush.sendNotification(pushSub, payload);
+      } catch (err) {
+        // Si el endpoint ya no es valido (status 410), eliminar
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          await pool.query("DELETE FROM push_subscriptions WHERE id=?", [sub.id]);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Error enviando push:", e.message);
+  }
+}
+
+/** Enviar push notification de cambio de estado de habitacion */
+async function sendRoomPushNotification(updatedRow) {
+  const { modulo_id, etiqueta, estado } = updatedRow;
+  if (!modulo_id || !etiqueta || !estado) return;
+
+  const estadoLabels = {
+    "libre": "LIBRE",
+    "ocupado": "OCUPADO",
+    "ocupada limpia": "OCUPADA LIMPIA",
+    "lista": "LISTA PARA LIMPIEZA",
+    "limpieza": "EN LIMPIEZA",
+    "inspeccion": "INSPECCION",
+    "mantenimiento": "MANTENIMIENTO",
+    "repaso": "REPASO"
+  };
+
+  const label = estadoLabels[estado] || estado.toUpperCase();
+  await sendPushToAll(
+    modulo_id + " - " + etiqueta,
+    "Estado: " + label,
+    "./index.html"
+  );
+}
 
 io.on("connection", (s)=> {
   console.log("🔌 socket conectado", s.id);
@@ -1835,10 +2045,23 @@ io.on("connection", (s)=> {
 // ===== START =====
 initDB().then(()=>{
   server.listen(PORT, HOST, ()=>{
+    // Detectar IP local automaticamente
+    let lanIp = "127.0.0.1";
+    try {
+      const ifaces = os.networkInterfaces();
+      Object.keys(ifaces).forEach(name => {
+        (ifaces[name] || []).forEach(iface => {
+          if (iface.family === "IPv4" && !iface.internal) {
+            lanIp = iface.address;
+          }
+        });
+      });
+    } catch (e) {}
+
     console.log("-----------------------------------------");
     console.log("🚀 Backend Habitaciones listo");
     console.log(`📍 Local: http://localhost:${PORT}`);
-    console.log(`🌐 LAN:   http://192.168.10.2:${PORT}`);
+    console.log(`🌐 LAN:   http://${lanIp}:${PORT}`);
     console.log("-----------------------------------------");
   });
 }).catch(e=>{
