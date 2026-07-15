@@ -507,9 +507,7 @@
       container.innerHTML = html;
     }
     function escHtml(s) {
-      const d = document.createElement("div");
-      d.textContent = s;
-      return d.innerHTML;
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
     async function deleteCam(id) {
       const c = CAMARERAS.find(c => c.id === id);
@@ -1334,6 +1332,7 @@
         toast("Error cargando datos: " + (e?.message || e), false, 5200);
       }
     })();
+  </script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(function(err) {

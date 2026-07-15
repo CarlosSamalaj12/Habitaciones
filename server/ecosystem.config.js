@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "hk-sync",
+      name: "sistema-hab",
       script: "server.js",
       cwd: __dirname,
       instances: 1,

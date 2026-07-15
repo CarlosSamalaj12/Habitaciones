@@ -112,10 +112,14 @@ function fmtDur(ms) {
   return `${mm}m ${String(ss).padStart(2, "0")}s`;
 }
 
+let _lastActivityWrite = 0;
 function setActivity() {
-  localStorage.setItem(LS_LAST_ACTIVITY, String(Date.now()));
+  const now = Date.now();
+  if (now - _lastActivityWrite < 10000) return;
+  _lastActivityWrite = now;
+  localStorage.setItem(LS_LAST_ACTIVITY, String(now));
 }
-["click", "keydown", "mousemove", "touchstart"].forEach(ev => {
+["click", "keydown", "touchstart"].forEach(ev => {
   window.addEventListener(ev, () => setActivity(), { passive: true });
 });
 
@@ -322,17 +326,14 @@ function actorDisplay() {
   return a.dept ? `${a.name} - ${a.dept}` : a.name;
 }
 
+const FMT_STAMP = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Guatemala",
+  year: "numeric", month: "2-digit", day: "2-digit",
+  hour: "2-digit", minute: "2-digit", second: "2-digit",
+  hour12: false
+});
 function appendActionObs(prev, action) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Guatemala",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false
-  }).formatToParts(new Date());
+  const parts = FMT_STAMP.formatToParts(new Date());
   const get = (type) => parts.find(p => p.type === type)?.value || "00";
   const stamp = `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}:${get("second")}`;
   const line = `[${stamp}] ${action} por ${actorDisplay()}`;
@@ -422,7 +423,12 @@ function initSocket() {
   }
 }
 
+let _refreshPending = false;
 async function refreshOnResume() {
+  if (_refreshPending) return;
+  _refreshPending = true;
+  await new Promise(r => setTimeout(r, 300));
+  _refreshPending = false;
   if (document.visibilityState && document.visibilityState !== "visible") return;
   try {
     await syncServerTime();
@@ -610,28 +616,6 @@ function unsubscribeFromPush() {
   }).catch(() => {});
   pushSubscription.unsubscribe().catch(() => {});
   pushSubscription = null;
-}
-
-function playNotificationSound() {
-  try {
-    if (typeof AudioContext === "undefined" && typeof webkitAudioContext === "undefined") return;
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // Dos tonos cortos: "ding-ding" a 800Hz y 1000Hz
-    [800, 1000].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.15, ctx.currentTime + i * 0.15);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.2);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + i * 0.15);
-      osc.stop(ctx.currentTime + i * 0.15 + 0.2);
-    });
-  } catch (e) {
-    // Web Audio no disponible o bloqueado
-  }
 }
 
 function showRoomNotification(title, body, tag) {
@@ -839,6 +823,7 @@ $("btnLock").addEventListener("click", () => {
    UI MODULES
 ========================= */
 let selectedRoomKey = null;
+let selectedRoomEl = null;
 
 const CLEANED_KEY = "hk_cleaned_rooms_v1";
 function loadCleanedMap() {
@@ -1018,25 +1003,51 @@ function adjustMobileLayout() {
   const $summary = $('#summaryBar');
   const $progAll = $('#summaryProgressAll');
   const $modulesBar = document.querySelector('.modulesBar');
+  const $logoBox = document.querySelector('.logoBox');
+  const $brand = document.querySelector('.brand');
 
   if (!$summary || !$progAll || !$modulesBar) return;
 
   const alreadyMobile = $summary.dataset.mobilePlaced === '1';
 
   if (isMobile && !alreadyMobile) {
-    // Move summary elements after modules bar
-    $modulesBar.after($progAll);
-    $modulesBar.after($summary);
+    // Outer row
+    const $row = document.createElement('div');
+    $row.className = 'summaryRow';
+    $modulesBar.after($row);
+
+    // Row 1: pills
+    const $pillsRow = document.createElement('div');
+    $pillsRow.className = 'pillsRow';
+    $pillsRow.appendChild($summary);
+    $row.appendChild($pillsRow);
+
+    // Row 2: progress bar + logo
+    const $bottomRow = document.createElement('div');
+    $bottomRow.className = 'summaryBottomRow';
+    $bottomRow.appendChild($progAll);
+    if ($logoBox) {
+      $logoBox.classList.add('logo-moved');
+      $bottomRow.appendChild($logoBox);
+    }
+    $row.appendChild($bottomRow);
+
     $summary.dataset.mobilePlaced = '1';
     $progAll.dataset.mobilePlaced = '1';
     document.body.classList.add('layout-mobile');
   } else if (!isMobile && alreadyMobile) {
-    // Move them back to the header
-    const $brandText = document.querySelector('.brandText');
     const $userLabel = $('#activeUserLabel');
-    if ($brandText && $userLabel) {
-      $userLabel.before($progAll);
-      $userLabel.before($summary);
+    const $row = document.querySelector('.summaryRow');
+    if ($row) {
+      if ($brand && $logoBox) {
+        $brand.prepend($logoBox);
+        $logoBox.classList.remove('logo-moved');
+      }
+      if ($userLabel) {
+        $userLabel.before($progAll);
+        $userLabel.before($summary);
+      }
+      $row.remove();
     }
     delete $summary.dataset.mobilePlaced;
     delete $progAll.dataset.mobilePlaced;
@@ -1205,41 +1216,45 @@ document.addEventListener("click", (e) => {
 /* =========================
    ROOMS RENDER
 ========================= */
+const ROOM_CLASSES = {
+  ocupado: { cls: "ocupado", badge: "OCUPADO" },
+  "ocupada limpia": { cls: "ocupado", badge: "OCUPADO" },
+  lista: { cls: "lista", badge: "LISTA PARA LIMPIEZA" },
+  limpieza: { cls: "limpieza cleaning", badge: "LIMPIEZA" },
+  inspeccion: { cls: "inspeccion", badge: "INSPECCION" },
+  mantenimiento: { cls: "mantenimiento", badge: "MANT" },
+  repaso: { cls: "repaso", badge: "REPASO" },
+};
+const ROOM_CLASS_DEFAULT = { cls: "libre", badge: "LIBRE" };
 function roomClassByEstado(estado) {
-  if (estado === "ocupado") return { cls: "ocupado", badge: "OCUPADO" };
-  if (estado === "ocupada limpia") return { cls: "ocupado", badge: "OCUPADO" };
-  if (estado === "lista") return { cls: "lista", badge: "LISTA PARA LIMPIEZA" };
-  if (estado === "limpieza") return { cls: "limpieza cleaning", badge: "LIMPIEZA" };
-  if (estado === "inspeccion") return { cls: "inspeccion", badge: "INSPECCION" };
-  if (estado === "mantenimiento") return { cls: "mantenimiento", badge: "MANT" };
-  if (estado === "repaso") return { cls: "repaso", badge: "REPASO" };
-  return { cls: "libre", badge: "LIBRE" };
+  return ROOM_CLASSES[estado] || ROOM_CLASS_DEFAULT;
 }
-// Ajusta estos estados si quieres otro criterio para el resumen.
-const SUMMARY_STATUS_MAP = {
-  sucias: new Set(["ocupado"]),
-  limpieza: new Set(["limpieza"]),
-  inspeccion: new Set(["inspeccion"]),
-  lista: new Set(["lista"]),
-  mantenimiento: new Set(["mantenimiento"]),
-  repaso: new Set(["repaso"]),
-  limpias: new Set(["libre"]),
+const ICONS = {
+  ocupado: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6" r="4"/><path d="M4 22c0-3.3 2.7-6 6-6h4c3.3 0 6 2.7 6 6z"/></svg>`,
+  limpieza: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><rect x="14" y="3" width="3" height="12" rx="1.5"/><path d="M7 15h11l-2 8H9l-2-8z"/></svg>`,
+  mant: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5l-3.5 3.5 2 2-7 7a1.5 1.5 0 0 0 2.1 2.1l7-7 2 2 3.5-3.5-4.1-4.1z"/></svg>`,
+  repaso: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1 9 9 1-9 1-1 9-1-9-9-1 9-1z"/></svg>`,
+  liberar: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="12" width="16" height="10" rx="2"/><path d="M8 12V7a4 4 0 0 1 8 0h-2a2 2 0 0 0-4 0v5H8z"/><circle cx="12" cy="17" r="1.5"/></svg>`,
+  prio: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l-1 12h2l-1-12z"/><circle cx="12" cy="20" r="2"/></svg>`
+};
+
+const STATUS_COUNT_KEY = {
+  ocupado: "sucias",
+  limpieza: "limpieza",
+  inspeccion: "inspeccion",
+  lista: "lista",
+  mantenimiento: "mantenimiento",
+  repaso: "repaso",
+  libre: "limpias",
 };
 
 function calcCounts(rooms) {
   const counts = { sucias: 0, limpieza: 0, inspeccion: 0, lista: 0, limpias: 0, limpiadas: 0, mantenimiento: 0, prioridad: 0, repaso: 0 };
 
   rooms.forEach(r => {
-    if (SUMMARY_STATUS_MAP.sucias.has(r.estado)) counts.sucias++;
-    if (SUMMARY_STATUS_MAP.limpieza.has(r.estado)) counts.limpieza++;
-    if (SUMMARY_STATUS_MAP.inspeccion.has(r.estado)) counts.inspeccion++;
-    if (SUMMARY_STATUS_MAP.lista.has(r.estado)) counts.lista++;
-    if (SUMMARY_STATUS_MAP.mantenimiento.has(r.estado)) counts.mantenimiento++;
-    if (SUMMARY_STATUS_MAP.repaso.has(r.estado)) counts.repaso++;
-    if (SUMMARY_STATUS_MAP.limpias.has(r.estado)) counts.limpias++;
+    const key = STATUS_COUNT_KEY[r.estado];
+    if (key) counts[key]++;
     if (String(r.prioridad_limpieza || "").toLowerCase() === "alta") counts.prioridad++;
-
-    // Limpiadas: todas las habitaciones que estan limpias (libre, ocupada limpia, o estadia con fin_limpieza)
     if (r.estado === "libre" || r.estado === "ocupada limpia" ||
         (r.estado === "ocupado" && String(r.tipo_limpieza || "").toLowerCase() === "estadia" && r.fin_limpieza)) {
       counts.limpiadas++;
@@ -1295,8 +1310,6 @@ function renderRooms() {
     return;
   }
 
-  rooms.sort((a, b) => String(a.etiqueta).localeCompare(String(b.etiqueta), "es", { numeric: true }));
-
   // Filtrar por busqueda
   let filteredRooms = rooms;
   if (roomSearchQuery) {
@@ -1315,16 +1328,9 @@ function renderRooms() {
 
   const cleanedMap = loadCleanedMap();
   let cleanedDirty = false;
-  const ICONS = {
-    ocupado: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h8a3 3 0 0 1 3 3v2h7v5h-2v-2H5v2H3zM3 8h8a2 2 0 0 1 2 2v2H3z"/></svg>`,
-    limpieza: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3l2 2-6 6 2 2-1.5 1.5-6-6L7 7l2 2 6-6z"/><path d="M6 14l4 4-1.5 1.5a3 3 0 0 1-4.2-4.2z"/></svg>`,
-    mant: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 7a4 4 0 0 0-5 5l-5 5 3 3 5-5a4 4 0 0 0 5-5l-2 2-2-2z"/></svg>`,
-    repaso: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3l3 3-1.5 1.5 7.5 7.5-1.5 1.5-7.5-7.5L5 10z"/><path d="M16 4l4 4-1.5 1.5-4-4z"/></svg>`,
-    liberar: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V8a5 5 0 0 1 10 0h-2a3 3 0 0 0-6 0v2h9v10H4V10h3zm5 3a2 2 0 0 0-1 3.732V18h2v-1.268A2 2 0 0 0 12 13z"/></svg>`,
-    prio: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L3 14h6l-1 8 10-12h-6z"/></svg>`
-  };
+  const sorted = [...filteredRooms].sort((a, b) => String(a.etiqueta).localeCompare(String(b.etiqueta), "es", { numeric: true }));
 
-  filteredRooms.forEach(room => {
+  sorted.forEach(room => {
     const k = roomKey(room.modulo_id, room.etiqueta);
     const { cls, badge } = roomClassByEstado(room.estado);
 
@@ -1393,6 +1399,7 @@ function renderRooms() {
     const prioTopHTML = "";
     const showOccupied = room.estado === "ocupado" || room.estado === "ocupada limpia" || room.estado === "lista";
     const precioStr = "";
+    btn.dataset.roomKey = k;
     btn.innerHTML = `
       ${timerHTML}
       ${prioTopHTML}
@@ -1417,23 +1424,25 @@ function renderRooms() {
       </div>
 
       <div class="roomActions">
-        <button class="raBtn ocupado" title="Ocupado">${ICONS.ocupado}</button>
-        <button class="raBtn limpieza" title="Lista / Iniciar limpieza">${ICONS.limpieza}</button>
-        <button class="raBtn mant" title="Mantenimiento">${ICONS.mant}</button>
-        <button class="raBtn liberar" title="Liberar habitacion">${ICONS.liberar}</button>
-        <button class="raBtn prio" title="Prioridad limpieza">${ICONS.prio}</button>
-        <button class="raBtn repaso" title="Repaso">${ICONS.repaso}</button>
+        <button class="raBtn ocupado" data-action="ocupado" title="Ocupado">${ICONS.ocupado}</button>
+        <button class="raBtn limpieza" data-action="limpieza" title="Lista / Iniciar limpieza">${ICONS.limpieza}</button>
+        <button class="raBtn mant" data-action="mant" title="Mantenimiento">${ICONS.mant}</button>
+        <button class="raBtn liberar" data-action="liberar" title="Liberar habitacion">${ICONS.liberar}</button>
+        <button class="raBtn prio" data-action="prio" title="Prioridad limpieza">${ICONS.prio}</button>
+        <button class="raBtn repaso" data-action="repaso" title="Repaso">${ICONS.repaso}</button>
       </div>
     `;
 
     // Click on card toggles details panel (actions always visible)
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (e) => {
+      if (e.target.closest("[data-action]") || e.target.closest(".obsPeekBtn")) return;
       const wasSelected = selectedRoomKey === k;
-      document.querySelectorAll(".roomBtn.selected").forEach(x => x.classList.remove("selected"));
+      if (selectedRoomEl) selectedRoomEl.classList.remove("selected");
+      selectedRoomEl = wasSelected ? null : btn;
       selectedRoomKey = wasSelected ? null : k;
       if (!wasSelected) btn.classList.add("selected");
     });
-    if (selectedRoomKey === k) btn.classList.add("selected");
+    if (selectedRoomKey === k) { selectedRoomEl = btn; btn.classList.add("selected"); }
 
     const bObsPeek = btn.querySelector(".obsPeekBtn");
     bObsPeek?.addEventListener("click", (e) => {
@@ -1744,6 +1753,28 @@ function renderRooms() {
 
   grid.appendChild(frag);
 
+  // Room index strip (mobile)
+  const roomIndex = document.getElementById('roomIndex');
+  if (roomIndex) {
+    roomIndex.innerHTML = '';
+    sorted.forEach(room => {
+      const idxBtn = document.createElement('button');
+      const { cls } = roomClassByEstado(room.estado);
+      idxBtn.className = `roomIndexBtn ${cls}`;
+      idxBtn.textContent = room.etiqueta;
+      idxBtn.addEventListener('click', () => {
+        const card = grid.querySelector(`[data-room-key="${roomKey(room.modulo_id, room.etiqueta)}"]`);
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          card.style.transition = 'box-shadow .2s';
+          card.style.boxShadow = '0 0 0 3px rgba(124,58,237,.6), 0 20px 60px rgba(0,0,0,.5)';
+          setTimeout(() => { card.style.boxShadow = ''; }, 800);
+        }
+      });
+      roomIndex.appendChild(idxBtn);
+    });
+  }
+
   if (cleanedDirty) saveCleanedMap(cleanedMap);
 
   updateSummaryCounts();
@@ -1792,19 +1823,10 @@ async function loadRooms(modulo_id) {
   return rows;
 }
 
-async function loadAllRooms() {
-  for (const m of MODULES) {
-    const id = String(m.id);
-    if (!roomsCache.get(id)) {
-      await loadRooms(id);
-    }
-  }
-}
-
 async function bootData() {
   await loadModules();
-  await loadRooms(activeModuleId);
-  await loadAllRooms();
+  const moduleIds = MODULES.map(m => String(m.id));
+  await Promise.all(moduleIds.map(id => loadRooms(id)));
 }
 
 /* =========================

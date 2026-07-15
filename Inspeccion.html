@@ -1193,40 +1193,34 @@
       return new Date(nowServerMs()).toISOString();
     }
 
+    const FMT_GT_TIME = new Intl.DateTimeFormat("es-GT", {
+      timeZone: "America/Guatemala",
+      hour: "2-digit", minute: "2-digit", hour12: false
+    });
+    const FMT_GT_STAMP = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Guatemala",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hour12: false
+    });
+
     function gtPartsFromMySQL(mysqlDT) {
       if (!mysqlDT) return null;
       const s = String(mysqlDT).trim();
 
-      // ISO (con o sin Z)
+      let d;
       if (s.includes("T")) {
-        const d = new Date(s);
+        d = new Date(s);
         if (Number.isNaN(d.getTime())) return null;
-        const parts = new Intl.DateTimeFormat("es-GT", {
-          timeZone: "America/Guatemala",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false
-        }).formatToParts(d);
-        const get = (t) => parts.find(p => p.type === t)?.value;
-        return { hour: Number(get("hour")), minute: Number(get("minute")), label: `${get("hour")}:${get("minute")}` };
+      } else {
+        const [datePart, timePart] = s.split(" ");
+        if (!datePart || !timePart) return null;
+        const [Y, M, D] = datePart.split("-").map(Number);
+        const [h, m, sec] = timePart.split(":").map(Number);
+        d = new Date(Date.UTC(Y, M - 1, D, h + 6, m, sec || 0));
       }
 
-      // MySQL DATETIME: "YYYY-MM-DD HH:MM:SS"
-      const [datePart, timePart] = s.split(" ");
-      if (!datePart || !timePart) return null;
-
-      const [Y, M, D] = datePart.split("-").map(Number);
-      const [h, m, sec] = timePart.split(":").map(Number);
-      // Guatemala = UTC-6 (sin DST)
-      const d = new Date(Date.UTC(Y, M - 1, D, h + 6, m, sec || 0));
-
-      const parts = new Intl.DateTimeFormat("es-GT", {
-        timeZone: "America/Guatemala",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-      }).formatToParts(d);
-
+      const parts = FMT_GT_TIME.formatToParts(d);
       const get = (t) => parts.find(p => p.type === t)?.value;
       return { hour: Number(get("hour")), minute: Number(get("minute")), label: `${get("hour")}:${get("minute")}` };
     }
@@ -1307,16 +1301,7 @@
     function fmtObsStamp(dtValue) {
       const d = dtValue ? new Date(dtValue) : new Date(nowServerMs());
       if (Number.isNaN(d.getTime())) return "0000-00-00 00:00:00";
-      const parts = new Intl.DateTimeFormat("en-CA", {
-        timeZone: "America/Guatemala",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false
-      }).formatToParts(d);
+      const parts = FMT_GT_STAMP.formatToParts(d);
       const get = (type) => parts.find(p => p.type === type)?.value || "00";
       return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}:${get("second")}`;
     }
@@ -1645,6 +1630,23 @@
             badge.textContent = icon(st2.estado);
             updateChecklistCounter();
             saveSession();
+            // Auto-desplegar siguiente seccion cuando esta se completa
+            const parentDetails = card.closest("details");
+            if (parentDetails) {
+              const items = parentDetails.querySelectorAll(".item");
+              const allFilled = Array.from(items).every(el => {
+                const id = Number(el.dataset.itemId);
+                const s = ensure(id);
+                return s.estado !== "SIN_SELECCION";
+              });
+              if (allFilled) {
+                const next = parentDetails.nextElementSibling;
+                if (next && next.tagName === "DETAILS" && !next.open) {
+                  next.open = true;
+                  parentDetails.open = false;
+                }
+              }
+            }
           });
 
           card.appendChild(name);
@@ -1950,6 +1952,7 @@
         setGuardarLoading(false);
       }
     });
+  </script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(function(err) {

@@ -85,6 +85,8 @@
       const d = (CTX.dept || "").toLowerCase();
       return d.includes("gerencia") || d.includes("reportes");
     }
+    const FMT_DEC_DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guatemala", year: "numeric", month: "2-digit", day: "2-digit" });
+    const FMT_DEC_TIME = new Intl.DateTimeFormat("es-GT", { timeZone: "America/Guatemala", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
     function normalizeRoom(v) {
       const s = String(v || "").trim();
       if (/^\d+$/.test(s) && s.length === 1) return s.padStart(2, "0");
@@ -92,13 +94,13 @@
     }
     function todayYMD() {
       const d = new Date(nowServerMs());
-      const p = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guatemala", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(d);
+      const p = FMT_DEC_DATE.formatToParts(d);
       const g = t => p.find(x => x.type === t)?.value || "00";
       return g("year") + "-" + g("month") + "-" + g("day");
     }
     function nowGT() {
       const d = new Date(nowServerMs());
-      const p = new Intl.DateTimeFormat("es-GT", { timeZone: "America/Guatemala", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).formatToParts(d);
+      const p = FMT_DEC_TIME.formatToParts(d);
       const g = t => p.find(x => x.type === t)?.value || "00";
       return g("hour") + ":" + g("minute") + ":" + g("second");
     }

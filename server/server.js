@@ -77,7 +77,17 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Servir archivos estaticos del frontend (index.html, app.js, styles.css, etc.)
-app.use(express.static(path.join(__dirname, "..")));
+app.use(express.static(path.join(__dirname, ".."), {
+  maxAge: '7d',
+  immutable: true,
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
+}));
 
 const io = new Server(server, { cors: corsOptions });
 
@@ -932,13 +942,12 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
       // Reemplazar detalles (por si cambiaron estados)
       if(Array.isArray(data.detalles) && data.detalles.length){
         await pool.query("DELETE FROM inspeccion_detalles WHERE inspeccion_id=?", [inspeccion_id]);
-        for(const d of data.detalles){
-          if(!d.item_id) continue;
-          const estado = ['CUMPLE','NO_CUMPLE','NO_APLICA'].includes(d.estado) ? d.estado : 'NO_APLICA';
-          await pool.query(
-            "INSERT INTO inspeccion_detalles (inspeccion_id, item_id, estado) VALUES (?,?,?)",
-            [inspeccion_id, d.item_id, estado]
-          );
+        const validDetails = data.detalles
+          .filter(d => d.item_id)
+          .map(d => [inspeccion_id, d.item_id, ['CUMPLE','NO_CUMPLE','NO_APLICA'].includes(d.estado) ? d.estado : 'NO_APLICA']);
+        if (validDetails.length) {
+          const placeholders = validDetails.map(() => '(?,?,?)').join(',');
+          await pool.query(`INSERT INTO inspeccion_detalles (inspeccion_id, item_id, estado) VALUES ${placeholders}`, validDetails.flat());
         }
       }
       return res.json({ ok:true, id: inspeccion_id, dedup: true });
@@ -968,13 +977,12 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
     const inspeccion_id = header.insertId;
 
     if(Array.isArray(data.detalles)){
-      for(const d of data.detalles){
-        if(!d.item_id) continue;
-        const estado = ['CUMPLE','NO_CUMPLE','NO_APLICA'].includes(d.estado) ? d.estado : 'NO_APLICA';
-        await pool.query(
-          "INSERT INTO inspeccion_detalles (inspeccion_id, item_id, estado) VALUES (?,?,?)",
-          [inspeccion_id, d.item_id, estado]
-        );
+      const validDetails = data.detalles
+        .filter(d => d.item_id)
+        .map(d => [inspeccion_id, d.item_id, ['CUMPLE','NO_CUMPLE','NO_APLICA'].includes(d.estado) ? d.estado : 'NO_APLICA']);
+      if (validDetails.length) {
+        const placeholders = validDetails.map(() => '(?,?,?)').join(',');
+        await pool.query(`INSERT INTO inspeccion_detalles (inspeccion_id, item_id, estado) VALUES ${placeholders}`, validDetails.flat());
       }
     }
 
@@ -1007,16 +1015,25 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
         c.id AS camarera_id, c.nombre AS camarera_nombre,
         c.factura AS camarera_factura,
         t.id AS tipo_limpieza_id, t.nombre AS tipo_nombre,
-        COALESCE((SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id AND d.estado = 'CUMPLE'), 0) AS cumplen,
-        COALESCE((SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id AND d.estado = 'NO_CUMPLE'), 0) AS no_cumplen,
-        COALESCE((SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id AND d.estado = 'NO_APLICA'), 0) AS no_aplica,
-        COALESCE((SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id), 0) AS total_items,
+        COALESCE(det.cumplen, 0) AS cumplen,
+        COALESCE(det.no_cumplen, 0) AS no_cumplen,
+        COALESCE(det.no_aplica, 0) AS no_aplica,
+        COALESCE(det.total_items, 0) AS total_items,
         COALESCE(pe.precio, 0) AS pago_base
       FROM inspecciones i
       LEFT JOIN camareras c ON c.id = i.camarera_id
       LEFT JOIN tipos_limpieza t ON t.id = i.tipo_limpieza_id
       LEFT JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
       LEFT JOIN precios_especiales_habitacion pe ON pe.habitacion_id = h.id AND pe.tipo_limpieza_id = i.tipo_limpieza_id AND pe.es_familiar = COALESCE(i.es_familiar, 0)
+      LEFT JOIN (
+        SELECT inspeccion_id,
+          SUM(estado = 'CUMPLE') AS cumplen,
+          SUM(estado = 'NO_CUMPLE') AS no_cumplen,
+          SUM(estado = 'NO_APLICA') AS no_aplica,
+          COUNT(*) AS total_items
+        FROM inspeccion_detalles
+        GROUP BY inspeccion_id
+      ) det ON det.inspeccion_id = i.id
       WHERE i.fecha >= ? AND i.fecha <= ?
         AND i.camarera_id IS NOT NULL
         AND (? IS NULL OR i.camarera_id = ?)
@@ -1123,10 +1140,7 @@ app.get("/api/reportes/rendimiento", requireAuthIfEnabled, async (req,res)=>{
         c.id AS camarera_id,
         c.nombre AS camarera_nombre,
         COUNT(i.id) AS total_inspecciones,
-        COALESCE(ROUND(AVG(
-          (SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id AND d.estado = 'CUMPLE') * 100.0 /
-          NULLIF((SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id), 0)
-        ), 1), 0) AS promedio_pct,
+        COALESCE(ROUND(AVG(det.pct_cumple), 1), 0) AS promedio_pct,
         COALESCE(SUM(COALESCE(pe.precio, 0)), 0) AS total_pago,
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza)), 0), 0) AS promedio_minutos,
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.fin_limpieza, i.hora_checklist)), 0), 0) AS promedio_inspeccion_min
@@ -1134,6 +1148,12 @@ app.get("/api/reportes/rendimiento", requireAuthIfEnabled, async (req,res)=>{
       JOIN camareras c ON c.id = i.camarera_id
       LEFT JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
       LEFT JOIN precios_especiales_habitacion pe ON pe.habitacion_id = h.id AND pe.tipo_limpieza_id = i.tipo_limpieza_id AND pe.es_familiar = COALESCE(i.es_familiar, 0)
+      LEFT JOIN (
+        SELECT inspeccion_id,
+          SUM(estado = 'CUMPLE') * 100.0 / NULLIF(COUNT(*), 0) AS pct_cumple
+        FROM inspeccion_detalles
+        GROUP BY inspeccion_id
+      ) det ON det.inspeccion_id = i.id
       WHERE i.fecha >= ? AND i.fecha <= ?
         AND (? IS NULL OR i.camarera_id = ?)
       GROUP BY c.id, c.nombre
@@ -1167,16 +1187,19 @@ app.get("/api/reportes/rendimiento/daily", requireAuthIfEnabled, async (req,res)
         c.nombre AS camarera_nombre,
         i.fecha,
         COUNT(i.id) AS habitaciones,
-        COALESCE(ROUND(AVG(
-          (SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id AND d.estado = 'CUMPLE') * 100.0 /
-          NULLIF((SELECT COUNT(*) FROM inspeccion_detalles d WHERE d.inspeccion_id = i.id), 0)
-        ), 1), 0) AS puntuacion_prom,
+        COALESCE(ROUND(AVG(det.pct_cumple), 1), 0) AS puntuacion_prom,
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza)), 0), 0) AS tiempo_prom_min,
         COALESCE(SUM(COALESCE(pe.precio, 0)), 0) AS pago_total
       FROM inspecciones i
       JOIN camareras c ON c.id = i.camarera_id
       LEFT JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
       LEFT JOIN precios_especiales_habitacion pe ON pe.habitacion_id = h.id AND pe.tipo_limpieza_id = i.tipo_limpieza_id AND pe.es_familiar = COALESCE(i.es_familiar, 0)
+      LEFT JOIN (
+        SELECT inspeccion_id,
+          SUM(estado = 'CUMPLE') * 100.0 / NULLIF(COUNT(*), 0) AS pct_cumple
+        FROM inspeccion_detalles
+        GROUP BY inspeccion_id
+      ) det ON det.inspeccion_id = i.id
       WHERE i.fecha >= ? AND i.fecha <= ?
         AND (? IS NULL OR i.camarera_id = ?)
       GROUP BY c.id, c.nombre, i.fecha
@@ -1953,32 +1976,25 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
 /** Enviar push notification solo a usuarios con ciertos roles */
 async function sendPushToRoles(title, body, url, targetRoles) {
   try {
-    const [rows] = await pool.query("SELECT id, endpoint, auth, p256dh, usuario_dept FROM push_subscriptions");
-    if (!rows.length) return;
-
     const targets = (targetRoles || []).map(r => String(r).trim().toLowerCase());
+    const roleList = targets.map(() => '?').join(',');
+    const [rows] = await pool.query(
+      `SELECT id, endpoint, auth, p256dh FROM push_subscriptions WHERE LOWER(usuario_dept) IN (${roleList})`,
+      targets
+    );
+    if (!rows.length) return;
 
     const payload = JSON.stringify({ title, body, url: url || "./index.html" });
 
-    for (const sub of rows) {
-      const subRole = normalizeRole(sub.usuario_dept || "");
-      if (!targets.includes(subRole.toLowerCase())) continue;
-
+    await Promise.allSettled(rows.map(async (sub) => {
       try {
-        const pushSub = {
-          endpoint: sub.endpoint,
-          keys: {
-            auth: sub.auth,
-            p256dh: sub.p256dh
-          }
-        };
-        await webpush.sendNotification(pushSub, payload);
+        await webpush.sendNotification({ endpoint: sub.endpoint, keys: { auth: sub.auth, p256dh: sub.p256dh } }, payload);
       } catch (err) {
         if (err.statusCode === 410 || err.statusCode === 404) {
           await pool.query("DELETE FROM push_subscriptions WHERE id=?", [sub.id]);
         }
       }
-    }
+    }));
   } catch (e) {
     console.warn("Error enviando push por roles:", e.message);
   }
@@ -1992,23 +2008,15 @@ async function sendPushToAll(title, body, url) {
 
     const payload = JSON.stringify({ title, body, url: url || "./index.html" });
 
-    for (const sub of rows) {
+    await Promise.allSettled(rows.map(async (sub) => {
       try {
-        const pushSub = {
-          endpoint: sub.endpoint,
-          keys: {
-            auth: sub.auth,
-            p256dh: sub.p256dh
-          }
-        };
-        await webpush.sendNotification(pushSub, payload);
+        await webpush.sendNotification({ endpoint: sub.endpoint, keys: { auth: sub.auth, p256dh: sub.p256dh } }, payload);
       } catch (err) {
-        // Si el endpoint ya no es valido (status 410), eliminar
         if (err.statusCode === 410 || err.statusCode === 404) {
           await pool.query("DELETE FROM push_subscriptions WHERE id=?", [sub.id]);
         }
       }
-    }
+    }));
   } catch (e) {
     console.warn("Error enviando push:", e.message);
   }

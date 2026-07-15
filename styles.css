@@ -757,96 +757,149 @@ h2{
   .brandText .summaryProgTrack{ height: 8px; }
 }
 
-/* Modules: horizontal scroll on mobile */
+/* Modules: compact wrap on mobile */
 @media (max-width: 767px){
   .modulesBar{
-    padding: 6px 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    padding: 3px 0;
+    overflow: visible;
     position: sticky;
     top: 48px;
     z-index: 15;
     background: linear-gradient(180deg, var(--bg1), rgba(11,16,36,.98));
     border-bottom: 1px solid rgba(255,255,255,.08);
-    box-shadow: 0 6px 20px rgba(0,0,0,.35);
+    box-shadow: 0 4px 14px rgba(0,0,0,.3);
   }
-  /* Fade gradient on right edge to indicate scrollability */
-  .modulesBar::after{
-    content: '';
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 48px;
-    background: linear-gradient(90deg, transparent, var(--bg1) 100%);
-    pointer-events: none;
-    z-index: 2;
-  }
-  .modulesBar::-webkit-scrollbar{ display:none; }
+  .modulesBar::after{ display: none; }
   .modulesRow{
-    flex-wrap: nowrap;
-    gap: 6px;
-    width: max-content;
-    min-width: 100%;
-    padding: 0 12px;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: auto;
+    min-width: 0;
+    padding: 0 10px;
+    justify-content: center;
   }
   .btnModule{
-    padding: 10px 18px;
-    font-size: 13px;
+    padding: 5px 10px;
+    font-size: 11px;
     white-space: nowrap;
-    flex-shrink: 0;
-    min-height: 44px;
+    flex-shrink: 1;
+    min-height: 28px;
     font-weight: 800;
-    letter-spacing: .04em;
+    letter-spacing: .02em;
   }
   .btnModule.active{
     border-color: rgba(124,58,237,.85);
-    box-shadow: 0 0 0 5px rgba(124,58,237,.22), 0 10px 26px rgba(0,0,0,.40), 0 0 16px rgba(124,58,237,.30);
+    box-shadow: 0 0 0 3px rgba(124,58,237,.2), 0 6px 16px rgba(0,0,0,.35), 0 0 12px rgba(124,58,237,.28);
   }
 }
 
-/* Mobile summary below modules */
+/* Mobile summary: compact pills row + progress+logo row */
 @media (max-width: 767px){
-  body.layout-mobile .summaryBar{
+  body.layout-mobile .summaryRow{
     display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    padding: 8px 12px 6px;
-    scrollbar-width: none;
-    border-bottom: 1px solid rgba(255,255,255,.06);
-    margin-top: 0;
-    background: linear-gradient(180deg, rgba(255,255,255,.04), transparent);
+    flex-direction: column;
+    gap: 2px;
+    padding: 3px 8px 4px 10px;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);
   }
-  body.layout-mobile .summaryBar::-webkit-scrollbar{ display:none; }
-  body.layout-mobile .summaryPill{
+
+  /* --- Pills row --- */
+  body.layout-mobile .pillsRow{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+  body.layout-mobile .pillsRow .summaryBar{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    max-width: none;
+  }
+  body.layout-mobile .pillsRow .summaryPill{
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    min-width: 16px;
+    min-height: 14px;
+    padding: 1px 3px;
+    border-radius: 3px;
+    border-width: 1px;
+    background: rgba(var(--sumAccent), .15);
+    box-shadow: none;
+  }
+  body.layout-mobile .pillsRow .summaryPill::after{ display: none; }
+  body.layout-mobile .pillsRow .summaryPill span{ display: none; }
+  body.layout-mobile .pillsRow .summaryPill b{
+    font-size: 8px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  /* --- Bottom row: progress + logo --- */
+  body.layout-mobile .summaryBottomRow{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  body.layout-mobile .summaryBottomRow #summaryProgressAll{
+    display: flex !important;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    padding: 2px 8px;
+    margin: 0;
+    border-radius: 5px;
+    background: rgba(255,255,255,.04);
+    border: none;
+    box-shadow: none;
+  }
+  body.layout-mobile .summaryBottomRow #summaryProgressAll .summaryProgTop{
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+  body.layout-mobile .summaryBottomRow #summaryProgressAll .summaryProgTop span{
+    display: none;
+  }
+  body.layout-mobile .summaryBottomRow #summaryProgressAll .summaryProgTop b{
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  body.layout-mobile .summaryBottomRow #summaryProgressAll .summaryProgTrack{
+    flex: 1;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(255,255,255,.08);
+  }
+  body.layout-mobile .summaryBottomRow #summaryProgressAll .summaryProgFill{
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, rgba(124,58,237,.7), rgba(124,58,237,.9));
+    transition: width .3s ease;
+  }
+  body.layout-mobile .summaryBottomRow .logoBox.logo-moved{
+    display: flex;
     flex: 0 0 auto;
-    min-width: 100px;
-    min-height: 46px;
-    padding: 8px 12px;
-    scroll-snap-align: start;
+    align-items: center;
+    gap: 3px;
   }
-  body.layout-mobile .summaryPill b{ font-size: 15px; }
-  body.layout-mobile .summaryPill span{ font-size: 10px; }
-  body.layout-mobile .summaryProgress{
-    flex: 0 0 auto;
-    min-width: 150px;
-    padding: 8px 12px;
-  }
-  body.layout-mobile .summaryProgTop{ font-size: 10px; }
-  body.layout-mobile .summaryProgTop b{ font-size: 10px; }
-  body.layout-mobile .summaryProgTrack{ height: 8px; }
-  body.layout-mobile #summaryProgressAll{
-    margin: 0 12px 10px;
-    padding: 10px 12px;
+  body.layout-mobile .summaryBottomRow .logoBox.logo-moved .logoImg{
+    height: 18px;
+    width: auto;
   }
 }
 
-/* Hide original summary in header when JS has already moved them */
+/* Room index strip (hidden on desktop) */
+.roomIndex{ display: none; }
 body.layout-mobile .brandText .summaryBar{
     display: none;
 }
@@ -869,9 +922,10 @@ body.layout-mobile .brandText #summaryProgressAll{
     flex: none;
   }
   .modulesBar{
-    position: relative;
-    top: auto;
+    position: sticky;
+    top: 48px;
     flex: none;
+    z-index: 15;
   }
   .modulesBar::after{
     display: none;
@@ -1041,6 +1095,66 @@ body.layout-mobile .brandText #summaryProgressAll{
       0 16px 50px rgba(0,0,0,.50),
       0 0 0 5px rgba(var(--accent), .20),
       0 0 30px rgba(var(--accent), .30);
+  }
+
+  /* Room index strip */
+  .roomIndex{
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+    padding: 2px 0 6px;
+    margin-bottom: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+  }
+  .roomIndex::-webkit-scrollbar{ display: none; }
+  .roomIndexBtn{
+    flex: 0 0 auto;
+    min-width: 28px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,.1);
+    background: rgba(10,14,28,.4);
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    padding: 0 4px;
+    scroll-snap-align: start;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .roomIndexBtn:active{
+    background: rgba(124,58,237,.3);
+    color: #fff;
+    border-color: rgba(124,58,237,.5);
+  }
+  .roomIndexBtn.ocupado{ color: rgb(255,120,120); border-color: rgba(239,68,68,.3); }
+  .roomIndexBtn.limpieza{ color: rgb(220,185,142); border-color: rgba(200,165,122,.3); }
+  .roomIndexBtn.lista{ color: rgb(250,204,21); border-color: rgba(251,191,36,.3); }
+  .roomIndexBtn.libre{ color: rgb(80,220,140); border-color: rgba(34,197,94,.3); }
+  .roomIndexBtn.inspeccion{ color: rgb(45,212,191); border-color: rgba(20,184,166,.3); }
+  .roomIndexBtn.mantenimiento{ color: rgb(160,120,255); border-color: rgba(124,58,237,.3); }
+
+  /* Search bar full width on mobile */
+  .searchWrap{
+    flex: 1;
+  }
+  .searchInput{
+    width: 100%;
+    font-size: 12px;
+    padding: 6px 10px 6px 28px;
+  }
+  .searchInput:focus{
+    width: 100%;
+  }
+  .searchWrap::before{
+    font-size: 10px;
+    left: 8px;
   }
 }
 
