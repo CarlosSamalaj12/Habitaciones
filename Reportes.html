@@ -95,6 +95,7 @@
       outline: none; font-size: 13px; min-width: 150px;
     }
     .filterGroup input:focus, .filterGroup select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primaryLight); }
+    .filterGroup input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
 
     /* Tabla */
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -521,6 +522,7 @@
     .barFill.purple { background: linear-gradient(90deg, rgba(124,58,237,.7), rgba(167,139,250,.7)); }
     .barFill.orange { background: linear-gradient(90deg, rgba(251,146,60,.7), rgba(251,191,36,.7)); }
     .barFill.pink { background: linear-gradient(90deg, rgba(224,38,188,.7), rgba(244,114,182,.7)); }
+    .barFill.red { background: linear-gradient(90deg, rgba(255,107,138,.7), rgba(255,128,128,.7)); }
     .barValue { font-size: 12px; font-weight: 800; min-width: 50px; text-align: right; font-variant-numeric: tabular-nums; }
 
     /* Loading / Empty */
@@ -754,6 +756,7 @@
       <button class="tab active" data-tab="pagos">Pagos</button>
       <button class="tab" data-tab="historial">Historial</button>
       <button class="tab" data-tab="rendimiento">Rendimiento</button>
+      <button class="tab" data-tab="amaLlaves">Ama de Llaves</button>
     </div>
 
     <!-- ===== TAB: PAGOS ===== -->
@@ -998,7 +1001,7 @@
     </div>
   </div>
 
-  <script>
+  <script defer>
     const $ = (id) => document.getElementById(id);
     const APP_BASE = window.location.pathname.replace(/\/[^/]*$/, "/").replace(/\/+$/, "");
     const API_BASE = `${window.location.origin}${APP_BASE}`;
@@ -1036,19 +1039,14 @@
       const mm = String(now.getMonth() + 1).padStart(2, '0');
       const dd = String(now.getDate()).padStart(2, '0');
       const today = `${yyyy}-${mm}-${dd}`;
-      // Default: last 30 days
-      const past = new Date(now);
-      past.setDate(past.getDate() - 30);
-      const pY = past.getFullYear();
-      const pM = String(past.getMonth() + 1).padStart(2, '0');
-      const pD = String(past.getDate()).padStart(2, '0');
-      const pastStr = `${pY}-${pM}-${pD}`;
+      // Default: primer dia del mes actual
+      const firstDayMonth = `${yyyy}-${mm}-01`;
 
-      ["filtroDesde", "rendDesde"].forEach(id => {
+      ["filtroDesde", "rendDesde", "amaDesde"].forEach(id => {
         const el = $(id);
-        if (el && !el.value) el.value = pastStr;
+        if (el && !el.value) el.value = firstDayMonth;
       });
-      ["filtroHasta", "rendHasta"].forEach(id => {
+      ["filtroHasta", "rendHasta", "amaHasta"].forEach(id => {
         const el = $(id);
         if (el && !el.value) el.value = today;
       });
@@ -1084,6 +1082,25 @@
         });
       } catch (e) {
         toast("Error cargando camareras", false);
+      }
+    }
+    async function loadAmaLlaves() {
+      try {
+        const data = await apiGET("/api/amas-llaves");
+        const amas = Array.isArray(data?.data) ? data.data : [];
+        // Poblar dropdown de AMA DE LLAVES
+        const selAma = $("filtroAmaLlaves");
+        if (selAma) {
+          selAma.innerHTML = '<option value="">Todas</option>';
+          amas.forEach(a => {
+            const o = document.createElement("option");
+            o.value = a.nombre;
+            o.textContent = a.nombre;
+            selAma.appendChild(o);
+          });
+        }
+      } catch (e) {
+        console.warn("Error cargando amas de llaves:", e);
       }
     }
     async function loadModulos() {
@@ -1362,6 +1379,21 @@
       return d.innerHTML;
     }
 
+    function getCamarerasDisplay(r) {
+      const myName = r.camarera_nombre || "";
+      const allNames = r.camareras_nombres || myName;
+      if (!myName) return '<span style="color:var(--muted)">-</span>';
+      const list = allNames.split(",").map(n => n.trim()).filter(n => n);
+      if (list.length === 1) {
+        return escHtml(myName);
+      }
+      const otherCamareras = list.filter(n => n !== myName);
+      const shareInfo = otherCamareras.length > 0
+        ? ` <span title="Compartido con: ${otherCamareras.join(', ')}" style="color:#FBBF24;font-size:10px">🔗con ${otherCamareras.join(', ')}</span>`
+        : '';
+      return escHtml(myName) + shareInfo;
+    }
+
     function fmtTime(s) {
       if (!s) return "-";
       // "YYYY-MM-DD HH:MM:SS" -> show just HH:MM
@@ -1387,10 +1419,13 @@
       // Filtrar por camarera si hay filtro activo
       let filteredRows = rows;
       if (filterCamarera) {
-        filteredRows = rows.filter(r => (r.camarera_nombre || "") === filterCamarera);
+        filteredRows = rows.filter(r => {
+          const names = r.camareras_nombres || r.camarera_nombre || "";
+          return names === filterCamarera || names.split(",").includes(filterCamarera);
+        });
       }
 
-      // Agrupar por camarera
+      // Agrupar por camarera individual (cada fila ya representa una camarera)
       const groups = {};
       filteredRows.forEach(r => {
         const key = r.camarera_nombre || "Sin asignar";
@@ -1433,7 +1468,7 @@
           subOk += Number(r.cumplen || 0);
           subNo += Number(r.no_cumplen || 0);
           subNa += Number(r.no_aplica || 0);
-          subPagoBase += Number(r.pago || 0);
+          subPagoBase += Number(r.pago_base || 0);
         });
         globalOk += subOk;
         globalNo += subNo;
@@ -1452,6 +1487,13 @@
           : '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(255,176,32,.12);color:#FFB020;border:1px solid rgba(255,176,32,.25)">🚫 NO factura</span>';
 
         // Fila de grupo: camarera
+        const sharedCount = items.filter(r => {
+          const list = (r.camareras_list || "").split(",").filter(id => id);
+          return list.length > 1;
+        }).length;
+        const sharedBadge = sharedCount > 0
+          ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:rgba(251,191,36,.15);color:#FBBF24;border:1px solid rgba(251,191,36,.3)">🔗 ${sharedCount} compartido${sharedCount !== 1 ? 's' : ''}</span>`
+          : '';
         html += `<tr class="groupHeader">
           <td colspan="15">
             <span style="display:inline-flex;align-items:center;gap:8px">
@@ -1460,6 +1502,7 @@
               </span>
               <span>${escHtml(camarera)}</span>
               ${facturaBadge}
+              ${sharedBadge}
               <span style="font-weight:400;font-size:12px;color:var(--muted)">${items.length} registros</span>
             </span>
           </td>
@@ -1472,7 +1515,7 @@
           const no = Number(r.no_cumplen || 0);
           const na = Number(r.no_aplica || 0);
           const pct = Math.round((ok / total) * 100);
-          const pago = Number(r.pago || 0).toFixed(2);
+          const pago = Number(r.pago_final || 0).toFixed(2);
 
           // Score dots
           let dots = "";
@@ -1482,7 +1525,7 @@
 
           html += `<tr class="clickRow" data-inspeccion-id="${r.id}" title="Clic para ver detalle del checklist">
             <td>${escHtml(r.fecha || "-")}</td>
-            <td style="color:var(--muted);font-size:12px">${escHtml(r.camarera_nombre || "-")}</td>
+            <td style="font-size:12px">${getCamarerasDisplay(r)}</td>
             <td><strong>${escHtml(r.habitacion_etiqueta || "-")}</strong></td>
             <td>${escHtml(r.tipo_nombre || "-")}</td>
             <td>${Number(r.es_familiar) ? '<span class="familiarBadge">Fam</span>' : '-'}</td>
@@ -1497,10 +1540,10 @@
                 <div class="scoreDots">${dots}</div>
               </div>
             </td>
+            <td class="numCol">Q${Number(r.pago_base || 0).toFixed(2)}</td>
+            <td class="numCol">${r.aplica_extra ? '33%' : '-'}</td>
+            <td class="numCol">${r.aplica_extra ? (Number(r.camarera_factura) === 1 ? 'Q46' : 'Q36') : '-'}</td>
             <td class="numCol" style="font-weight:800;color:#2EE59D">Q${pago}</td>
-            <td class="numCol"></td>
-            <td class="numCol"></td>
-            <td class="numCol"></td>
           </tr>`;
         });
 
@@ -1682,13 +1725,13 @@
       // Totales
       let totalPago = 0, totalOk = 0, totalNo = 0, totalNa = 0;
       rows.forEach(r => {
-        totalPago += Number(r.pago || 0);
+        totalPago += Number(r.pago_final || 0);
         totalOk += Number(r.cumplen || 0);
         totalNo += Number(r.no_cumplen || 0);
         totalNa += Number(r.no_aplica || 0);
       });
 
-      // Agrupar por camarera para Excel
+      // Agrupar por camarera individual para Excel
       const groups = {};
       rows.forEach(r => {
         const key = r.camarera_nombre || "Sin asignar";
@@ -1818,12 +1861,12 @@
         // Obtener datos de pago final de esta camarera
         const detCam = detPagos[camarera] || {};
         const pagoFinalCam = detCam.pagoFinal || 0;
-        const pagoBaseCamTotal = items.reduce((sum, r) => sum + Number(r.pago_base || r.pago || 0), 0);
+        const pagoBaseCamTotal = items.reduce((sum, r) => sum + Number(r.pago_base || 0), 0);
 
         // Subtotal del grupo
         let subPagoBase = 0, subOk = 0, subNo = 0, subNa = 0;
         items.forEach(r => {
-          subPagoBase += Number(r.pago_base || r.pago || 0);
+          subPagoBase += Number(r.pago_base || 0);
           subOk += Number(r.cumplen || 0);
           subNo += Number(r.no_cumplen || 0);
           subNa += Number(r.no_aplica || 0);
@@ -1835,7 +1878,12 @@
         globalNa += subNa;
 
         // Fila de grupo
-        html += `<tr class="groupHeader"><td colspan="14" style="color:#5b21b6">${escHtml(camarera)} &mdash; ${items.length} registros</td></tr>`;
+        const sharedCountExcel = items.filter(r => {
+          const list = (r.camareras_list || "").split(",").filter(id => id);
+          return list.length > 1;
+        }).length;
+        const sharedExcelBadge = sharedCountExcel > 0 ? ` (${sharedCountExcel} compartido${sharedCountExcel !== 1 ? 's' : ''})` : '';
+        html += `<tr class="groupHeader"><td colspan="14" style="color:#5b21b6">${escHtml(camarera)}${sharedExcelBadge} &mdash; ${items.length} registros</td></tr>`;
 
         // Filas individuales
         items.forEach(r => {
@@ -1845,17 +1893,14 @@
           const no = Number(r.no_cumplen || 0);
           const na = Number(r.no_aplica || 0);
           const pct = Math.round((ok / total) * 100);
-          const pagoBase = Number(r.pago_base || r.pago || 0);
-          // Pago final proporcional por fila (cuota parte del total de la camarera)
-          const pagoFinalRow = pagoBaseCamTotal > 0
-            ? (pagoBase / pagoBaseCamTotal) * pagoFinalCam
-            : 0;
+          const pagoBase = Number(r.pago_base || 0);
+          const pagoFinalRow = Number(r.pago_final || 0);
           const fam = Number(r.es_familiar) ? '<span class="familiar">Familiar</span>' : '-';
 
           html += `<tr>
             <td class="center">${rowIdx}</td>
             <td class="center">${escHtml(r.fecha || "-")}</td>
-            <td>${escHtml(r.camarera_nombre || "-")}</td>
+            <td>${getCamarerasDisplay(r)}</td>
             <td><b>${escHtml(r.habitacion_etiqueta || "-")}</b></td>
             <td>${escHtml(r.tipo_nombre || "-")}</td>
             <td class="center">${fam}</td>
@@ -2166,6 +2211,8 @@
       if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") generarRend(); });
     });
 
+    // ===== AMA DE LLAVES =====
+    // (event listeners set up after DOM is ready, see below)
     function renderDashboard(rows) {
       const placeholder = $("rendPlaceholder");
       const grid = $("rendGrid");
@@ -2193,11 +2240,15 @@
         const pago = Number(r.total_pago || 0);
         const avgMin = Number(r.promedio_minutos || 0);
         const inspMin = Number(r.promedio_inspeccion_min || 0);
+        const shared = Number(r.habitaciones_compartidas || 0);
+        const sharedPct = rooms > 0 ? Math.round((shared / rooms) * 100) : 0;
+        const tiempoAsign = Number(r.promedio_tiempo_asignacion || 0);
 
         const roomsBar = Math.round((rooms / maxRooms) * 100);
         const pctBar = Math.round(pct);
         const pagoBar = Math.round((pago / maxPago) * 100);
         const minBar = Math.min(Math.round((avgMin / maxMin) * 100), 100);
+        const sharedBar = Math.min(sharedPct, 100);
 
         html += `
           <div class="dashCard">
@@ -2223,6 +2274,14 @@
               <div class="statItem">
                 <div class="num" style="color:#FBBF24">${avgMin} min</div>
                 <div class="lbl">Limpieza (prom)</div>
+              </div>
+              <div class="statItem">
+                <div class="num" style="color:#FF6B8A">${shared}</div>
+                <div class="lbl">Compartidas</div>
+              </div>
+              <div class="statItem">
+                <div class="num" style="color:#38BDF8">${tiempoAsign} min</div>
+                <div class="lbl">Asignación (prom)</div>
               </div>
             </div>
             <div class="barGroup">
@@ -2250,6 +2309,16 @@
                 <span class="barLabel">Inspeccion</span>
                 <div class="barTrack"><div class="barFill pink" style="width:${Math.min(inspMin, 60) * (100/60)}%"></div></div>
                 <span class="barValue">${inspMin} min</span>
+              </div>
+              <div class="barRow">
+                <span class="barLabel">Compartidas</span>
+                <div class="barTrack"><div class="barFill red" style="width:${sharedBar}%"></div></div>
+                <span class="barValue">${shared} (${sharedPct}%)</span>
+              </div>
+              <div class="barRow">
+                <span class="barLabel">Asignación</span>
+                <div class="barTrack"><div class="barFill blue" style="width:${Math.min(tiempoAsign, 60) * (100/60)}%"></div></div>
+                <span class="barValue">${tiempoAsign} min</span>
               </div>
             </div>
           </div>
@@ -2469,10 +2538,13 @@
       }));
 
       const roomsMap = {};
+      const sharedMap = {};
       dailyData.forEach(c => {
         roomsMap[c.camarera_id] = {};
+        sharedMap[c.camarera_id] = {};
         (c.dias || []).forEach(d => {
           roomsMap[c.camarera_id][d.fecha] = d.habitaciones;
+          sharedMap[c.camarera_id][d.fecha] = d.habitaciones_compartidas || 0;
         });
       });
 
@@ -2482,10 +2554,12 @@
         html += `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">`;
         dailyData.forEach((c, ci) => {
           const rooms = roomsMap[c.camarera_id]?.[dia] ?? 0;
+          const shared = sharedMap[c.camarera_id]?.[dia] ?? 0;
           const h = Math.max(Math.round((rooms / maxRooms) * 60), rooms > 0 ? 4 : 0);
           const color = getCamareraColor(ci);
+          const sharedTip = shared > 0 ? ` (${shared} compartidas)` : '';
           html += `<div class="chartBar" style="height:${h}px;background:${color};width:100%;max-width:20px;opacity:${rooms > 0 ? 1 : 0.15}">
-            <div class="tooltipChart">${c.camarera_nombre}: ${rooms} hab.</div>
+            <div class="tooltipChart">${c.camarera_nombre}: ${rooms} hab.${sharedTip}</div>
           </div>`;
         });
         const parts = dia.split("-");
@@ -2619,14 +2693,24 @@
       try {
         await Promise.all([
           loadCamareras(),
-          loadModulos()
+          loadModulos(),
+          loadAmaLlaves()
         ]);
         populateHistModulos();
       } catch (e) {
         toast("Error cargando datos", false);
       }
     })();
-  
+
+    // ===== AMA DE LLAVES EVENT LISTENERS (deferred so DOM is ready) =====
+    setTimeout(() => {
+      ["amaDesde","amaHasta"].forEach(id => {
+        const el = $(id);
+        if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") generarAmaLlaves(); });
+      });
+      $("btnGenerarAma")?.addEventListener("click", generarAmaLlaves);
+    }, 0);
+
     // ===== GRAFICAS PASTEL / DONUT =====
 
     function renderDonutChart(dailyData) {
@@ -2693,11 +2777,13 @@
       let html = '<div style="overflow-x:auto"><div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;padding:10px 0">';
       sorted.forEach((cam, ci) => {
         const rooms = Number(cam.total_inspecciones || 0);
+        const shared = Number(cam.habitaciones_compartidas || 0);
         const pct = Math.round((rooms / totalRooms) * 100);
         const color = getCamareraColor(ci);
         const circumference = 2 * Math.PI * 22;
         const dash = (pct / 100) * circumference;
         const gap = circumference - dash;
+        const sharedBadge = shared > 0 ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:999px;font-size:9px;font-weight:700;background:rgba(255,107,138,.15);color:#FF6B8A;border:1px solid rgba(255,107,138,.25);margin-left:4px">🔗${shared}</span>` : '';
         html += `<div style="display:flex;align-items:center;gap:16px;padding:8px 0">
           <svg viewBox="0 0 50 50" style="width:60px;height:60px;transform:rotate(-90deg);flex-shrink:0">
             <circle cx="25" cy="25" r="22" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5"/>
@@ -2710,15 +2796,190 @@
             <div style="display:flex;align-items:center;gap:6px">
               <span style="width:8px;height:8px;border-radius:999px;display:inline-block;background:${color}"></span>
               ${escHtml(cam.camarera_nombre)}
+              ${sharedBadge}
             </div>
-            <div style="font-size:10px;color:var(--muted);margin-top:4px">${rooms} hab. de ${totalRooms}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">${rooms} hab. de ${totalRooms}${shared > 0 ? ` (${shared} compartidas)` : ''}</div>
           </div>
         </div>`;
       });
       html += '</div></div>';
       container.innerHTML = html;
     }
+
+    // ===== AMA DE LLAVES =====
+    let AMA_LLAVES_DATA = [];
+
+    async function generarAmaLlaves() {
+      const desde = $("amaDesde").value;
+      const hasta = $("amaHasta").value;
+      if (!desde || !hasta) { toast("Selecciona fecha desde y hasta.", false); return; }
+
+      const btn = $("btnGenerarAma");
+      btn.disabled = true;
+      btn.textContent = "Generando...";
+
+      try {
+        const ama_nombre = $("filtroAmaLlaves").value || "";
+
+        let url = `/api/reportes/rendimiento/amas?fecha_desde=${encodeURIComponent(desde)}&fecha_hasta=${encodeURIComponent(hasta)}`;
+        if (ama_nombre) url += `&ama_nombre=${encodeURIComponent(ama_nombre)}`;
+
+        const resp = await apiGET(url);
+        const rows = Array.isArray(resp?.data) ? resp.data : [];
+
+        AMA_LLAVES_DATA = rows;
+        renderAmaLlavesDashboard(rows);
+        $("amaCount").textContent = `${rows.length} amas de llaves`;
+
+      } catch (e) {
+        toast("Error: " + (e?.message || e), false, 5200);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Generar";
+      }
+    }
+
+    function renderAmaLlavesDashboard(rows) {
+      const container = $("amaSubDash");
+      if (!container) return;
+
+      if (!rows.length) {
+        container.innerHTML = '<div class="empty">No hay datos para este rango de fechas.</div>';
+        return;
+      }
+
+      // Calcular totales
+      const totals = rows.reduce((acc, r) => {
+        acc.habitaciones += Number(r.total_inspecciones || 0);
+        acc.compartidas += Number(r.habitaciones_compartidas || 0);
+        acc.puntuacion += Number(r.promedio_pct || 0) * Number(r.total_inspecciones || 0);
+        acc.tiempo_limpieza += Number(r.promedio_minutos || 0) * Number(r.total_inspecciones || 0);
+        acc.tiempo_asignacion += Number(r.promedio_tiempo_asignacion || 0) * Number(r.total_inspecciones || 0);
+        acc.tiempo_inspeccion += Number(r.promedio_inspeccion_min || 0) * Number(r.total_inspecciones || 0);
+        return acc;
+      }, { habitaciones: 0, compartidas: 0, puntuacion: 0, tiempo_limpieza: 0, tiempo_asignacion: 0, tiempo_inspeccion: 0 });
+
+      const avgPct = totals.habitaciones > 0 ? Math.round(totals.puntuacion / totals.habitaciones) : 0;
+      const avgLimpieza = totals.habitaciones > 0 ? Math.round(totals.tiempo_limpieza / totals.habitaciones) : 0;
+      const avgAsignacion = totals.habitaciones > 0 ? Math.round(totals.tiempo_asignacion / totals.habitaciones) : 0;
+      const avgInspeccion = totals.habitaciones > 0 ? Math.round(totals.tiempo_inspeccion / totals.habitaciones) : 0;
+
+      let html = `
+        <div class="summaryCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px">
+          <div class="dashCard" style="background:rgba(86,180,255,.1);border-color:rgba(86,180,255,.2);padding:16px">
+            <div style="font-size:11px;color:#56B4FF;margin-bottom:4px">HABITACIONES</div>
+            <div style="font-size:28px;font-weight:800;color:#56B4FF">${totals.habitaciones}</div>
+          </div>
+          <div class="dashCard" style="background:rgba(46,229,157,.1);border-color:rgba(46,229,157,.2);padding:16px">
+            <div style="font-size:11px;color:#2EE59D;margin-bottom:4px">PUNTUACION PROM</div>
+            <div style="font-size:28px;font-weight:800;color:#2EE59D">${avgPct}%</div>
+          </div>
+          <div class="dashCard" style="background:rgba(56,189,248,.1);border-color:rgba(56,189,248,.2);padding:16px">
+            <div style="font-size:11px;color:#38BDF8;margin-bottom:4px">TIEMPO ASIGNACION</div>
+            <div style="font-size:28px;font-weight:800;color:#38BDF8">${avgAsignacion} min</div>
+          </div>
+          <div class="dashCard" style="background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.2);padding:16px">
+            <div style="font-size:11px;color:#FBBF24;margin-bottom:4px">TIEMPO LIMPIEZA</div>
+            <div style="font-size:28px;font-weight:800;color:#FBBF24">${avgLimpieza} min</div>
+          </div>
+          <div class="dashCard" style="background:rgba(224,38,188,.1);border-color:rgba(224,38,188,.2);padding:16px">
+            <div style="font-size:11px;color:#E026BC;margin-bottom:4px">TIEMPO INSPECCION</div>
+            <div style="font-size:28px;font-weight:800;color:#E026BC">${avgInspeccion} min</div>
+          </div>
+          <div class="dashCard" style="background:rgba(255,107,138,.1);border-color:rgba(255,107,138,.2);padding:16px">
+            <div style="font-size:11px;color:#FF6B8A;margin-bottom:4px">COMPARTIDAS</div>
+            <div style="font-size:28px;font-weight:800;color:#FF6B8A">${totals.compartidas}</div>
+          </div>
+        </div>
+
+        <h3 style="font-size:13px;color:#B8A0FF;margin:16px 0 10px">DESGLOSE POR AMA DE LLAVES</h3>
+        <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:rgba(255,255,255,.05)">
+              <th style="padding:8px 12px;text-align:left;color:#B8A0FF;border-bottom:1px solid rgba(255,255,255,.1)">Ama de Llaves</th>
+              <th style="padding:8px 12px;text-align:center;color:#B8A0FF;border-bottom:1px solid rgba(255,255,255,.1)">Habitaciones</th>
+              <th style="padding:8px 12px;text-align:center;color:#B8A0FF;border-bottom:1px solid rgba(255,255,255,.1)">Puntuacion</th>
+              <th style="padding:8px 12px;text-align:center;color:#B8A0FF;border-bottom:1px solid rgba(255,255,255,.1)">Tiempo Asignacion</th>
+              <th style="padding:8px 12px;text-align:center;color:#B8A0FF;border-bottom:1px solid rgba(255,255,255,.1)">Tiempo Limpieza</th>
+              <th style="padding:8px 12px;text-align:center;color:#B8A0FF;border-bottom:1px solid rgba(255,255,255,.1)">Tiempo Inspeccion</th>
+              <th style="padding:8px 12px;text-align:center;color:#B8A0FF;border-bottom:1px solid rgba(255,255,255,.1)">Compartidas</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      rows.forEach(r => {
+        const pct = Number(r.promedio_pct || 0);
+        const hab = Number(r.total_inspecciones || 0);
+        const shared = Number(r.habitaciones_compartidas || 0);
+        const pctColor = pct >= 90 ? '#2EE59D' : pct >= 70 ? '#FBBF24' : '#FF6B8A';
+        html += `
+          <tr style="border-bottom:1px solid rgba(255,255,255,.05)">
+            <td style="padding:10px 12px;color:#EAF0FF;font-weight:600">${escHtml(r.ama_nombre || '-')}</td>
+            <td style="padding:10px 12px;text-align:center;color:#56B4FF;font-weight:700">${hab}</td>
+            <td style="padding:10px 12px;text-align:center;color:${pctColor};font-weight:700">${pct}%</td>
+            <td style="padding:10px 12px;text-align:center;color:#38BDF8">${r.promedio_tiempo_asignacion || 0} min</td>
+            <td style="padding:10px 12px;text-align:center;color:#FBBF24">${r.promedio_minutos || 0} min</td>
+            <td style="padding:10px 12px;text-align:center;color:#E026BC">${r.promedio_inspeccion_min || 0} min</td>
+            <td style="padding:10px 12px;text-align:center;color:#FF6B8A">${shared}</td>
+          </tr>
+        `;
+      });
+
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }
+
+    // ===== TAB SWITCHING FOR AMA DE LLAVES =====
+    document.querySelectorAll(".tabAma").forEach(tab => {
+      tab.addEventListener("click", () => {
+        const sub = tab.dataset.subama;
+        document.querySelectorAll(".tabAma").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        const dash = $("amaSubDash");
+        const list = $("amaSubList");
+        if (dash) dash.style.display = sub === "dash" ? "block" : "none";
+        if (list) list.style.display = sub === "list" ? "block" : "none";
+      });
+    });
 </script>
+
+<!-- ===== TAB: AMA DE LLAVES ===== -->
+<div class="panel tabContent" id="tabAmaLlaves" style="display:none">
+  <div class="panelHeader">
+    <h2>Rendimiento de Ama de Llaves</h2>
+    <span class="count" id="amaCount">0 amas de llaves</span>
+    <div class="subTabs">
+      <button class="tabAma active" data-subama="dash" type="button">Dashboard</button>
+      <button class="tabAma" data-subama="list" type="button">Detalle</button>
+    </div>
+  </div>
+  <div class="panelBody">
+    <div class="filters">
+      <div class="filterGroup">
+        <label>Fecha desde</label>
+        <input id="amaDesde" type="date" />
+      </div>
+      <div class="filterGroup">
+        <label>Fecha hasta</label>
+        <input id="amaHasta" type="date" />
+      </div>
+      <div class="filterGroup">
+        <label>Ama de Llaves (opcional)</label>
+        <select id="filtroAmaLlaves">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <button class="primary" id="btnGenerarAma" type="button" style="height:38px">Generar</button>
+    </div>
+
+    <div id="amaSubDash" style="margin-top:16px"></div>
+    <div id="amaSubList" style="display:none;margin-top:16px">
+      <div id="amaLlavesGrid"></div>
+    </div>
+  </div>
+</div>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js').catch(function(err) {

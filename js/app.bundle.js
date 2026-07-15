@@ -365,15 +365,6 @@ function initSocket() {
     const arr = roomsCache.get(String(data.modulo_id));
     if (!arr) return;
     const idx = arr.findIndex(x => String(x.etiqueta).toUpperCase() === String(updated.etiqueta).toUpperCase());
-
-    const dedupKey = `socket:${data.modulo_id}:${updated.etiqueta}:${updated.estado}`;
-    const now = Date.now();
-    if (socket.lastUpdateKey === dedupKey && now - socket.lastUpdateTime < 2000) {
-      arr[idx] = updated;
-      renderRooms();
-      return;
-    }
-
     if (idx >= 0) {
       const oldEstado = arr[idx].estado;
       const newEstado = updated.estado;
@@ -386,8 +377,6 @@ function initSocket() {
       renderRooms();
       updateSummaryCounts();
     }
-    socket.lastUpdateKey = dedupKey;
-    socket.lastUpdateTime = now;
   });
 
   socket.on("connect_error", () => {
@@ -399,7 +388,6 @@ function initSocket() {
 ========================= */
 let MODULES = [];
 let activeModuleId = null;
-let recentNotifications = [];
 
 const roomsCache = new Map();
 let renderRoomsQueued = false;
@@ -438,40 +426,6 @@ const ESTADO_LABELS = {
   "repaso": "REPASO"
 };
 
-function addRecentNotification(modulo_id, etiqueta, oldEstado, newEstado) {
-  const dedupKey = `${modulo_id}:${etiqueta}:${newEstado}`;
-  const now = Date.now();
-  if (addRecentNotification.lastTime && addRecentNotification.lastKey === dedupKey && now - addRecentNotification.lastTime < 2000) {
-    return;
-  }
-  addRecentNotification.lastTime = now;
-  addRecentNotification.lastKey = dedupKey;
-
-  const mod = MODULES.find(m => String(m.id) === String(modulo_id));
-  const moduloNombre = mod?.descripcion || mod?.nombre || modulo_id || "?";
-  const oldLabel = ESTADO_LABELS[oldEstado] || oldEstado || "?";
-  const newLabel = ESTADO_LABELS[newEstado] || newEstado || "?";
-  const time = new Date().toLocaleTimeString("es-GT", { hour: "2-digit", minute: "2-digit" });
-  recentNotifications.unshift({
-    id: now + Math.random(),
-    modulo: moduloNombre,
-    etiqueta: etiqueta,
-    oldEstado: oldEstado,
-    newEstado: newEstado,
-    oldLabel: oldLabel,
-    newLabel: newLabel,
-    time: time
-  });
-  if (recentNotifications.length > 50) recentNotifications.splice(50);
-  updateBellDot();
-}
-
-function updateBellDot() {
-  const dot = $("bellDot");
-  if (!dot) return;
-  dot.style.display = recentNotifications.length > 0 ? "block" : "none";
-}
-
 function normalizeRoom(r) {
   return {
     id: r.id,
@@ -497,11 +451,6 @@ function applyRoomUpdate(updatedRow) {
   const updated = normalizeRoom(updatedRow);
   const modId = String(updated.modulo_id);
 
-  if (!socket.lastUpdateKey) {
-    socket.lastUpdateKey = "";
-    socket.lastUpdateTime = 0;
-  }
-
   const arr = roomsCache.get(modId);
   if (arr) {
     const idx = arr.findIndex(x => String(x.etiqueta).toUpperCase() === String(updated.etiqueta).toUpperCase());
@@ -509,9 +458,6 @@ function applyRoomUpdate(updatedRow) {
       const oldEstado = arr[idx].estado;
       const newEstado = updated.estado;
       arr[idx] = updated;
-      const dedupKey = `socket:${modId}:${updated.etiqueta}:${newEstado}`;
-      socket.lastUpdateKey = dedupKey;
-      socket.lastUpdateTime = Date.now();
       if (oldEstado !== newEstado) {
         addRecentNotification(modId, updated.etiqueta, oldEstado, newEstado);
       }
@@ -705,13 +651,7 @@ function urlBase64ToUint8Array(base64) {
 
 async function showNotification(etiqueta, estado) {
   if (notifPermission !== "granted") return;
-  const dedupKey = `notif:${etiqueta}:${estado}`;
-  const now = Date.now();
-  if (showNotification.lastTime && showNotification.lastKey === dedupKey && now - showNotification.lastTime < 2000) {
-    return;
-  }
-  showNotification.lastTime = now;
-  showNotification.lastKey = dedupKey;
+  if (document.hasFocus()) return;
   playNotificationSound();
   try {
     const title = `Hab ${etiqueta}`;
@@ -744,21 +684,21 @@ function renderNotifPanel() {
   }
 
   const estadoIconMap = {
-    "ocupado": "🔴",
-    "ocupada limpia": "🔴",
-    "lista": "🟡",
-    "limpieza": "🔵",
-    "inspeccion": "🟢",
-    "libre": "🟢",
-    "mantenimiento": "🟣",
-    "repaso": "🟤"
+    "ocupado": "ðŸ”´",
+    "ocupada limpia": "ðŸ”´",
+    "lista": "ðŸŸ¡",
+    "limpieza": "ðŸ”µ",
+    "inspeccion": "ðŸŸ¢",
+    "libre": "ðŸŸ¢",
+    "mantenimiento": "ðŸŸ£",
+    "repaso": "ðŸŸ¤"
   };
 
   let html = "";
   recentNotifications.forEach(n => {
-    const icon = estadoIconMap[n.newEstado] || "🔔";
+    const icon = estadoIconMap[n.newEstado] || "ðŸ””";
     const changeDir = n.oldEstado !== n.newEstado
-      ? `<span style="color:var(--muted);font-size:10px">${n.oldLabel} → </span><span style="font-weight:700">${n.newLabel}</span>`
+      ? `<span style="color:var(--muted);font-size:10px">${n.oldLabel} â†’ </span><span style="font-weight:700">${n.newLabel}</span>`
       : `<span style="font-weight:700">${n.newLabel}</span>`;
 
     html += `<div class="notifItem" data-notif-id="${n.id}">
@@ -1426,12 +1366,12 @@ function renderRooms() {
       </div>
 
       <div class="roomActions">
-        <button class="raBtn ocupado" data-action="ocupado" aria-label="Ocupado">${ICONS.ocupado}</button>
-        <button class="raBtn limpieza" data-action="limpieza" aria-label="Lista / Iniciar limpieza">${ICONS.limpieza}</button>
-        <button class="raBtn mant" data-action="mant" aria-label="Mantenimiento">${ICONS.mant}</button>
-        <button class="raBtn liberar" data-action="liberar" aria-label="Liberar habitacion">${ICONS.liberar}</button>
-        <button class="raBtn prio" data-action="prio" aria-label="Prioridad limpieza">${ICONS.prio}</button>
-        <button class="raBtn repaso" data-action="repaso" aria-label="Repaso">${ICONS.repaso}</button>
+        <button class="raBtn ocupado" data-action="ocupado" title="Ocupado">${ICONS.ocupado}</button>
+        <button class="raBtn limpieza" data-action="limpieza" title="Lista / Iniciar limpieza">${ICONS.limpieza}</button>
+        <button class="raBtn mant" data-action="mant" title="Mantenimiento">${ICONS.mant}</button>
+        <button class="raBtn liberar" data-action="liberar" title="Liberar habitacion">${ICONS.liberar}</button>
+        <button class="raBtn prio" data-action="prio" title="Prioridad limpieza">${ICONS.prio}</button>
+        <button class="raBtn repaso" data-action="repaso" title="Repaso">${ICONS.repaso}</button>
       </div>
     `;
 
@@ -1510,7 +1450,6 @@ function renderRooms() {
           await updateRoom(current.modulo_id, current.etiqueta, {
             estado: "lista",
             desde: nowLocalMySQL(),
-            hora_listo_limpieza: nowLocalMySQL(),
             inicio_limpieza: null,
             fin_limpieza: null,
             camarera_asignada: null,

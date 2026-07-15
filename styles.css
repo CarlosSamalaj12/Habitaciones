@@ -140,7 +140,7 @@ body{
 .summaryPill.limpias{ --sumAccent: 34,197,94; border-color: rgba(34,197,94,.45); }
 .summaryPill.limpiadas{ --sumAccent: 56,189,248; border-color: rgba(56,189,248,.55); }
 .summaryPill.mantenimiento{ --sumAccent: 148,163,184; border-color: rgba(148,163,184,.55); }
-.summaryPill.inspeccion{ --sumAccent: 20,184,166; border-color: rgba(20,184,166,.55); }
+.summaryPill.inspeccion{ --sumAccent: 249,115,22; border-color: rgba(249,115,22,.55); }
 .summaryPill.prioridad{ --sumAccent: 224,38,188; border-color: rgba(224,38,188,.55); }
 .summaryPill.repaso{ --sumAccent: 130,95,66; border-color: rgba(130,95,66,.55); }
 
@@ -296,7 +296,7 @@ h2{
   transition: transform .16s ease, filter .16s ease, box-shadow .16s ease, border-color .16s ease;
   min-height: 190px;
   text-align:left;
-  overflow:hidden;
+  overflow:visible;
   will-change: transform, filter, box-shadow;
   display:flex;
   flex-direction:column;
@@ -475,7 +475,7 @@ h2{
 .roomBtn.ocupado{ --accent: 239,68,68; }
 .roomBtn.lista{ --accent: 251,191,36; }
 .roomBtn.limpieza{ --accent: 200,165,122; }
-.roomBtn.inspeccion{ --accent: 20,184,166; }
+.roomBtn.inspeccion{ --accent: 249,115,22; }
 .roomBtn.mantenimiento{ --accent: 124,58,237; }
 .roomBtn.repaso{ --accent: 130,95,66; }
 .roomBtn.prioHigh{
@@ -629,6 +629,7 @@ h2{
   transform: none;
   pointer-events: auto;
   transition: none;
+  overflow: visible;
 }
 
 .raBtn{
@@ -642,6 +643,7 @@ h2{
   background: rgba(10,12,22,.65);
   backdrop-filter: blur(8px);
   box-shadow: 0 6px 16px rgba(0,0,0,.35);
+  overflow: visible;
   color: #fff;
   cursor: pointer;
   display:grid;
@@ -654,7 +656,7 @@ h2{
 .raBtn:active{ transform: translateY(0) scale(.95); }
 
 .raBtn::after{
-  content: attr(title);
+  content: attr(aria-label);
   position: absolute;
   left: 50%;
   /* Tooltip apunta hacia abajo para no ser recortado por overflow:hidden de la card */
@@ -674,7 +676,7 @@ h2{
   opacity: 0;
   pointer-events: none;
   transition: opacity .12s ease;
-  z-index: 99;
+  z-index: 9999;
 }
 .raBtn:hover::after,
 .raBtn:focus-visible::after{
@@ -1137,7 +1139,7 @@ body.layout-mobile .brandText #summaryProgressAll{
   .roomIndexBtn.limpieza{ color: rgb(220,185,142); border-color: rgba(200,165,122,.3); }
   .roomIndexBtn.lista{ color: rgb(250,204,21); border-color: rgba(251,191,36,.3); }
   .roomIndexBtn.libre{ color: rgb(80,220,140); border-color: rgba(34,197,94,.3); }
-  .roomIndexBtn.inspeccion{ color: rgb(45,212,191); border-color: rgba(20,184,166,.3); }
+  .roomIndexBtn.inspeccion{ color: rgb(249,115,22); border-color: rgba(249,115,22,.3); }
   .roomIndexBtn.mantenimiento{ color: rgb(160,120,255); border-color: rgba(124,58,237,.3); }
 
   /* Search bar full width on mobile */
@@ -1505,7 +1507,7 @@ body.layout-mobile .brandText #summaryProgressAll{
 .notifItemIcon.lista{background:rgba(251,191,36,.2)}
 .notifItemIcon.libre{background:rgba(34,197,94,.2)}
 .notifItemIcon.limpieza{background:rgba(56,189,248,.2)}
-.notifItemIcon.inspeccion{background:rgba(20,184,166,.2)}
+.notifItemIcon.inspeccion{background:rgba(249,115,22,.2)}
 .notifItemIcon.mantenimiento{background:rgba(124,58,237,.2)}
 
 .notifItemContent{

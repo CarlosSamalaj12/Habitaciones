@@ -785,10 +785,12 @@
           </div>
 
           <div>
-            <label>Camarera (quien limpia)</label>
-            <select id="camarera">
-              <option value="">Cargando...</option>
-            </select>
+            <label>Camarera(s) (quien limpia)</label>
+            <button type="button" id="btnSelectCamareras" style="width:100%;text-align:left;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#EAF0FF;font-size:13px;cursor:pointer">
+              Seleccionar camarera(s)...
+            </button>
+            <div id="selectedCamarerasTags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+            <select id="camarera" style="display:none" multiple></select>
           </div>
 
           <div>
@@ -859,6 +861,36 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal Seleccionar Camareras -->
+  <div id="camarerasModal" class="overlay hidden" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center">
+    <div style="background:var(--bg1,#0B1024);border:1px solid rgba(255,255,255,.12);border-radius:18px;width:90%;max-width:400px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.6)">
+      <div style="padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between">
+        <h3 style="margin:0;font-size:16px;color:#EAF0FF">Seleccionar Camareras</h3>
+        <button id="btnCloseCamarerasModal" type="button" style="background:rgba(255,255,255,.08);border:none;color:#A9B3D0;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;line-height:1">X</button>
+      </div>
+      <div id="camarerasModalList" style="padding:12px;overflow-y:auto;flex:1">
+        <!-- Lista de checkboxes se llena dinamicamente -->
+      </div>
+      <div style="padding:14px 18px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:10px">
+        <button id="btnClearCamareras" type="button" style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(255,77,109,.4);background:rgba(255,77,109,.15);color:#FF4D6D;font-size:13px;cursor:pointer">Limpiar</button>
+        <button id="btnConfirmCamareras" type="button" style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(46,229,157,.4);background:rgba(46,229,157,.15);color:#2EE59D;font-size:13px;cursor:pointer;font-weight:600">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    #camarerasModal { display:flex !important; }
+    #camarerasModal.hidden { display:none !important; }
+    .camCheckboxItem { display:flex;align-items:center;padding:10px 12px;border-radius:10px;margin-bottom:6px;cursor:pointer;transition:background .15s }
+    .camCheckboxItem:hover { background:rgba(255,255,255,.06) }
+    .camCheckboxItem.selected { background:rgba(124,58,237,.25) }
+    .camCheckboxItem input[type="checkbox"] { width:20px;height:20px;margin-right:12px;accent-color:#7C3AED }
+    .camCheckboxItem label { flex:1;font-size:14px;color:#EAF0FF;cursor:pointer }
+    .camTag { display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;background:rgba(124,58,237,.3);border:1px solid rgba(124,58,237,.5);color:#B8A0FF;font-size:12px;font-weight:600 }
+    .camTag button { background:none;border:none;color:inherit;cursor:pointer;padding:0;margin-left:4px;font-size:14px;line-height:1 }
+  </style>
+
   <script>
     /* =========================
        CONTEXTO DESDE INDEX (m, r, u, d)
@@ -1019,6 +1051,7 @@
     }
 
     let CAMARERAS_MAP = {}; // nombre -> id
+    let CAMARERAS = []; // array de {id, nombre}
     let CHECKLIST_ITEMS_DB = []; // items from DB
     let CHECKLIST_ITEMS_MAP = {}; // label -> { id, categoria_id, nombre }
     let CATEGORIAS_MAP = {}; // id -> { nombre, items[] }
@@ -1037,14 +1070,18 @@
         const j = await r.json();
         if(!j?.ok) throw new Error(j?.error || "Error");
         const sel = document.getElementById("camarera");
-        sel.innerHTML = `<option value="">Seleccionar...</option>`;
+        if (sel) sel.innerHTML = `<option value="">Seleccionar...</option>`;
         CAMARERAS_MAP = {};
+        CAMARERAS = []; // array de {id, nombre} para el modal
         (j.data || []).forEach(c => {
-          const opt = document.createElement("option");
-          opt.value = String(c.id);
-          opt.textContent = c.nombre;
-          opt.dataset.nombre = c.nombre;
-          sel.appendChild(opt);
+          CAMARERAS.push({ id: c.id, nombre: c.nombre });
+          if (sel) {
+            const opt = document.createElement("option");
+            opt.value = String(c.id);
+            opt.textContent = c.nombre;
+            opt.dataset.nombre = c.nombre;
+            sel.appendChild(opt);
+          }
           CAMARERAS_MAP[normalizeLabel(c.nombre)] = c.id;
         });
       }catch(e){
@@ -1068,11 +1105,14 @@
            normalizeRoom(s.habitacion) === normalizeRoom(CTX.habitacion));
         if (sameRoom && String(s.date || "") === todayYMD()) {
           if (s.camareraSel) {
-            const sel = document.getElementById("camarera");
-            // Solo aplicar si hay un option con ese valor
-            if (sel && sel.querySelector(`option[value="${s.camareraSel}"]`)) {
-              sel.value = s.camareraSel;
-            }
+            const idsArray = s.camareraSel.split(",").filter(c => c);
+            _selectedCamareras = idsArray.map(id => {
+              const numId = Number(id);
+              const cam = CAMARERAS.find(c => c.id === numId);
+              return cam ? { id: numId, nombre: cam.nombre } : { id: numId, nombre: `Camarera ${id}` };
+            }).filter(c => c.id);
+            renderCamarerasTags();
+            syncHiddenSelectCamareras();
           }
           if (s.tipoSel) {
             const selTipo = document.getElementById("tipoLimpieza");
@@ -1111,10 +1151,144 @@
       return !!camareraId && Object.values(CAMARERAS_MAP).includes(Number(camareraId));
     }
 
+    // ===== MULTI-SELECT CAMARERAS =====
+    function getSelectedCamareras() {
+      const sel = $("camarera");
+      if (!sel) return [];
+      return Array.from(sel.selectedOptions).map(opt => opt.value).filter(v => v);
+    }
+
+    // ===== MULTI-SELECT CAMARERAS (MOBILE-FRIENDLY) =====
+    let _selectedCamareras = []; // array de {id, nombre}
+
+    function getSelectedCamareras() {
+      return _selectedCamareras.map(c => String(c.id));
+    }
+
+    function getSelectedCamarerasCount() {
+      return _selectedCamareras.length;
+    }
+
+    function getCamarerasNombres() {
+      return _selectedCamareras.map(c => c.nombre);
+    }
 
     // ===== UI helpers =====
     const $ = (id) => document.getElementById(id);
 
+    function escHtml(s) {
+      return String(s || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function renderCamarerasTags() {
+      const container = $("selectedCamarerasTags");
+      if (!container) return;
+      if (!_selectedCamareras.length) {
+        container.innerHTML = "";
+        return;
+      }
+      container.innerHTML = _selectedCamareras.map(c =>
+        `<span class="camTag">${escHtml(c.nombre)} <button type="button" onclick="removeCamarera(${c.id})">X</button></span>`
+      ).join("");
+    }
+
+    window.removeCamarera = function(id) {
+      _selectedCamareras = _selectedCamareras.filter(c => c.id !== id);
+      syncHiddenSelectCamareras();
+      renderCamarerasTags();
+      updateCamarerasModalSelection();
+    };
+
+    function updateCamarerasModalSelection() {
+      const list = $("camarerasModalList");
+      if (!list) return;
+      list.querySelectorAll(".camCheckboxItem").forEach(item => {
+        const id = Number(item.dataset.id);
+        const checked = _selectedCamareras.some(c => c.id === id);
+        item.querySelector("input").checked = checked;
+        item.classList.toggle("selected", checked);
+      });
+    }
+
+    function openCamarerasModal() {
+      const modal = $("camarerasModal");
+      const list = $("camarerasModalList");
+      if (!modal || !list) return;
+
+      // Poblar lista si esta vacia
+      if (!list.children.length && CAMARERAS.length) {
+        list.innerHTML = CAMARERAS.map(c => `
+          <div class="camCheckboxItem" data-id="${c.id}">
+            <input type="checkbox" id="camCheck${c.id}" value="${c.id}" />
+            <label for="camCheck${c.id}">${escHtml(c.nombre)}</label>
+          </div>
+        `).join("");
+        list.querySelectorAll(".camCheckboxItem").forEach(item => {
+          item.addEventListener("click", (e) => {
+            if (e.target.tagName === "INPUT") return;
+            const cb = item.querySelector("input");
+            cb.checked = !cb.checked;
+            item.classList.toggle("selected", cb.checked);
+          });
+          item.querySelector("input").addEventListener("change", () => {
+            item.classList.toggle("selected", item.querySelector("input").checked);
+          });
+        });
+      }
+
+      updateCamarerasModalSelection();
+      modal.classList.remove("hidden");
+    }
+
+    function closeCamarerasModal() {
+      const modal = $("camarerasModal");
+      if (modal) modal.classList.add("hidden");
+    }
+
+    function confirmCamarerasSelection() {
+      const list = $("camarerasModalList");
+      _selectedCamareras = [];
+      list.querySelectorAll(".camCheckboxItem input:checked").forEach(cb => {
+        const id = Number(cb.value);
+        const nombre = CAMARERAS.find(c => c.id === id)?.nombre || cb.nextElementSibling?.textContent || "";
+        _selectedCamareras.push({ id, nombre });
+      });
+      syncHiddenSelectCamareras();
+      renderCamarerasTags();
+      closeCamarerasModal();
+    }
+
+    function syncHiddenSelectCamareras() {
+      const sel = $("camarera");
+      if (!sel) return;
+      Array.from(sel.options).forEach(opt => opt.selected = false);
+      _selectedCamareras.forEach(c => {
+        const opt = sel.querySelector(`option[value="${c.id}"]`);
+        if (opt) opt.selected = true;
+      });
+    }
+
+    function clearCamarerasSelection() {
+      _selectedCamareras = [];
+      syncHiddenSelectCamareras();
+      renderCamarerasTags();
+      updateCamarerasModalSelection();
+    }
+
+    $("btnSelectCamareras")?.addEventListener("click", openCamarerasModal);
+    $("btnCloseCamarerasModal")?.addEventListener("click", closeCamarerasModal);
+    $("btnConfirmCamareras")?.addEventListener("click", confirmCamarerasSelection);
+    $("btnClearCamareras")?.addEventListener("click", clearCamarerasSelection);
+    $("camarerasModal")?.addEventListener("click", (e) => {
+      if (e.target.id === "camarerasModal") closeCamarerasModal();
+    });
+
+    // ===== UI helpers =====
     // ===== TIME SYNC (server) =====
     let TIME_OFFSET_MS = 0; // server - client
     function nowServerMs() {
@@ -1335,7 +1509,7 @@
         startAtDT,
         endAtDT,
         useFamiliarArea,
-        camareraSel: $("camarera").value || "",
+        camareraSel: getSelectedCamareras().join(","),
         tipoSel: $("tipoLimpieza").value || "",
         obsGeneral: $("obsGeneral").value || ""
       };
@@ -1369,7 +1543,16 @@
             startAtDT = s.startAtDT || null;
             endAtDT = s.endAtDT || null;
             useFamiliarArea = canUseFamiliarArea() && !!s.useFamiliarArea;
-            if (s.camareraSel) $("camarera").value = s.camareraSel;
+            if (s.camareraSel) {
+              // Formato nuevo: "id1,id2,id3" -> convertir a array de objetos
+              const idsArray = s.camareraSel.split(",").filter(c => c);
+              _selectedCamareras = idsArray.map(id => {
+                const numId = Number(id);
+                const cam = CAMARERAS.find(c => c.id === numId);
+                return cam ? { id: numId, nombre: cam.nombre } : { id: numId, nombre: `Camarera ${id}` };
+              }).filter(c => c.id);
+              renderCamarerasTags();
+            }
             if (s.tipoSel) $("tipoLimpieza").value = s.tipoSel;
             if (s.obsGeneral) $("obsGeneral").value = s.obsGeneral;
             renderFamiliarUI();
@@ -1459,16 +1642,18 @@
         toast("Restringido", "Gerencia solo puede visualizar.", false, 3200);
         return;
       }
-      const camareraSel = $("camarera").value;
+      const camarerasSel = getSelectedCamareras();
       const tipoSel = $("tipoLimpieza").value;
 
-      if (!camareraSel) {
-        toast("Falta Camarera", "Selecciona la camarera (quien limpia).", false, 4200);
+      if (!camarerasSel.length) {
+        toast("Falta Camarera", "Selecciona al menos una camarera (quien limpia).", false, 4200);
         return highlightAndFocus("camarera");
       }
-      if (!isCamareraValida(camareraSel)) {
-        toast("Camarera invalida", `La camarera "${camareraSel}" no esta en la lista permitida.`, false, 5200);
-        return highlightAndFocus("camarera");
+      for (const c of camarerasSel) {
+        if (!isCamareraValida(c)) {
+          toast("Camarera invalida", `La camarera "${c}" no esta en la lista permitida.`, false, 5200);
+          return highlightAndFocus("camarera");
+        }
       }
 
       if (!tipoSel) {
@@ -1483,17 +1668,17 @@
         saveSession();
 
         try {
-          const camareraNombre = $("camarera").selectedOptions?.[0]?.textContent || camareraSel;
+          const camareraNombres = getCamarerasNombres().join(", ");
           const nextObs = appendObsLog(
             currentRoomObservaciones,
             "INICIO LIMPIEZA",
             startAtDT,
-            `Camarera encargada de limpieza: ${camareraNombre}`
+            `Camarera(s) encargada(s) de limpieza: ${camareraNombres}`
           );
           const updated = await updateRoomDB(CTX.modulo, CTX.habitacion, {
             estado: "limpieza",
             inicio_limpieza: startAtDT,
-            camarera_asignada: camareraSel,
+            camarera_asignada: getCamarerasNombres()[0] || null,
             tipo_limpieza: tipoSel,
             inspector_asignado: CTX.usuario || null,
             observaciones: nextObs
@@ -1728,7 +1913,7 @@
     }
 
 
-    $("camarera").addEventListener("change", saveSession);
+    // Nota: el evento de camarera se maneja via el modal de seleccion
     $("tipoLimpieza").addEventListener("change", () => {
       renderAllNABtn();
       saveSession();
@@ -1845,8 +2030,11 @@
         return;
       }
       if (!fecha) { isSavingInspection = false; setGuardarLoading(false); toast("Falta Fecha", "Elige la fecha de la limpieza.", false); return highlightAndFocus("fecha"); }
-      if (!camareraSel) { isSavingInspection = false; setGuardarLoading(false); toast("Falta Camarera", "Selecciona la camarera.", false); return highlightAndFocus("camarera"); }
-      if (!isCamareraValida(camareraSel)) { isSavingInspection = false; setGuardarLoading(false); toast("Camarera invalida", `"${camareraSel}" no esta permitida.`, false, 5200); return highlightAndFocus("camarera"); }
+      const camarerasSeleccionadas = getSelectedCamareras();
+      if (!camarerasSeleccionadas.length) { isSavingInspection = false; setGuardarLoading(false); toast("Falta Camarera", "Selecciona al menos una camarera.", false); return highlightAndFocus("camarera"); }
+      for (const c of camarerasSeleccionadas) {
+        if (!isCamareraValida(c)) { isSavingInspection = false; setGuardarLoading(false); toast("Camarera invalida", `"${c}" no esta permitida.`, false, 5200); return highlightAndFocus("camarera"); }
+      }
       if (!tipoSel) { isSavingInspection = false; setGuardarLoading(false); toast("Falta Tipo de Limpieza", "Selecciona Estadia / Media Estadia / etc.", false); return highlightAndFocus("tipoLimpieza"); }
       if (!startAtDT) { isSavingInspection = false; setGuardarLoading(false); toast("Falta iniciar", "Presiona \"Empezar limpieza\" antes de guardar.", false, 4200); return; }
       if (!endAtDT) { isSavingInspection = false; setGuardarLoading(false); toast("Falta terminar", "Presiona \"Terminar limpieza\" antes de guardar.", false, 4200); return; }
@@ -1860,7 +2048,7 @@
       }
 
       const checklistFinishedAtDT = nowLocalMySQL();
-      const camareraId = getCamareraIdFromName(camareraSel) || null;
+      const camareraIds = camarerasSeleccionadas.map(id => getCamareraIdFromName(id) || Number(id)).filter(id => id);
 
       let tipoLimpiezaId = null;
       try {
@@ -1883,7 +2071,7 @@
         modulo_nombre: CTX_MOD_NAME,
         habitacion_etiqueta: habitacion,
         fecha: fecha,
-        camarera_id: camareraId,
+        camarera_ids: camareraIds,
         tipo_limpieza_id: tipoLimpiezaId,
         inspector_nombre: CTX.usuario || '',
         inspector_dept: CTX.dept || '',
@@ -1960,6 +2148,7 @@
       });
     }
   </script>
+
 </body>
 
 </html>

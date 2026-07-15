@@ -140,6 +140,7 @@ function normalizeRole(rawDept){
 let pool;
 
 async function initDB(){
+  console.log("initDB: starting...");
   pool = mysql.createPool({
     host: DB_HOST,
     user: DB_USER,
@@ -324,6 +325,47 @@ async function initDB(){
     }
   }
 
+  // Migration: crear tabla inspecciones_camareras si no existe (soporte multiple camareras)
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS inspecciones_camareras (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        inspeccion_id INT NOT NULL,
+        camarera_id INT NOT NULL,
+        FOREIGN KEY (inspeccion_id) REFERENCES inspecciones(id) ON DELETE CASCADE,
+        FOREIGN KEY (camarera_id) REFERENCES camareras(id) ON DELETE CASCADE,
+        UNIQUE KEY uq_inspeccion_camarera (inspeccion_id, camarera_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    console.log("✅ Tabla inspecciones_camareras creada/verificada");
+
+    // Migration: copiar datos existentes de inspecciones.camarera_id a inspecciones_camareras
+    try {
+      const [count] = await pool.query("SELECT COUNT(*) AS c FROM inspecciones_camareras");
+      if (count[0].c === 0) {
+        await pool.query(`
+          INSERT IGNORE INTO inspecciones_camareras (inspeccion_id, camarera_id)
+          SELECT id, camarera_id FROM inspecciones WHERE camarera_id IS NOT NULL
+        `);
+        console.log("✅ Datos de camareras migrados a inspecciones_camareras");
+      }
+    } catch (e) {
+      console.warn("⚠️ No se pudieron migrar datos de camareras:", e.message);
+    }
+  } catch (e) {
+    console.warn("⚠️ No se pudo crear inspecciones_camareras:", e.message);
+  }
+
+  // Migration: agregar columna hora_listo_limpieza a estados_habitacion (para medir tiempo de respuesta del ama de llaves)
+  try {
+    await pool.query("ALTER TABLE estados_habitacion ADD COLUMN hora_listo_limpieza DATETIME DEFAULT NULL AFTER inicio_limpieza");
+    console.log("✅ Columna hora_listo_limpieza agregada a estados_habitacion");
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME') {
+      console.warn("⚠️ No se pudo agregar hora_listo_limpieza:", e.message);
+    }
+  }
+
   await pool.query("SELECT 1");
   console.log("✅ MariaDB conectada");
 }
@@ -446,6 +488,21 @@ app.post("/api/users/create", requireAuthIfEnabled, async (req,res)=>{
 app.get("/api/users", async (req,res)=>{
   try{
     const [rows] = await pool.query("SELECT id, nombre, departamento FROM usuarios ORDER BY nombre");
+    res.json({ ok:true, data: rows });
+  }catch(e){
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// GET /api/amas-llaves - lista de amas de llaves (inspectores únicos de inspecciones)
+app.get("/api/amas-llaves", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const [rows] = await pool.query(`
+      SELECT DISTINCT inspector_nombre AS nombre
+      FROM inspecciones
+      WHERE inspector_nombre IS NOT NULL AND inspector_nombre != ''
+      ORDER BY inspector_nombre
+    `);
     res.json({ ok:true, data: rows });
   }catch(e){
     res.status(500).json({ ok:false, error: "Error interno del servidor" });
@@ -922,6 +979,15 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
     const fin = toMySQLDatetime(data.fin_limpieza);
     const horaChk = toMySQLDatetime(data.hora_checklist);
 
+    // Soportar camarera_ids (array) o camarera_id (legacy unico)
+    let camareraIds = [];
+    if (Array.isArray(data.camarera_ids) && data.camarera_ids.length) {
+      camareraIds = data.camarera_ids.map(id => Number(id)).filter(id => id);
+    } else if (data.camarera_id) {
+      camareraIds = [Number(data.camarera_id)].filter(id => id);
+    }
+    const primaryCamareraId = camareraIds[0] || null;
+
     // Verificar si ya existe una inspeccion identica (misma hab, fecha, horas, inspector)
     const [existing] = await pool.query(`
       SELECT id FROM inspecciones
@@ -950,6 +1016,12 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
           await pool.query(`INSERT INTO inspeccion_detalles (inspeccion_id, item_id, estado) VALUES ${placeholders}`, validDetails.flat());
         }
       }
+      // Actualizar camareras si hay nuevas
+      if (camareraIds.length) {
+        await pool.query("DELETE FROM inspecciones_camareras WHERE inspeccion_id=?", [inspeccion_id]);
+        const camPlaceholders = camareraIds.map(() => '(?,?)').join(',');
+        await pool.query(`INSERT INTO inspecciones_camareras (inspeccion_id, camarera_id) VALUES ${camPlaceholders}`, camareraIds.flatMap(id => [inspeccion_id, id]));
+      }
       return res.json({ ok:true, id: inspeccion_id, dedup: true });
     }
 
@@ -964,7 +1036,7 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
       data.modulo_nombre || '',
       data.habitacion_etiqueta,
       data.fecha,
-      data.camarera_id || null,
+      primaryCamareraId,
       data.tipo_limpieza_id || null,
       data.inspector_nombre || '',
       data.inspector_dept || '',
@@ -975,6 +1047,12 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
     ]);
 
     const inspeccion_id = header.insertId;
+
+    // Guardar relacion multiple de camareras
+    if (camareraIds.length) {
+      const camPlaceholders = camareraIds.map(() => '(?,?)').join(',');
+      await pool.query(`INSERT INTO inspecciones_camareras (inspeccion_id, camarera_id) VALUES ${camPlaceholders}`, camareraIds.flatMap(id => [inspeccion_id, id]));
+    }
 
     if(Array.isArray(data.detalles)){
       const validDetails = data.detalles
@@ -1000,28 +1078,41 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
   try{
     const fecha_desde = String(req.query?.fecha_desde || "").trim();
     const fecha_hasta = String(req.query?.fecha_hasta || "").trim();
-    const camarera_id = req.query?.camarera_id ? Number(req.query.camarera_id) : null;
+    const filtro_camarera_id = req.query?.camarera_id ? Number(req.query.camarera_id) : null;
     const modulo_id = String(req.query?.modulo_id || "").trim();
 
     if (!fecha_desde || !fecha_hasta) {
       return res.status(400).json({ ok:false, error:"Faltan fecha_desde y fecha_hasta" });
     }
 
-    const sql = `
+    console.log(`[PAGOS] fecha_desde="${fecha_desde}" fecha_hasta="${fecha_hasta}"`);
+    const isSameDay = fecha_desde === fecha_hasta;
+    let fechaWhere;
+    let queryParams;
+    if (isSameDay) {
+      fechaWhere = "DATE(i.fecha) = ?";
+      queryParams = [fecha_desde];
+    } else {
+      fechaWhere = "DATE(i.fecha) >= ? AND DATE(i.fecha) <= ?";
+      queryParams = [fecha_desde, fecha_hasta];
+    }
+
+    // Obtener inspecciones con sus camareras (relacion multiple)
+    const sqlInspecciones = `
       SELECT
         i.id, i.modulo_nombre, i.habitacion_etiqueta, i.fecha,
         i.inicio_limpieza, i.fin_limpieza, i.hora_checklist,
         i.es_familiar, i.observaciones,
-        c.id AS camarera_id, c.nombre AS camarera_nombre,
-        c.factura AS camarera_factura,
+        i.camarera_id,
         t.id AS tipo_limpieza_id, t.nombre AS tipo_nombre,
         COALESCE(det.cumplen, 0) AS cumplen,
         COALESCE(det.no_cumplen, 0) AS no_cumplen,
         COALESCE(det.no_aplica, 0) AS no_aplica,
         COALESCE(det.total_items, 0) AS total_items,
-        COALESCE(pe.precio, 0) AS pago_base
+        COALESCE(pe.precio, 0) AS pago_base,
+        GROUP_CONCAT(DISTINCT ic.camarera_id ORDER BY ic.camarera_id) AS camareras_list,
+        GROUP_CONCAT(DISTINCT cam.nombre ORDER BY cam.id) AS camareras_nombres
       FROM inspecciones i
-      LEFT JOIN camareras c ON c.id = i.camarera_id
       LEFT JOIN tipos_limpieza t ON t.id = i.tipo_limpieza_id
       LEFT JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
       LEFT JOIN precios_especiales_habitacion pe ON pe.habitacion_id = h.id AND pe.tipo_limpieza_id = i.tipo_limpieza_id AND pe.es_familiar = COALESCE(i.es_familiar, 0)
@@ -1034,14 +1125,32 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
         FROM inspeccion_detalles
         GROUP BY inspeccion_id
       ) det ON det.inspeccion_id = i.id
-      WHERE i.fecha >= ? AND i.fecha <= ?
-        AND i.camarera_id IS NOT NULL
-        AND (? IS NULL OR i.camarera_id = ?)
+      LEFT JOIN inspecciones_camareras ic ON ic.inspeccion_id = i.id
+      LEFT JOIN camareras cam ON cam.id = ic.camarera_id
+      WHERE ${fechaWhere}
         AND (? = '' OR i.modulo_id = ?)
+      GROUP BY i.id
       ORDER BY i.fecha DESC, i.created_at DESC
     `;
 
-    const [rows] = await pool.query(sql, [fecha_desde, fecha_hasta, camarera_id, camarera_id, modulo_id, modulo_id]);
+    const [inspecciones] = await pool.query(sqlInspecciones, [...queryParams, modulo_id, modulo_id]);
+
+    // Obtener info de camareras
+    const camarerasMap = {};
+    const [camarerasRows] = await pool.query("SELECT id, nombre, factura FROM camareras WHERE activo=1");
+    camarerasRows.forEach(c => { camarerasMap[c.id] = c; });
+
+    // Contar habitaciones por camarera por dia
+    const countPorDia = {};
+    inspecciones.forEach(insp => {
+      if (!insp.camareras_list) return;
+      const camarerasIds = String(insp.camareras_list).split(",").map(Number).filter(id => id);
+      camarerasIds.forEach(cid => {
+        if (!countPorDia[cid]) countPorDia[cid] = {};
+        const dia = String(insp.fecha).slice(0, 10);
+        countPorDia[cid][dia] = (countPorDia[cid][dia] || 0) + 1;
+      });
+    });
 
     // Obtener configuracion de pagos
     let pct = 33, extraSi = 46, extraNo = 36;
@@ -1054,68 +1163,136 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
       }
     } catch (e) {}
 
-    // El 33% y el extra NO es por habitacion, es sobre el total del dia
-    // Si factura = 1: Total * (1 + pct/100) + extraSi
-    // Si factura = 0: Total + extraNo (sin porcentaje)
-
-    const grupoPagos = {};
-    let globalOk = 0, globalNo = 0, globalNa = 0;
-    rows.forEach(r => {
-      const cid = r.camarera_id;
-      if (!grupoPagos[cid]) {
-        grupoPagos[cid] = { base: 0, factura: Number(r.camarera_factura), nombre: r.camarera_nombre };
+    // Construir filas expandidas (una por cada camarera de cada inspeccion)
+    const filasExpandidas = [];
+    inspecciones.forEach(insp => {
+      if (!insp.camareras_list) return;
+      let camarerasIds = String(insp.camareras_list).split(",").map(Number).filter(id => id);
+      // Filtrar por camarera si se especifico
+      if (filtro_camarera_id) {
+        camarerasIds = camarerasIds.filter(id => id === filtro_camarera_id);
       }
-      grupoPagos[cid].base += Number(r.pago_base || 0);
-      globalOk += Number(r.cumplen || 0);
-      globalNo += Number(r.no_cumplen || 0);
-      globalNa += Number(r.no_aplica || 0);
+      if (!camarerasIds.length) return;
+
+      const numCamareras = camarerasIds.length;
+      const pagoBaseDividido = (Number(insp.pago_base) || 0) / numCamareras;
+      const dia = String(insp.fecha).slice(0, 10);
+
+      camarerasIds.forEach(cid => {
+        const cam = camarerasMap[cid];
+        if (!cam) return;
+        const countDia = countPorDia[cid]?.[dia] || 0;
+        const aplicaExtra = countDia > 6;
+        const tieneFactura = Number(cam.factura) === 1;
+        let pagoFinal;
+        if (aplicaExtra) {
+          // Si aplica extra: (base/n) * (1+pct) + extra
+          pagoFinal = pagoBaseDividido * (1 + pct / 100) + (tieneFactura ? extraSi : extraNo);
+        } else {
+          // Si NO aplica extra: solo base/n (sin extra ni porcentaje)
+          pagoFinal = pagoBaseDividido;
+        }
+        filasExpandidas.push({
+          id: insp.id,
+          modulo_nombre: insp.modulo_nombre,
+          habitacion_etiqueta: insp.habitacion_etiqueta,
+          fecha: insp.fecha,
+          inicio_limpieza: insp.inicio_limpieza,
+          fin_limpieza: insp.fin_limpieza,
+          hora_checklist: insp.hora_checklist,
+          es_familiar: insp.es_familiar,
+          observaciones: insp.observaciones,
+          camarera_id: cid,
+          camarera_nombre: cam.nombre,
+          camarera_factura: cam.factura,
+          camareras_nombres: insp.camareras_nombres || cam.nombre,
+          camareras_list: insp.camareras_list,
+          tipo_limpieza_id: insp.tipo_limpieza_id,
+          tipo_nombre: insp.tipo_nombre,
+          cumplen: insp.cumplen,
+          no_cumplen: insp.no_cumplen,
+          no_aplica: insp.no_aplica,
+          total_items: insp.total_items,
+          pago_base: pagoBaseDividido,
+          count_habitaciones_dia: countDia,
+          aplica_extra: aplicaExtra,
+          pago_final: Math.round(pagoFinal * 100) / 100
+        });
+      });
     });
 
-    // Calcular pago final por camarera
+    // Agrupar por camarera para resumen
+    const grupoPagos = {};
+    filasExpandidas.forEach(r => {
+      const cid = r.camarera_id;
+      if (!grupoPagos[cid]) {
+        grupoPagos[cid] = {
+          base: 0,
+          factura: Number(r.camarera_factura),
+          nombre: r.camarera_nombre,
+          count_dia: {}
+        };
+      }
+      grupoPagos[cid].base += r.pago_base;
+      const dia = String(r.fecha).slice(0, 10);
+      if (!grupoPagos[cid].count_dia[dia]) grupoPagos[cid].count_dia[dia] = 0;
+      grupoPagos[cid].count_dia[dia]++;
+    });
+
     let totalPagoFinal = 0;
+    Object.keys(grupoPagos).forEach(cid => {
+      const g = grupoPagos[cid];
+      let pagoTotal = 0;
+      Object.keys(g.count_dia).forEach(dia => {
+        const count = g.count_dia[dia];
+        const aplicaExtra = count > 6;
+        if (aplicaExtra) {
+          pagoTotal += g.base * (1 + pct / 100) + (g.factura ? extraSi : extraNo);
+        } else {
+          pagoTotal += g.base;
+        }
+      });
+      const rounded = Math.round(pagoTotal * 100) / 100;
+      grupoPagos[cid].pagoFinal = rounded;
+      totalPagoFinal += rounded;
+    });
+
+    const globalOk = filasExpandidas.reduce((sum, r) => sum + (Number(r.cumplen) || 0), 0);
+    const globalNo = filasExpandidas.reduce((sum, r) => sum + (Number(r.no_cumplen) || 0), 0);
+    const globalNa = filasExpandidas.reduce((sum, r) => sum + (Number(r.no_aplica) || 0), 0);
+    const totalPagoBase = filasExpandidas.reduce((sum, r) => sum + (Number(r.pago_base) || 0), 0);
+
+    // Construir detalle_pagos keyed por nombre de camarera
+    const detallePagos = {};
     const porCamarera = {};
     Object.keys(grupoPagos).forEach(cid => {
       const g = grupoPagos[cid];
-      // Si factura: Total * (1 + pct/100) + extraSi
-      // Si NO factura: Total + extraNo (solo extra fijo, nada de %)
-      const pagoFinal = g.factura
-        ? g.base * (1 + pct / 100) + extraSi
-        : g.base + extraNo;
-      const rounded = Math.round(pagoFinal * 100) / 100;
-      g.pagoFinal = rounded;
-      totalPagoFinal += rounded;
-      porCamarera[g.nombre] = rounded;
-    });
-
-    // Asignar pago_base como pago por fila (precio por habitacion, sin 33% ni 46)
-    rows.forEach(r => {
-      r.pago = Number(r.pago_base || 0);
-    });
-
-    // Construir detalle de pagos por camarera (desglose)
-    const detallePagos = {};
-    Object.keys(grupoPagos).forEach(cid => {
-      const g = grupoPagos[cid];
-      detallePagos[g.nombre] = {
+      const nombre = g.nombre;
+      const countDias = Object.keys(g.count_dia).length;
+      const aplicaExtra = Object.values(g.count_dia).some(c => c > 6);
+      detallePagos[nombre] = {
+        factura: g.factura,
+        pct: aplicaExtra ? pct : 0,
+        extra: aplicaExtra ? (g.factura ? extraSi : extraNo) : 0,
+        pagoFinal: g.pagoFinal,
         base: Math.round(g.base * 100) / 100,
-        factura: Boolean(g.factura),
-        pct: g.factura ? pct : 0,
-        extra: g.factura ? extraSi : extraNo,
-        pagoFinal: g.pagoFinal
+        count_registros: filasExpandidas.filter(r => String(r.camarera_id) === String(cid)).length
       };
+      porCamarera[nombre] = g.pagoFinal;
     });
 
     res.json({
       ok: true,
-      data: rows,
+      data: filasExpandidas,
       resumen: {
-        total_registros: rows.length,
+        total_registros: filasExpandidas.length,
         total_pago: Math.round(totalPagoFinal * 100) / 100,
+        total_base: Math.round(totalPagoBase * 100) / 100,
         total_ok: globalOk,
         total_no: globalNo,
         total_na: globalNa,
-        por_camarera: porCamarera,
-        detalle_pagos: detallePagos
+        detalle_pagos: detallePagos,
+        por_camarera: porCamarera
       }
     });
   }catch(e){
@@ -1124,43 +1301,65 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
   }
 });
 
-// GET /api/reportes/rendimiento?fecha_desde=YYYY-MM-DD&fecha_hasta=YYYY-MM-DD&camarera_id=N
+// GET /api/reportes/rendimiento?fecha_desde=YYYY-MM-DD&fecha_hasta=YYYY-MM-DD&camarera_id=N&ama_llaves_nombre=X
 app.get("/api/reportes/rendimiento", requireAuthIfEnabled, async (req,res)=>{
   try{
     const fecha_desde = String(req.query?.fecha_desde || "").trim();
     const fecha_hasta = String(req.query?.fecha_hasta || "").trim();
     const camarera_id = req.query?.camarera_id ? Number(req.query.camarera_id) : null;
+    const ama_llaves_nombre = req.query?.ama_llaves_nombre ? String(req.query.ama_llaves_nombre).trim() : null;
 
     if (!fecha_desde || !fecha_hasta) {
       return res.status(400).json({ ok:false, error:"Faltan fecha_desde y fecha_hasta" });
+    }
+
+    const isSameDay = fecha_desde === fecha_hasta;
+    let fechaWhere;
+    let queryParams;
+    if (isSameDay) {
+      fechaWhere = "DATE(i.fecha) = ?";
+      queryParams = [fecha_desde, camarera_id, camarera_id, ama_llaves_nombre, ama_llaves_nombre];
+    } else {
+      fechaWhere = "DATE(i.fecha) >= ? AND DATE(i.fecha) <= ?";
+      queryParams = [fecha_desde, fecha_hasta, camarera_id, camarera_id, ama_llaves_nombre, ama_llaves_nombre];
     }
 
     const sql = `
       SELECT
         c.id AS camarera_id,
         c.nombre AS camarera_nombre,
-        COUNT(i.id) AS total_inspecciones,
+        COUNT(DISTINCT i.id) AS total_inspecciones,
         COALESCE(ROUND(AVG(det.pct_cumple), 1), 0) AS promedio_pct,
-        COALESCE(SUM(COALESCE(pe.precio, 0)), 0) AS total_pago,
+        COALESCE(SUM(COALESCE(pe.precio, 0) / NULLIF(cnt_cams.count_camareras, 0)), 0) AS total_pago,
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza)), 0), 0) AS promedio_minutos,
-        COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.fin_limpieza, i.hora_checklist)), 0), 0) AS promedio_inspeccion_min
+        COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.fin_limpieza, i.hora_checklist)), 0), 0) AS promedio_inspeccion_min,
+        COUNT(DISTINCT CASE WHEN cnt_cams.count_camareras > 1 THEN i.id END) AS habitaciones_compartidas,
+        COALESCE(ROUND(AVG(CASE WHEN est.hora_listo_limpieza IS NOT NULL AND i.inicio_limpieza IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, est.hora_listo_limpieza, i.inicio_limpieza) END), 0), 0) AS promedio_tiempo_asignacion
       FROM inspecciones i
-      JOIN camareras c ON c.id = i.camarera_id
+      JOIN inspecciones_camareras ic ON ic.inspeccion_id = i.id
+      JOIN camareras c ON c.id = ic.camarera_id
       LEFT JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
       LEFT JOIN precios_especiales_habitacion pe ON pe.habitacion_id = h.id AND pe.tipo_limpieza_id = i.tipo_limpieza_id AND pe.es_familiar = COALESCE(i.es_familiar, 0)
+      LEFT JOIN estados_habitacion est ON est.habitacion_id = h.id
       LEFT JOIN (
         SELECT inspeccion_id,
           SUM(estado = 'CUMPLE') * 100.0 / NULLIF(COUNT(*), 0) AS pct_cumple
         FROM inspeccion_detalles
         GROUP BY inspeccion_id
       ) det ON det.inspeccion_id = i.id
-      WHERE i.fecha >= ? AND i.fecha <= ?
-        AND (? IS NULL OR i.camarera_id = ?)
+      LEFT JOIN (
+        SELECT inspeccion_id, COUNT(*) AS count_camareras
+        FROM inspecciones_camareras
+        GROUP BY inspeccion_id
+      ) cnt_cams ON cnt_cams.inspeccion_id = i.id
+      WHERE ${fechaWhere}
+        AND (? IS NULL OR ic.camarera_id = ?)
+        AND (? IS NULL OR i.inspector_nombre = ?)
       GROUP BY c.id, c.nombre
       ORDER BY total_inspecciones DESC, c.nombre
     `;
 
-    const [rows] = await pool.query(sql, [fecha_desde, fecha_hasta, camarera_id, camarera_id]);
+    const [rows] = await pool.query(sql, queryParams);
 
     res.json({ ok:true, data: rows });
   }catch(e){
@@ -1169,16 +1368,91 @@ app.get("/api/reportes/rendimiento", requireAuthIfEnabled, async (req,res)=>{
   }
 });
 
-// GET /api/reportes/rendimiento/daily?fecha_desde=YYYY-MM-DD&fecha_hasta=YYYY-MM-DD&camarera_id=N
+// GET /api/reportes/rendimiento/amas?fecha_desde=YYYY-MM-DD&fecha_hasta=YYYY-MM-DD&ama_nombre=X
+// Retorna rendimiento agrupado por AMA DE LLAVES (inspector)
+app.get("/api/reportes/rendimiento/amas", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const fecha_desde = String(req.query?.fecha_desde || "").trim();
+    const fecha_hasta = String(req.query?.fecha_hasta || "").trim();
+    const ama_nombre = req.query?.ama_nombre ? String(req.query.ama_nombre).trim() : null;
+
+    if (!fecha_desde || !fecha_hasta) {
+      return res.status(400).json({ ok:false, error:"Faltan fecha_desde y fecha_hasta" });
+    }
+
+    const isSameDay = fecha_desde === fecha_hasta;
+    let fechaWhere;
+    let queryParams;
+    if (isSameDay) {
+      fechaWhere = "DATE(i.fecha) = ?";
+      queryParams = [fecha_desde, ama_nombre, ama_nombre];
+    } else {
+      fechaWhere = "DATE(i.fecha) >= ? AND DATE(i.fecha) <= ?";
+      queryParams = [fecha_desde, fecha_hasta, ama_nombre, ama_nombre];
+    }
+
+    const sql = `
+      SELECT
+        i.inspector_nombre AS ama_nombre,
+        COUNT(DISTINCT i.id) AS total_inspecciones,
+        COALESCE(ROUND(AVG(det.pct_cumple), 1), 0) AS promedio_pct,
+        COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza)), 0), 0) AS promedio_minutos,
+        COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.fin_limpieza, i.hora_checklist)), 0), 0) AS promedio_inspeccion_min,
+        COUNT(DISTINCT CASE WHEN cnt_cams.count_camareras > 1 THEN i.id END) AS habitaciones_compartidas,
+        COALESCE(ROUND(AVG(CASE WHEN est.hora_listo_limpieza IS NOT NULL AND i.inicio_limpieza IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, est.hora_listo_limpieza, i.inicio_limpieza) END), 0), 0) AS promedio_tiempo_asignacion
+      FROM inspecciones i
+      LEFT JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
+      LEFT JOIN precios_especiales_habitacion pe ON pe.habitacion_id = h.id AND pe.tipo_limpieza_id = i.tipo_limpieza_id AND pe.es_familiar = COALESCE(i.es_familiar, 0)
+      LEFT JOIN estados_habitacion est ON est.habitacion_id = h.id
+      LEFT JOIN (
+        SELECT inspeccion_id,
+          SUM(estado = 'CUMPLE') * 100.0 / NULLIF(COUNT(*), 0) AS pct_cumple
+        FROM inspeccion_detalles
+        GROUP BY inspeccion_id
+      ) det ON det.inspeccion_id = i.id
+      LEFT JOIN (
+        SELECT inspeccion_id, COUNT(*) AS count_camareras
+        FROM inspecciones_camareras
+        GROUP BY inspeccion_id
+      ) cnt_cams ON cnt_cams.inspeccion_id = i.id
+      WHERE ${fechaWhere}
+        AND (? IS NULL OR i.inspector_nombre = ?)
+        AND i.inspector_nombre IS NOT NULL AND i.inspector_nombre != ''
+      GROUP BY i.inspector_nombre
+      ORDER BY total_inspecciones DESC, i.inspector_nombre
+    `;
+
+    const [rows] = await pool.query(sql, queryParams);
+
+    res.json({ ok:true, data: rows });
+  }catch(e){
+    console.error("Error en reporte rendimiento amas:", e);
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// GET /api/reportes/rendimiento/daily?fecha_desde=YYYY-MM-DD&fecha_hasta=YYYY-MM-DD&camarera_id=N&ama_llaves_nombre=X
 // Retorna desglose diario por camarera para graficas
 app.get("/api/reportes/rendimiento/daily", requireAuthIfEnabled, async (req,res)=>{
   try{
     const fecha_desde = String(req.query?.fecha_desde || "").trim();
     const fecha_hasta = String(req.query?.fecha_hasta || "").trim();
     const camarera_id = req.query?.camarera_id ? Number(req.query.camarera_id) : null;
+    const ama_llaves_nombre = req.query?.ama_llaves_nombre ? String(req.query.ama_llaves_nombre).trim() : null;
 
     if (!fecha_desde || !fecha_hasta) {
       return res.status(400).json({ ok:false, error:"Faltan fecha_desde y fecha_hasta" });
+    }
+
+    const isSameDay = fecha_desde === fecha_hasta;
+    let fechaWhere;
+    let queryParams;
+    if (isSameDay) {
+      fechaWhere = "DATE(i.fecha) = ?";
+      queryParams = [fecha_desde, camarera_id, camarera_id, ama_llaves_nombre, ama_llaves_nombre];
+    } else {
+      fechaWhere = "DATE(i.fecha) >= ? AND DATE(i.fecha) <= ?";
+      queryParams = [fecha_desde, fecha_hasta, camarera_id, camarera_id, ama_llaves_nombre, ama_llaves_nombre];
     }
 
     const sql = `
@@ -1186,27 +1460,37 @@ app.get("/api/reportes/rendimiento/daily", requireAuthIfEnabled, async (req,res)
         c.id AS camarera_id,
         c.nombre AS camarera_nombre,
         i.fecha,
-        COUNT(i.id) AS habitaciones,
+        COUNT(DISTINCT i.id) AS habitaciones,
         COALESCE(ROUND(AVG(det.pct_cumple), 1), 0) AS puntuacion_prom,
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza)), 0), 0) AS tiempo_prom_min,
-        COALESCE(SUM(COALESCE(pe.precio, 0)), 0) AS pago_total
+        COALESCE(SUM(COALESCE(pe.precio, 0) / NULLIF(cnt_cams.count_camareras, 0)), 0) AS pago_total,
+        COUNT(DISTINCT CASE WHEN cnt_cams.count_camareras > 1 THEN i.id END) AS habitaciones_compartidas,
+        COALESCE(ROUND(AVG(CASE WHEN est.hora_listo_limpieza IS NOT NULL AND i.inicio_limpieza IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, est.hora_listo_limpieza, i.inicio_limpieza) END), 0), 0) AS tiempo_asignacion_min
       FROM inspecciones i
-      JOIN camareras c ON c.id = i.camarera_id
+      JOIN inspecciones_camareras ic ON ic.inspeccion_id = i.id
+      JOIN camareras c ON c.id = ic.camarera_id
       LEFT JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
       LEFT JOIN precios_especiales_habitacion pe ON pe.habitacion_id = h.id AND pe.tipo_limpieza_id = i.tipo_limpieza_id AND pe.es_familiar = COALESCE(i.es_familiar, 0)
+      LEFT JOIN estados_habitacion est ON est.habitacion_id = h.id
       LEFT JOIN (
         SELECT inspeccion_id,
           SUM(estado = 'CUMPLE') * 100.0 / NULLIF(COUNT(*), 0) AS pct_cumple
         FROM inspeccion_detalles
         GROUP BY inspeccion_id
       ) det ON det.inspeccion_id = i.id
-      WHERE i.fecha >= ? AND i.fecha <= ?
-        AND (? IS NULL OR i.camarera_id = ?)
+      LEFT JOIN (
+        SELECT inspeccion_id, COUNT(*) AS count_camareras
+        FROM inspecciones_camareras
+        GROUP BY inspeccion_id
+      ) cnt_cams ON cnt_cams.inspeccion_id = i.id
+      WHERE ${fechaWhere}
+        AND (? IS NULL OR ic.camarera_id = ?)
+        AND (? IS NULL OR i.inspector_nombre = ?)
       GROUP BY c.id, c.nombre, i.fecha
       ORDER BY c.nombre, i.fecha ASC
     `;
 
-    const [rows] = await pool.query(sql, [fecha_desde, fecha_hasta, camarera_id, camarera_id]);
+    const [rows] = await pool.query(sql, queryParams);
 
     // Agrupar por camarera
     const grouped = {};
@@ -1222,9 +1506,11 @@ app.get("/api/reportes/rendimiento/daily", requireAuthIfEnabled, async (req,res)
       grouped[cid].dias.push({
         fecha: r.fecha,
         habitaciones: Number(r.habitaciones),
+        habitaciones_compartidas: Number(r.habitaciones_compartidas || 0),
         puntuacion_prom: Number(r.puntuacion_prom),
         tiempo_prom_min: Number(r.tiempo_prom_min),
-        pago_total: Number(r.pago_total)
+        pago_total: Number(r.pago_total),
+        tiempo_asignacion_min: Number(r.tiempo_asignacion_min || 0)
       });
     });
 
@@ -1394,7 +1680,8 @@ app.get("/api/inspecciones", async (req,res)=>{
   try{
     const { modulo_id, fecha_desde, fecha_hasta, limit } = req.query;
     let sql = `
-      SELECT i.*, c.nombre AS camarera_nombre, t.nombre AS tipo_nombre
+      SELECT i.*, c.nombre AS camarera_nombre, t.nombre AS tipo_nombre,
+        (SELECT GROUP_CONCAT(cam.nombre ORDER BY cam.id) FROM inspecciones_camareras ic2 JOIN camareras cam ON cam.id = ic2.camarera_id WHERE ic2.inspeccion_id = i.id) AS camareras_nombres
       FROM inspecciones i
       LEFT JOIN camareras c ON c.id = i.camarera_id
       LEFT JOIN tipos_limpieza t ON t.id = i.tipo_limpieza_id
@@ -1431,7 +1718,8 @@ app.post("/api/inspecciones/buscar", requireAuthIfEnabled, async (req,res)=>{
              i.inicio_limpieza, i.fin_limpieza, i.hora_checklist,
              i.observaciones, i.es_decorada, i.es_familiar,
              i.created_at,
-             c.nombre AS camarera_nombre, t.nombre AS tipo_nombre
+             c.nombre AS camarera_nombre, t.nombre AS tipo_nombre,
+             (SELECT GROUP_CONCAT(cam.nombre ORDER BY cam.id) FROM inspecciones_camareras ic2 JOIN camareras cam ON cam.id = ic2.camarera_id WHERE ic2.inspeccion_id = i.id) AS camareras_nombres
       FROM inspecciones i
       LEFT JOIN camareras c ON c.id = i.camarera_id
       LEFT JOIN tipos_limpieza t ON t.id = i.tipo_limpieza_id
@@ -1439,8 +1727,13 @@ app.post("/api/inspecciones/buscar", requireAuthIfEnabled, async (req,res)=>{
     `;
     const params = [];
 
-    if (fecha_desde) { sql += " AND i.fecha >= ?"; params.push(String(fecha_desde).trim()); }
-    if (fecha_hasta) { sql += " AND i.fecha <= ?"; params.push(String(fecha_hasta).trim()); }
+    if (fecha_desde && fecha_hasta && fecha_desde === fecha_hasta) {
+      sql += " AND DATE(i.fecha) = ?";
+      params.push(String(fecha_desde).trim());
+    } else {
+      if (fecha_desde) { sql += " AND DATE(i.fecha) >= ?"; params.push(String(fecha_desde).trim()); }
+      if (fecha_hasta) { sql += " AND DATE(i.fecha) <= ?"; params.push(String(fecha_hasta).trim()); }
+    }
     if (camarera_id) { sql += " AND i.camarera_id = ?"; params.push(Number(camarera_id)); }
     if (modulo_id) { sql += " AND i.modulo_id = ?"; params.push(String(modulo_id).trim()); }
     if (habitacion_etiqueta) { sql += " AND i.habitacion_etiqueta = ?"; params.push(String(habitacion_etiqueta).trim()); }
@@ -1683,7 +1976,8 @@ app.get("/api/rooms", requireAuthIfEnabled, async (req,res)=>{
         e.decorada,
         e.inspector_asignado,
         e.prioridad_limpieza,
-        e.actualizado
+        e.actualizado,
+        e.hora_listo_limpieza
       FROM habitaciones h
       LEFT JOIN estados_habitacion e ON e.habitacion_id = h.id
       WHERE h.modulo_id = ?
@@ -1725,7 +2019,8 @@ async function fetchOneRoom(habitacion_id){
       e.decorada,
       e.inspector_asignado,
       e.prioridad_limpieza,
-      e.actualizado
+      e.actualizado,
+      e.hora_listo_limpieza
     FROM habitaciones h
     LEFT JOIN estados_habitacion e ON e.habitacion_id = h.id
     WHERE h.id = ?
@@ -1801,8 +2096,10 @@ function normalizePatch(patch){
   if ("desde" in p) out.desde = toMySQLDatetime(p.desde);
   if ("inicio_limpieza" in p) out.inicio_limpieza = toMySQLDatetime(p.inicio_limpieza);
   if ("fin_limpieza" in p) out.fin_limpieza = toMySQLDatetime(p.fin_limpieza);
-  if ("inicio_repaso" in p) out.inicio_repaso = toMySQLDatetime(p.inicio_repaso);      if ("repaso" in p) out.repaso = p.repaso ?? null;
-      // inspeccion: fin_limpieza se usa como inicio del timer de inspeccion
+  if ("inicio_repaso" in p) out.inicio_repaso = toMySQLDatetime(p.inicio_repaso);
+  if ("repaso" in p) out.repaso = p.repaso ?? null;
+  if ("hora_listo_limpieza" in p) out.hora_listo_limpieza = toMySQLDatetime(p.hora_listo_limpieza);
+  // inspeccion: fin_limpieza se usa como inicio del timer de inspeccion
 
   out._skipEstadoUpdate = !hasEstado;
   return out;
@@ -1813,9 +2110,9 @@ async function upsertEstadoByRoomId(habitacion_id, patch){
 
   await pool.query(`
     INSERT INTO estados_habitacion
-      (habitacion_id, estado, adultos, ninos, observaciones, desde, inicio_limpieza, fin_limpieza, inicio_repaso, repaso, camarera_asignada, tipo_limpieza, decorada, inspector_asignado, prioridad_limpieza)
+      (habitacion_id, estado, adultos, ninos, observaciones, desde, inicio_limpieza, fin_limpieza, inicio_repaso, repaso, camarera_asignada, tipo_limpieza, decorada, inspector_asignado, prioridad_limpieza, hora_listo_limpieza)
     VALUES
-      (?, ?, COALESCE(?,0), COALESCE(?,0), ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?,0), ?, ?)
+      (?, ?, COALESCE(?,0), COALESCE(?,0), ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?,0), ?, ?, ?)
     ON DUPLICATE KEY UPDATE
       estado = CASE WHEN ? = 1 THEN estado ELSE COALESCE(VALUES(estado), estado) END,
       adultos = COALESCE(VALUES(adultos), adultos),
@@ -1831,6 +2128,7 @@ async function upsertEstadoByRoomId(habitacion_id, patch){
       decorada = CASE WHEN ? IS NULL THEN decorada ELSE VALUES(decorada) END,
       inspector_asignado = VALUES(inspector_asignado),
       prioridad_limpieza = VALUES(prioridad_limpieza),
+      hora_listo_limpieza = COALESCE(VALUES(hora_listo_limpieza), hora_listo_limpieza),
       actualizado = CURRENT_TIMESTAMP
   `, [
     habitacion_id,
@@ -1848,6 +2146,7 @@ async function upsertEstadoByRoomId(habitacion_id, patch){
     p.decorada,
     p.inspector_asignado,
     p.prioridad_limpieza,
+    p.hora_listo_limpieza,
     p._skipEstadoUpdate ? 1 : 0,
     p.decorada
   ]);
@@ -2052,6 +2351,7 @@ io.on("connection", (s)=> {
 
 // ===== START =====
 initDB().then(()=>{
+  console.log("initDB completed, starting server.listen...");
   server.listen(PORT, HOST, ()=>{
     // Detectar IP local automaticamente
     let lanIp = "127.0.0.1";
