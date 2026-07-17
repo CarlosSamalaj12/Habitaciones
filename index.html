@@ -215,24 +215,25 @@
   <script src="./app.js?v=20260214e"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').then(function(reg) {
+      var swUrl = './sw.js' + (window.APP_VERSION ? '?v=' + encodeURIComponent(window.APP_VERSION) : '');
+      navigator.serviceWorker.register(swUrl).then(function(reg) {
+        window.__swReg = reg;
+
         // Detectar nueva version del SW
         reg.addEventListener('updatefound', function() {
           var newSW = reg.installing;
           if (!newSW) return;
           newSW.addEventListener('statechange', function() {
             if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-              // Nueva version esperando
-              var existing = document.getElementById('swUpdateToast');
-              if (existing) return;
-              var toast = document.createElement('div');
-              toast.id = 'swUpdateToast';
-              toast.className = 'swUpdateToast';
-              toast.innerHTML = '<span class="swUpdateIcon">🔄</span><span class="swUpdateText">Nueva version disponible.</span><button class="swUpdateBtn" onclick="location.reload()">Actualizar</button>';
-              document.body.appendChild(toast);
+              showSwUpdateToast('Nueva version disponible.');
             }
           });
         });
+
+        // Verificar version contra el servidor
+        if (typeof window.update === 'function') {
+          window.update();
+        }
       }).catch(function(err) {
         console.warn('[SW] No se pudo registrar:', err);
       });
@@ -243,6 +244,24 @@
           location.reload();
         }
       });
+    }
+
+    // Verificar actualizaciones cada 30 minutos
+    setInterval(function() {
+      if (typeof window.update === 'function') {
+        window.__updateChecked = false;
+        window.update();
+      }
+    }, 30 * 60 * 1000);
+
+    function showSwUpdateToast(msg) {
+      var existing = document.getElementById('swUpdateToast');
+      if (existing) return;
+      var toast = document.createElement('div');
+      toast.id = 'swUpdateToast';
+      toast.className = 'swUpdateToast';
+      toast.innerHTML = '<span class="swUpdateIcon">🔄</span><span class="swUpdateText">' + msg + '</span><button class="swUpdateBtn" onclick="location.reload()">Actualizar</button>';
+      document.body.appendChild(toast);
     }
   </script>
 </body>

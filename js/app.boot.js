@@ -112,6 +112,9 @@ window.addEventListener('resize', () => {
   initSocket();
 
   await syncServerTime();
+
+  if (typeof update === 'function') update();
+
   if (localStorage.getItem(LS_FORCE_LOGIN) === "1" || isLocked()) {
     showLogin();
     return;

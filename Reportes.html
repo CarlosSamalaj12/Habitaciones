@@ -523,7 +523,13 @@
     .barFill.orange { background: linear-gradient(90deg, rgba(251,146,60,.7), rgba(251,191,36,.7)); }
     .barFill.pink { background: linear-gradient(90deg, rgba(224,38,188,.7), rgba(244,114,182,.7)); }
     .barFill.red { background: linear-gradient(90deg, rgba(255,107,138,.7), rgba(255,128,128,.7)); }
-    .barValue { font-size: 12px; font-weight: 800; min-width: 50px; text-align: right; font-variant-numeric: tabular-nums; }
+    .barFill.yellow { background: linear-gradient(90deg, rgba(251,191,36,.7), rgba(250,204,21,.7)); }
+
+    /* Tabla detalle */
+    table.tabla { width:100%; border-collapse:collapse; font-size:13px; }
+    table.tabla th, table.tabla td { padding:8px 12px; text-align:left; border-bottom:1px solid rgba(255,255,255,.08); }
+    table.tabla th { font-weight:700; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+    table.tabla tbody tr:hover { background:rgba(255,255,255,.04); }
 
     /* Loading / Empty */
     .loading { text-align: center; padding: 40px; color: var(--muted); }
@@ -862,7 +868,7 @@
         <span class="count" id="rendCount">0 camareras</span>
         <div class="subTabs">
           <button class="subTab active" data-sub="dash" type="button">Dashboard</button>
-          <button class="subTab" data-sub="charts" type="button">Graficas</button>
+          <button class="subTab" data-sub="detail" type="button">Detalle</button>
         </div>
       </div>
       <div class="panelBody">
@@ -890,96 +896,9 @@
           <div id="rendGrid" class="dashGrid" style="display:none"></div>
         </div>
 
-        <!-- Sub-panel: Graficas -->
-        <div id="rendSubCharts" style="display:none">
-          <div id="rendChartPlaceholder" class="empty">Genera el dashboard primero para ver las graficas.</div>
-          <div id="rendChartContent" style="display:none">
-            <!-- Selector de camarera para las graficas -->
-            <div class="filters" style="margin-bottom:12px;padding:8px 12px">
-              <div class="filterGroup">
-                <label>Enfocar en</label>
-                <select id="chartCamarera" class="chartCamareraSelect">
-                  <option value="">Todas las camareras</option>
-                </select>
-              </div>
-              <button id="btnActualizarGraficas" type="button" style="height:32px;font-size:12px;padding:6px 14px">Actualizar Graficas</button>
-            </div>
-
-            <!-- Grafica 1: Tendencia de Puntuacion -->
-            <div class="panel" style="margin-bottom:14px;background:rgba(0,0,0,.15);border-color:rgba(255,255,255,.06)">
-              <div class="panelHeader" style="padding:10px 14px">
-                <h2 style="font-size:13px">📈 Tendencia de Puntuacion por Dia</h2>
-              </div>
-              <div class="panelBody" style="padding:10px 14px">
-                <div id="chartTrend" style="min-height:180px">
-                  <div class="loading">Cargando...</div>
-                </div>
-                <div id="chartTrendLegend" class="chartLegend"></div>
-              </div>
-            </div>
-
-            <!-- Grafica 2: Barras de Rendimiento Diario -->
-            <div class="panel" style="margin-bottom:14px;background:rgba(0,0,0,.15);border-color:rgba(255,255,255,.06)">
-              <div class="panelHeader" style="padding:10px 14px">
-                <h2 style="font-size:13px">📊 Habitaciones Limpiadas por Dia</h2>
-              </div>
-              <div class="panelBody" style="padding:10px 14px">
-                <div id="chartRooms" style="min-height:150px">
-                  <div class="loading">Cargando...</div>
-                </div>
-                <div id="chartRoomsLegend" class="chartLegend"></div>
-              </div>
-            </div>
-
-            <!-- Grafica 3: Comparacion General -->
-            <div class="panel" style="background:rgba(0,0,0,.15);border-color:rgba(255,255,255,.06)">
-              <div class="panelHeader" style="padding:10px 14px">
-                <h2 style="font-size:13px">🏆 Comparacion General entre Camareras</h2>
-              </div>
-              <div class="panelBody" style="padding:10px 14px">
-                <div id="chartComparacion" style="min-height:180px">
-                  <div class="loading">Cargando...</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Grafica 4: Tiempo Promedio -->
-            <div class="panel" style="margin-top:14px;background:rgba(0,0,0,.15);border-color:rgba(255,255,255,.06)">
-              <div class="panelHeader" style="padding:10px 14px">
-                <h2 style="font-size:13px">⏱️ Tiempo Promedio de Limpieza (minutos)</h2>
-              </div>
-              <div class="panelBody" style="padding:10px 14px">
-                <div id="chartTiempo" style="min-height:150px">
-                  <div class="loading">Cargando...</div>
-                </div>
-                <div id="chartTiempoLegend" class="chartLegend"></div>
-              </div>
-            </div>
-
-            <!-- Grafica 5: Pastel - Distribucion de Puntuacion -->
-            <div class="panel" style="margin-top:14px;background:rgba(0,0,0,.15);border-color:rgba(255,255,255,.06)">
-              <div class="panelHeader" style="padding:10px 14px">
-                <h2 style="font-size:13px">🥧 Distribucion de Puntuacion por Camarera</h2>
-              </div>
-              <div class="panelBody" style="padding:10px 14px">
-                <div id="chartDonut" style="min-height:200px">
-                  <div class="loading">Cargando...</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Grafica 6: Pastel - Participacion por Camarera -->
-            <div class="panel" style="margin-top:14px;background:rgba(0,0,0,.15);border-color:rgba(255,255,255,.06)">
-              <div class="panelHeader" style="padding:10px 14px">
-                <h2 style="font-size:13px">🥧 Participacion por Camarera (% de habitaciones)</h2>
-              </div>
-              <div class="panelBody" style="padding:10px 14px">
-                <div id="chartParticipation" style="min-height:200px">
-                  <div class="loading">Cargando...</div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <!-- Sub-panel: Detalle -->
+        <div id="rendSubDetail" style="display:none;margin-top:16px">
+          <div id="rendDetalleAsignacion"></div>
         </div>
       </div>
     </div>
@@ -1020,6 +939,7 @@
     // Chart global data
     let CHART_DATA = null;
     let CHART_DAILY_DATA = [];
+    let CHART_DETALLE_DATA = [];
     const CHART_COLORS = [
       '#7C3AED', '#2EE59D', '#38BDF8', '#FBBF24', '#FF4D6D',
       '#F472B6', '#34D399', '#818CF8', '#FB923C', '#A78BFA'
@@ -2239,10 +2159,8 @@
         const pct = Number(r.promedio_pct || 0);
         const pago = Number(r.total_pago || 0);
         const avgMin = Number(r.promedio_minutos || 0);
-        const inspMin = Number(r.promedio_inspeccion_min || 0);
         const shared = Number(r.habitaciones_compartidas || 0);
         const sharedPct = rooms > 0 ? Math.round((shared / rooms) * 100) : 0;
-        const tiempoAsign = Number(r.promedio_tiempo_asignacion || 0);
 
         const roomsBar = Math.round((rooms / maxRooms) * 100);
         const pctBar = Math.round(pct);
@@ -2279,10 +2197,6 @@
                 <div class="num" style="color:#FF6B8A">${shared}</div>
                 <div class="lbl">Compartidas</div>
               </div>
-              <div class="statItem">
-                <div class="num" style="color:#38BDF8">${tiempoAsign} min</div>
-                <div class="lbl">Asignación (prom)</div>
-              </div>
             </div>
             <div class="barGroup">
               <div class="barRow">
@@ -2306,19 +2220,9 @@
                 <span class="barValue">${avgMin} min</span>
               </div>
               <div class="barRow">
-                <span class="barLabel">Inspeccion</span>
-                <div class="barTrack"><div class="barFill pink" style="width:${Math.min(inspMin, 60) * (100/60)}%"></div></div>
-                <span class="barValue">${inspMin} min</span>
-              </div>
-              <div class="barRow">
                 <span class="barLabel">Compartidas</span>
                 <div class="barTrack"><div class="barFill red" style="width:${sharedBar}%"></div></div>
                 <span class="barValue">${shared} (${sharedPct}%)</span>
-              </div>
-              <div class="barRow">
-                <span class="barLabel">Asignación</span>
-                <div class="barTrack"><div class="barFill blue" style="width:${Math.min(tiempoAsign, 60) * (100/60)}%"></div></div>
-                <span class="barValue">${tiempoAsign} min</span>
               </div>
             </div>
           </div>
@@ -2328,28 +2232,221 @@
       grid.innerHTML = html;
     }
 
-    // ===== SUB-TABS (Dashboard / Graficas) =====
+    function renderDetalleAsignacion(detalle) {
+      const container = $("rendDetalleAsignacion");
+      if (!detalle || !detalle.length) {
+        container.style.display = "none";
+        return;
+      }
+
+      const grupos = {};
+      detalle.forEach(r => {
+        const key = r.fecha + "_" + r.camarera_id;
+        if (!grupos[key]) {
+          grupos[key] = {
+            fecha: r.fecha,
+            camarera_id: r.camarera_id,
+            camarera_nombre: r.camarera_nombre,
+            habitaciones: [],
+            suma_limpieza: 0
+          };
+        }
+        const limp  = Number(r.tiempo_limpieza_min || 0);
+        grupos[key].habitaciones.push({
+          hab: r.modulo_id + " - " + r.habitacion_etiqueta,
+          limpieza: limp
+        });
+        grupos[key].suma_limpieza += limp;
+      });
+
+      const groupArray = Object.values(grupos);
+      groupArray.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.camarera_nombre.localeCompare(b.camarera_nombre));
+
+      let totalLimp = 0, totalHabs = 0;
+      groupArray.forEach(g => {
+        totalLimp  += g.suma_limpieza;
+        totalHabs  += g.habitaciones.length;
+      });
+
+      const uid = "detacc_" + Date.now();
+
+      let html = `
+        <div class="panel" style="background:rgba(0,0,0,.15);border-color:rgba(255,255,255,.06)">
+          <div class="panelHeader" style="padding:10px 14px">
+            <h2 style="font-size:13px">Detalle de Tiempos por Habitacion</h2>
+            <button class="primary" id="btnExportDetalle" type="button" style="font-size:11px;padding:4px 12px;height:30px">Exportar Excel</button>
+          </div>
+          <div class="panelBody" style="padding:10px 14px;overflow-x:auto">
+            <table class="tabla" style="font-size:12px">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Camarera</th>
+                  <th>Habitacion</th>
+                  <th style="text-align:right">Limpieza</th>
+                </tr>
+              </thead>
+              <tbody>
+      `;
+
+      groupArray.forEach((g, gi) => {
+        const gid = uid + "_" + gi;
+        html += `
+          <tr class="detGroup" data-target="${gid}" style="cursor:pointer;background:rgba(255,255,255,.04)">
+            <td style="white-space:nowrap;font-weight:700">${g.fecha}</td>
+            <td style="font-weight:600">${escHtml(g.camarera_nombre)}</td>
+            <td style="color:var(--muted)">${g.habitaciones.length} hab</td>
+            <td style="text-align:right;color:#FBBF24;font-weight:700">${g.suma_limpieza >= 0 ? g.suma_limpieza + ' min' : '-'}</td>
+          </tr>
+        `;
+        html += `<tbody id="${gid}" style="display:none">`;
+        g.habitaciones.forEach(h => {
+          html += `
+            <tr>
+              <td></td>
+              <td></td>
+              <td>${escHtml(h.hab)}</td>
+              <td style="text-align:right">${h.limpieza >= 0 ? h.limpieza + ' min' : '-'}</td>
+            </tr>
+          `;
+        });
+        html += `</tbody>`;
+      });
+
+      html += `
+              </tbody>
+              <tfoot>
+                <tr style="font-weight:bold;background:rgba(255,255,255,.06)">
+                  <td colspan="2">TOTALES</td>
+                  <td>${totalHabs} hab</td>
+                  <td style="text-align:right;color:#FBBF24">${totalLimp >= 0 ? totalLimp + ' min' : '-'}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+      container.style.display = "block";
+
+      container.querySelectorAll(".detGroup").forEach(row => {
+        row.addEventListener("click", () => {
+          const targetId = row.dataset.target;
+          const tbody = document.getElementById(targetId);
+          if (tbody) {
+            tbody.style.display = tbody.style.display === "none" ? "" : "none";
+          }
+        });
+      });
+
+      const btnExp = document.getElementById("btnExportDetalle");
+      if (btnExp) {
+        btnExp.addEventListener("click", () => exportarDetalleExcel(detalle, totalLimp, totalHabs));
+      }
+    }
+
+    function exportarDetalleExcel(detalle, totalLimp, totalHabs) {
+      if (!detalle || !detalle.length) { toast("No hay datos para exportar.", false); return; }
+
+      let loggedUser = "-";
+      try {
+        const sess = JSON.parse(localStorage.getItem("hk_session_v3") || "null");
+        if (sess?.name) loggedUser = sess.name + (sess.dept ? " - " + sess.dept : "");
+      } catch {}
+
+      const now = new Date();
+      const printDate = now.toLocaleDateString("es-GT", { timeZone: "America/Guatemala", year: "numeric", month: "2-digit", day: "2-digit" });
+      const printTime = now.toLocaleTimeString("es-GT", { timeZone: "America/Guatemala", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+
+      const grupos = {};
+      detalle.forEach(r => {
+        const key = r.fecha + "_" + r.camarera_id;
+        if (!grupos[key]) {
+          grupos[key] = { fecha: r.fecha, camarera_nombre: r.camarera_nombre, rows: [], suma_limpieza: 0 };
+        }
+        const limp  = Number(r.tiempo_limpieza_min || 0);
+        grupos[key].rows.push({ hab: r.modulo_id + " - " + r.habitacion_etiqueta, limpieza: limp });
+        grupos[key].suma_limpieza += limp;
+      });
+
+      const groupArray = Object.values(grupos);
+      groupArray.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.camarera_nombre.localeCompare(b.camarera_nombre));
+
+      const estilo = `
+        <style>
+          body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #1a1a2e; margin: 20px; }
+          .header { text-align: center; margin-bottom: 18px; }
+          .header h1 { font-size: 18pt; color: #1a365d; margin: 4px 0; font-weight: 700; }
+          .header .divider { border: none; border-top: 2px solid #2b6cb0; margin: 12px 0; }
+          .meta { font-size: 10pt; color: #2d3748; margin-bottom: 14px; }
+          table.data { width: 100%; border-collapse: collapse; font-size: 10pt; }
+          table.data th { background-color: #2b6cb0; color: #fff; font-weight: 700; padding: 8px 6px; border: 1px solid #1a365d; text-align: center; }
+          table.data td { padding: 5px 6px; border: 1px solid #cbd5e0; }
+          .numCol { text-align: right; }
+          .groupRow td { font-weight: 800; background-color: #e8e0ff; border-top: 2px solid #7c3aed; padding: 6px; }
+          .totalRow td { font-weight: 800; background-color: #e2e8f0; border-top: 2px solid #2b6cb0; font-size: 11pt; }
+          .footer { margin-top: 16px; font-size: 9pt; color: #718096; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+        </style>
+      `;
+
+      let html = `<html><head><meta charset="UTF-8">${estilo}</head><body>`;
+      html += `<div class="header"><h1>Hotel Jardines del Lago</h1>`;
+      html += `<div style="font-size:12pt;font-weight:600;color:#2d3748">Detalle de Tiempos por Habitacion</div>`;
+      html += `<hr class="divider"></div>`;
+      html += `<div class="meta">Generado por: ${escHtml(loggedUser)} | Fecha: ${printDate} ${printTime}</div>`;
+
+      html += `<table class="data">
+        <thead><tr>
+          <th>Fecha</th><th>Camarera</th><th>Habitacion</th>
+          <th class="numCol">Limpieza (min)</th>
+        </tr></thead><tbody>`;
+
+      groupArray.forEach(g => {
+        html += `<tr class="groupRow"><td colspan="4">${g.fecha} - ${escHtml(g.camarera_nombre)}</td></tr>`;
+        g.rows.forEach(h => {
+          html += `<tr>
+            <td>${g.fecha}</td><td>${escHtml(g.camarera_nombre)}</td><td>${escHtml(h.hab)}</td>
+            <td class="numCol">${h.limpieza >= 0 ? h.limpieza : '-'}</td>
+          </tr>`;
+        });
+        html += `<tr class="totalRow">
+          <td colspan="3" style="text-align:right">Subtotal (${g.rows.length} hab):</td>
+          <td class="numCol">${g.suma_limpieza >= 0 ? g.suma_limpieza : '-'}</td>
+        </tr>`;
+      });
+
+      html += `<tr class="totalRow">
+        <td colspan="3" style="text-align:right">TOTAL GENERAL (${totalHabs} hab):</td>
+        <td class="numCol">${totalLimp >= 0 ? totalLimp : '-'}</td>
+      </tr>`;
+
+      html += `</tbody></table>`;
+      html += `<div class="footer">Documento generado el ${printDate} a las ${printTime} por ${escHtml(loggedUser)}</div></body></html>`;
+
+      const blob = new Blob(['\uFEFF' + html], { type: "application/vnd.ms-excel;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Detalle_Tiempos_${printDate.replace(/\//g, "-")}.xls`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // ===== SUB-TABS (Dashboard / Detalle) =====
     document.querySelectorAll(".subTab").forEach(tab => {
       tab.addEventListener("click", () => {
-        const parent = tab.closest(".panelBody");
-        if (!parent) return;
-        parent.querySelectorAll(".subTab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".subTab").forEach(t => t.classList.remove("active"));
         tab.classList.add("active");
         const sub = tab.dataset.sub;
-        const dash = parent.querySelector("#rendSubDash");
-        const charts = parent.querySelector("#rendSubCharts");
+        const dash = document.getElementById("rendSubDash");
+        const detail = document.getElementById("rendSubDetail");
         if (dash) dash.style.display = sub === "dash" ? "block" : "none";
-        if (charts) charts.style.display = sub === "charts" ? "block" : "none";
-        // Si cambia a graficas y hay datos, renderizar
-        if (sub === "charts" && CHART_DATA) {
-          renderAllCharts();
-        }
+        if (detail) detail.style.display = sub === "detail" ? "block" : "none";
+        if (sub === "detail" && CHART_DETALLE_DATA) renderDetalleAsignacion(CHART_DETALLE_DATA);
       });
-    });
-
-    // Selector de camarera en graficas
-    $("btnActualizarGraficas").addEventListener("click", () => {
-      if (CHART_DATA) renderAllCharts();
     });
 
     // ===== RENDIMIENTO: generar (con datos diarios para graficas) =====
@@ -2372,34 +2469,25 @@
         let url = `/api/reportes/rendimiento?fecha_desde=${encodeURIComponent(desde)}&fecha_hasta=${encodeURIComponent(hasta)}`;
         if (camarera_id) url += `&camarera_id=${camarera_id}`;
 
-        const [resp, dailyResp] = await Promise.all([
+        const [resp, dailyResp, detalleResp] = await Promise.all([
           apiGET(url),
-          apiGET(`/api/reportes/rendimiento/daily?fecha_desde=${encodeURIComponent(desde)}&fecha_hasta=${encodeURIComponent(hasta)}&camarera_id=${camarera_id || ''}`)
+          apiGET(`/api/reportes/rendimiento/daily?fecha_desde=${encodeURIComponent(desde)}&fecha_hasta=${encodeURIComponent(hasta)}&camarera_id=${camarera_id || ''}`),
+          apiGET(`/api/reportes/rendimiento/detalle-dias?fecha_desde=${encodeURIComponent(desde)}&fecha_hasta=${encodeURIComponent(hasta)}&camarera_id=${camarera_id || ''}`)
         ]);
 
         const rows = Array.isArray(resp?.data) ? resp.data : [];
         const daily = Array.isArray(dailyResp?.data) ? dailyResp.data : [];
+        const detalle = Array.isArray(detalleResp?.data) ? detalleResp.data : [];
 
         // Store for charts
         CHART_DATA = rows;
         CHART_DAILY_DATA = daily;
+        CHART_DETALLE_DATA = detalle;
 
         $("rendCount").textContent = `${rows.length} camareras`;
         renderDashboard(rows);
 
-        // Poblar selector de camarera en graficas
-        const chartSel = $("chartCamarera");
-        if (chartSel) {
-          chartSel.innerHTML = '<option value="">Todas las camareras</option>';
-          rows.forEach(r => {
-            const o = document.createElement("option");
-            o.value = r.camarera_id;
-            o.textContent = r.camarera_nombre;
-            chartSel.appendChild(o);
-          });
-        }
-
-        toast(`Dashboard generado: ${rows.length} camareras, ${daily.length} con datos diarios`);
+        toast(`Dashboard generado: ${rows.length} camareras`);
       } catch (e) {
         toast("Error: " + (e?.message || e), false, 5200);
         $("rendPlaceholder").style.display = "block";
@@ -2808,6 +2896,7 @@
 
     // ===== AMA DE LLAVES =====
     let AMA_LLAVES_DATA = [];
+    let AMA_DETALLE_DATA = [];
 
     async function generarAmaLlaves() {
       const desde = $("amaDesde").value;
@@ -2824,10 +2913,16 @@
         let url = `/api/reportes/rendimiento/amas?fecha_desde=${encodeURIComponent(desde)}&fecha_hasta=${encodeURIComponent(hasta)}`;
         if (ama_nombre) url += `&ama_nombre=${encodeURIComponent(ama_nombre)}`;
 
-        const resp = await apiGET(url);
+        const [resp, detResp] = await Promise.all([
+          apiGET(url),
+          apiGET(`/api/reportes/rendimiento/detalle-dias?fecha_desde=${encodeURIComponent(desde)}&fecha_hasta=${encodeURIComponent(hasta)}&ama_nombre=${encodeURIComponent(ama_nombre)}`)
+        ]);
+
         const rows = Array.isArray(resp?.data) ? resp.data : [];
+        const detalle = Array.isArray(detResp?.data) ? detResp.data : [];
 
         AMA_LLAVES_DATA = rows;
+        AMA_DETALLE_DATA = detalle;
         renderAmaLlavesDashboard(rows);
         $("amaCount").textContent = `${rows.length} amas de llaves`;
 
@@ -2931,18 +3026,236 @@
       container.innerHTML = html;
     }
 
-    // ===== TAB SWITCHING FOR AMA DE LLAVES =====
-    document.querySelectorAll(".tabAma").forEach(tab => {
-      tab.addEventListener("click", () => {
-        const sub = tab.dataset.subama;
-        document.querySelectorAll(".tabAma").forEach(t => t.classList.remove("active"));
-        tab.classList.add("active");
-        const dash = $("amaSubDash");
-        const list = $("amaSubList");
-        if (dash) dash.style.display = sub === "dash" ? "block" : "none";
-        if (list) list.style.display = sub === "list" ? "block" : "none";
+    function renderAmaDetalle() {
+      const container = $("amaLlavesGrid");
+      if (!container) return;
+      const detalle = AMA_DETALLE_DATA;
+      if (!detalle || !detalle.length) {
+        container.innerHTML = '<div class="empty">No hay datos detallados. Genera el reporte primero.</div>';
+        return;
+      }
+
+      // Agrupar por (fecha, ama_nombre)
+      const grupos = {};
+      detalle.forEach(r => {
+        const key = r.fecha + "_" + (r.ama_nombre || "S/A");
+        if (!grupos[key]) {
+          grupos[key] = {
+            fecha: r.fecha,
+            ama_nombre: r.ama_nombre || "S/A",
+            camarera_nombre: r.camarera_nombre,
+            habitaciones: [],
+            suma_asignacion: 0, suma_limpieza: 0, suma_inspeccion: 0
+          };
+        }
+        const asign = Number(r.tiempo_asignacion_min || 0);
+        const limp  = Number(r.tiempo_limpieza_min || 0);
+        const insp  = Number(r.tiempo_inspeccion_min || 0);
+        grupos[key].habitaciones.push({
+          hab: r.modulo_id + " - " + r.habitacion_etiqueta,
+          camarera: r.camarera_nombre,
+          asignacion: asign, limpieza: limp, inspeccion: insp
+        });
+        grupos[key].suma_asignacion += asign;
+        grupos[key].suma_limpieza += limp;
+        grupos[key].suma_inspeccion += insp;
       });
-    });
+
+      const groupArray = Object.values(grupos);
+      groupArray.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.ama_nombre.localeCompare(b.ama_nombre));
+
+      let totalAsign = 0, totalLimp = 0, totalInsp = 0, totalHabs = 0;
+      groupArray.forEach(g => {
+        totalAsign += g.suma_asignacion;
+        totalLimp  += g.suma_limpieza;
+        totalInsp  += g.suma_inspeccion;
+        totalHabs  += g.habitaciones.length;
+      });
+
+      const uid = "amaDet_" + Date.now();
+      let html = `
+        <div class="panel" style="background:rgba(0,0,0,.15);border-color:rgba(255,255,255,.06)">
+          <div class="panelHeader" style="padding:10px 14px">
+            <h2 style="font-size:13px">Detalle de Tiempos por Ama de Llaves</h2>
+            <button class="primary" id="btnExportAmaDet" type="button" style="font-size:11px;padding:4px 12px;height:30px">Exportar Excel</button>
+          </div>
+          <div class="panelBody" style="padding:10px 14px;overflow-x:auto">
+            <table class="tabla" style="font-size:12px">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Ama de Llaves</th>
+                  <th>Habitacion</th>
+                  <th>Camarera</th>
+                  <th style="text-align:right">Asignacion</th>
+                  <th style="text-align:right">Limpieza</th>
+                  <th style="text-align:right">Inspeccion</th>
+                </tr>
+              </thead>
+              <tbody>
+      `;
+
+      groupArray.forEach((g, gi) => {
+        const gid = uid + "_" + gi;
+        html += `
+          <tr class="detGroup" data-target="${gid}" style="cursor:pointer;background:rgba(255,255,255,.04)">
+            <td style="white-space:nowrap;font-weight:700">${g.fecha}</td>
+            <td style="font-weight:600">${escHtml(g.ama_nombre)}</td>
+            <td style="color:var(--muted)">${g.habitaciones.length} hab</td>
+            <td></td>
+             <td style="text-align:right;color:#38BDF8;font-weight:700">${g.suma_asignacion >= 0 ? g.suma_asignacion + ' min' : '-'}</td>
+             <td style="text-align:right;color:#FBBF24;font-weight:700">${g.suma_limpieza >= 0 ? g.suma_limpieza + ' min' : '-'}</td>
+             <td style="text-align:right;color:#FF6B8A;font-weight:700">${g.suma_inspeccion >= 0 ? g.suma_inspeccion + ' min' : '-'}</td>
+          </tr>
+        `;
+        html += `<tbody id="${gid}" style="display:none">`;
+        g.habitaciones.forEach(h => {
+          html += `
+            <tr>
+              <td></td>
+              <td></td>
+              <td>${escHtml(h.hab)}</td>
+              <td>${escHtml(h.camarera)}</td>
+              <td style="text-align:right">${h.asignacion >= 0 ? h.asignacion + ' min' : '-'}</td>
+              <td style="text-align:right">${h.limpieza >= 0 ? h.limpieza + ' min' : '-'}</td>
+              <td style="text-align:right">${h.inspeccion >= 0 ? h.inspeccion + ' min' : '-'}</td>
+            </tr>
+          `;
+        });
+        html += `</tbody>`;
+      });
+
+      html += `
+              </tbody>
+              <tfoot>
+                <tr style="font-weight:bold;background:rgba(255,255,255,.06)">
+                  <td colspan="3">TOTALES</td>
+                  <td>${totalHabs} hab</td>
+                  <td style="text-align:right;color:#38BDF8">${totalAsign >= 0 ? totalAsign + ' min' : '-'}</td>
+                  <td style="text-align:right;color:#FBBF24">${totalLimp >= 0 ? totalLimp + ' min' : '-'}</td>
+                  <td style="text-align:right;color:#FF6B8A">${totalInsp >= 0 ? totalInsp + ' min' : '-'}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+
+      // Accordion
+      container.querySelectorAll(".detGroup").forEach(row => {
+        row.addEventListener("click", () => {
+          const tbody = document.getElementById(row.dataset.target);
+          if (tbody) tbody.style.display = tbody.style.display === "none" ? "" : "none";
+        });
+      });
+
+      // Export
+      const btnExp = document.getElementById("btnExportAmaDet");
+      if (btnExp) {
+        btnExp.addEventListener("click", () => exportarAmaDetalleExcel(detalle, totalAsign, totalLimp, totalInsp, totalHabs));
+      }
+    }
+
+    function exportarAmaDetalleExcel(detalle, totalAsign, totalLimp, totalInsp, totalHabs) {
+      if (!detalle || !detalle.length) { toast("No hay datos para exportar.", false); return; }
+
+      let loggedUser = "-";
+      try {
+        const sess = JSON.parse(localStorage.getItem("hk_session_v3") || "null");
+        if (sess?.name) loggedUser = sess.name + (sess.dept ? " - " + sess.dept : "");
+      } catch {}
+
+      const now = new Date();
+      const printDate = now.toLocaleDateString("es-GT", { timeZone: "America/Guatemala", year: "numeric", month: "2-digit", day: "2-digit" });
+      const printTime = now.toLocaleTimeString("es-GT", { timeZone: "America/Guatemala", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+
+      const grupos = {};
+      detalle.forEach(r => {
+        const key = r.fecha + "_" + (r.ama_nombre || "S/A");
+        if (!grupos[key]) {
+          grupos[key] = { fecha: r.fecha, ama_nombre: r.ama_nombre || "S/A", rows: [], suma_asignacion: 0, suma_limpieza: 0, suma_inspeccion: 0 };
+        }
+        const asign = Number(r.tiempo_asignacion_min || 0);
+        const limp  = Number(r.tiempo_limpieza_min || 0);
+        const insp  = Number(r.tiempo_inspeccion_min || 0);
+        grupos[key].rows.push({ hab: r.modulo_id + " - " + r.habitacion_etiqueta, camarera: r.camarera_nombre, asignacion: asign, limpieza: limp, inspeccion: insp });
+        grupos[key].suma_asignacion += asign;
+        grupos[key].suma_limpieza += limp;
+        grupos[key].suma_inspeccion += insp;
+      });
+
+      const groupArray = Object.values(grupos);
+      groupArray.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.ama_nombre.localeCompare(b.ama_nombre));
+
+      const estilo = `
+        <style>
+          body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #1a1a2e; margin: 20px; }
+          .header { text-align: center; margin-bottom: 18px; }
+          .header h1 { font-size: 18pt; color: #1a365d; margin: 4px 0; font-weight: 700; }
+          .header .divider { border: none; border-top: 2px solid #2b6cb0; margin: 12px 0; }
+          .meta { font-size: 10pt; color: #2d3748; margin-bottom: 14px; }
+          table.data { width: 100%; border-collapse: collapse; font-size: 10pt; }
+          table.data th { background-color: #2b6cb0; color: #fff; font-weight: 700; padding: 8px 6px; border: 1px solid #1a365d; text-align: center; }
+          table.data td { padding: 5px 6px; border: 1px solid #cbd5e0; }
+          .numCol { text-align: right; }
+          .groupRow td { font-weight: 800; background-color: #e8e0ff; border-top: 2px solid #7c3aed; padding: 6px; }
+          .totalRow td { font-weight: 800; background-color: #e2e8f0; border-top: 2px solid #2b6cb0; font-size: 11pt; }
+          .footer { margin-top: 16px; font-size: 9pt; color: #718096; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+        </style>
+      `;
+
+      let html = `<html><head><meta charset="UTF-8">${estilo}</head><body>`;
+      html += `<div class="header"><h1>Hotel Jardines del Lago</h1>`;
+      html += `<div style="font-size:12pt;font-weight:600;color:#2d3748">Detalle de Tiempos por Ama de Llaves</div>`;
+      html += `<hr class="divider"></div>`;
+      html += `<div class="meta">Generado por: ${escHtml(loggedUser)} | Fecha: ${printDate} ${printTime}</div>`;
+
+      html += `<table class="data">
+        <thead><tr>
+          <th>Fecha</th><th>Ama de Llaves</th><th>Habitacion</th><th>Camarera</th>
+          <th class="numCol">Asignacion (min)</th><th class="numCol">Limpieza (min)</th><th class="numCol">Inspeccion (min)</th>
+        </tr></thead><tbody>`;
+
+      groupArray.forEach(g => {
+        html += `<tr class="groupRow"><td colspan="7">${g.fecha} - ${escHtml(g.ama_nombre)}</td></tr>`;
+        g.rows.forEach(h => {
+          html += `<tr>
+            <td>${g.fecha}</td><td>${escHtml(g.ama_nombre)}</td><td>${escHtml(h.hab)}</td><td>${escHtml(h.camarera)}</td>
+            <td class="numCol">${h.asignacion >= 0 ? h.asignacion : '-'}</td>
+            <td class="numCol">${h.limpieza >= 0 ? h.limpieza : '-'}</td>
+            <td class="numCol">${h.inspeccion >= 0 ? h.inspeccion : '-'}</td>
+          </tr>`;
+        });
+        html += `<tr class="totalRow">
+          <td colspan="4" style="text-align:right">Subtotal (${g.rows.length} hab):</td>
+          <td class="numCol">${g.suma_asignacion >= 0 ? g.suma_asignacion : '-'}</td>
+          <td class="numCol">${g.suma_limpieza >= 0 ? g.suma_limpieza : '-'}</td>
+          <td class="numCol">${g.suma_inspeccion >= 0 ? g.suma_inspeccion : '-'}</td>
+        </tr>`;
+      });
+
+      html += `<tr class="totalRow">
+        <td colspan="4" style="text-align:right">TOTAL GENERAL (${totalHabs} hab):</td>
+        <td class="numCol">${totalAsign >= 0 ? totalAsign : '-'}</td>
+        <td class="numCol">${totalLimp >= 0 ? totalLimp : '-'}</td>
+        <td class="numCol">${totalInsp >= 0 ? totalInsp : '-'}</td>
+      </tr>`;
+
+      html += `</tbody></table>`;
+      html += `<div class="footer">Documento generado el ${printDate} a las ${printTime} por ${escHtml(loggedUser)}</div></body></html>`;
+
+      const blob = new Blob(['\uFEFF' + html], { type: "application/vnd.ms-excel;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Detalle_AmaLlaves_${printDate.replace(/\//g, "-")}.xls`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
 </script>
 
 <!-- ===== TAB: AMA DE LLAVES ===== -->
@@ -2986,6 +3299,18 @@
         console.warn('[SW] No se pudo registrar:', err);
       });
     }
+    document.querySelectorAll(".tabAma").forEach(function(tab) {
+      tab.addEventListener("click", function() {
+        var sub = tab.dataset.subama;
+        document.querySelectorAll(".tabAma").forEach(function(t) { t.classList.remove("active"); });
+        tab.classList.add("active");
+        var dash = document.getElementById("amaSubDash");
+        var list = document.getElementById("amaSubList");
+        if (dash) dash.style.display = sub === "dash" ? "block" : "none";
+        if (list) list.style.display = sub === "list" ? "block" : "none";
+        if (sub === "list" && typeof renderAmaDetalle === "function") renderAmaDetalle();
+      });
+    });
   </script>
 </body>
 </html>

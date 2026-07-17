@@ -286,6 +286,7 @@ h2{
 .roomBtn{
   --accent: 255,255,255;
   position:relative;
+  z-index:1;
   padding: 58px 10px 56px 14px;
   border-radius: 20px;
   border: 2px solid rgba(var(--accent), .55);
@@ -321,6 +322,7 @@ h2{
 }
 
 .roomBtn:hover{
+  z-index:100;
   transform: translateY(-2px) scale(1.008);
   filter: brightness(1.08);
   border-color: rgba(var(--hoverBlue), .85);
@@ -617,18 +619,14 @@ h2{
 
 /* ===== Acciones flotantes ===== */
 .roomActions{
-  position:relative;
   margin-top: auto;
   padding-top: 10px;
   display:flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 6px;
-  z-index: 5;
   opacity: 1;
-  transform: none;
   pointer-events: auto;
-  transition: none;
   overflow: visible;
 }
 
@@ -659,11 +657,11 @@ h2{
   content: attr(aria-label);
   position: absolute;
   left: 50%;
-  /* Tooltip apunta hacia abajo para no ser recortado por overflow:hidden de la card */
-  top: calc(100% + 4px);
+  /* Tooltip apunta hacia arriba para quedar siempre visible sobre filas inferiores */
+  bottom: calc(100% + 4px);
   transform: translateX(-50%);
   padding: 3px 6px;
-  border-radius: 6px;
+  border-radius: 6px 6px 2px 2px;
   border: 1px solid rgba(255,255,255,.16);
   background: rgba(8,12,24,.95);
   color: #eef3ff;

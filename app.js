@@ -15,6 +15,40 @@ window.AUTOLOCK_MS = 60 * 60 * 1000;
 window.TIME_OFFSET_MS = 0;
 
 /* =========================
+   VERSION CONTROL
+   ========================= */
+window.APP_VERSION = "1.0.0";
+window.__swReg = null;
+window.__updateChecked = false;
+
+window.update = async function () {
+  if (window.__updateChecked) return;
+  window.__updateChecked = true;
+
+  try {
+    var reg = window.__swReg;
+    if (reg && typeof reg.update === 'function') {
+      reg.update();
+    }
+
+    var resp = await fetch(API_BASE + 'api/version', { cache: 'no-cache' });
+    var data = await resp.json();
+
+    if (data.ok && data.version !== APP_VERSION) {
+      var existing = document.getElementById('swUpdateToast');
+      if (existing) return;
+      var toast = document.createElement('div');
+      toast.id = 'swUpdateToast';
+      toast.className = 'swUpdateToast';
+      toast.innerHTML = '<span class="swUpdateIcon">🔄</span><span class="swUpdateText">Nueva version ' + data.version + ' disponible.</span><button class="swUpdateBtn" onclick="location.reload()">Actualizar</button>';
+      document.body.appendChild(toast);
+    }
+  } catch (e) {
+    console.warn('[Update] No se pudo verificar version:', e);
+  }
+};
+
+/* =========================
    HELPERS
 ========================= */
 const $ = (id) => document.getElementById(id);
@@ -1902,6 +1936,9 @@ window.addEventListener('resize', () => {
   initSocket();
 
   await syncServerTime();
+
+  if (typeof update === 'function') update();
+
   if (localStorage.getItem(LS_FORCE_LOGIN) === "1" || isLocked()) {
     showLogin();
     return;

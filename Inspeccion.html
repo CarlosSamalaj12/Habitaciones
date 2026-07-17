@@ -1230,13 +1230,10 @@
         `).join("");
         list.querySelectorAll(".camCheckboxItem").forEach(item => {
           item.addEventListener("click", (e) => {
-            if (e.target.tagName === "INPUT") return;
+            // Si hizo clic en el INPUT o en el LABEL, el navegador ya togglea el checkbox
+            // natively — solo necesitamos actualizar la clase .selected aqui
             const cb = item.querySelector("input");
-            cb.checked = !cb.checked;
             item.classList.toggle("selected", cb.checked);
-          });
-          item.querySelector("input").addEventListener("change", () => {
-            item.classList.toggle("selected", item.querySelector("input").checked);
           });
         });
       }

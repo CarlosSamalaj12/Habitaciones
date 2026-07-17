@@ -83,8 +83,9 @@ app.use(express.static(path.join(__dirname, ".."), {
   etag: true,
   lastModified: true,
   setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.html')) {
-      res.setHeader('Cache-Control', 'no-cache');
+    const name = path.basename(filePath);
+    if (name.endsWith('.html') || name === 'sw.js' || name === 'app.webmanifest') {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     }
   }
 }));
@@ -475,6 +476,14 @@ app.post("/api/push/unsubscribe", requireAuthIfEnabled, async (req, res) => {
     console.error("Error eliminando suscripcion:", e);
     res.status(500).json({ ok: false, error: "Error interno" });
   }
+});
+
+// ===== VERSION =====
+const APP_VERSION = "1.0.0";
+const APP_BUILD_TIME = new Date().toISOString();
+
+app.get("/api/version", (req, res) => {
+  res.json({ ok: true, version: APP_VERSION, buildTime: APP_BUILD_TIME });
 });
 
 // ===== HEALTH =====
