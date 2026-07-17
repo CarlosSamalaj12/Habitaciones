@@ -366,6 +366,38 @@ async function initDB(){
     }
   }
 
+  // Migration: agregar columna hora_listo_limpieza a inspecciones (valor congelado al momento de guardar)
+  try {
+    await pool.query("ALTER TABLE inspecciones ADD COLUMN hora_listo_limpieza DATETIME DEFAULT NULL AFTER hora_checklist");
+    console.log("✅ Columna hora_listo_limpieza agregada a inspecciones");
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME') {
+      console.warn("⚠️ No se pudo agregar hora_listo_limpieza a inspecciones:", e.message);
+    }
+  }
+
+  // Backfill: copiar hora_listo_limpieza desde estados_habitacion a inspecciones existentes donde sea NULL
+  try {
+    const [pending] = await pool.query(`
+      SELECT COUNT(*) AS c FROM inspecciones i
+      JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
+      JOIN estados_habitacion est ON est.habitacion_id = h.id
+      WHERE i.hora_listo_limpieza IS NULL AND est.hora_listo_limpieza IS NOT NULL
+    `);
+    if (pending[0].c > 0) {
+      await pool.query(`
+        UPDATE inspecciones i
+        JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
+        JOIN estados_habitacion est ON est.habitacion_id = h.id
+        SET i.hora_listo_limpieza = est.hora_listo_limpieza
+        WHERE i.hora_listo_limpieza IS NULL AND est.hora_listo_limpieza IS NOT NULL
+      `);
+      console.log(`✅ Backfill: ${pending[0].c} inspecciones actualizadas con hora_listo_limpieza`);
+    }
+  } catch (e) {
+    console.warn("⚠️ No se pudo hacer backfill de hora_listo_limpieza:", e.message);
+  }
+
   await pool.query("SELECT 1");
   console.log("✅ MariaDB conectada");
 }
@@ -1025,12 +1057,32 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
       return res.json({ ok:true, id: inspeccion_id, dedup: true });
     }
 
+    // Capturar hora_listo_limpieza del estado actual de la habitacion (valor congelado en el momento)
+    let horaListo = null;
+    try {
+      const [roomRows] = await pool.query(
+        "SELECT id FROM habitaciones WHERE modulo_id=? AND etiqueta=? LIMIT 1",
+        [data.modulo_id, data.habitacion_etiqueta]
+      );
+      if (roomRows.length) {
+        const [estRows] = await pool.query(
+          "SELECT hora_listo_limpieza FROM estados_habitacion WHERE habitacion_id=?",
+          [roomRows[0].id]
+        );
+        if (estRows.length && estRows[0].hora_listo_limpieza) {
+          horaListo = estRows[0].hora_listo_limpieza;
+        }
+      }
+    } catch (e) {
+      console.warn("No se pudo capturar hora_listo_limpieza:", e.message);
+    }
+
     const [header] = await pool.query(`
       INSERT INTO inspecciones
         (modulo_id, modulo_nombre, habitacion_etiqueta, fecha, camarera_id, tipo_limpieza_id,
          inspector_nombre, inspector_dept, inicio_limpieza, fin_limpieza, hora_checklist,
-         observaciones, es_decorada, es_familiar)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         hora_listo_limpieza, observaciones, es_decorada, es_familiar)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `, [
       data.modulo_id,
       data.modulo_nombre || '',
@@ -1041,6 +1093,7 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
       data.inspector_nombre || '',
       data.inspector_dept || '',
       inicio, fin, horaChk,
+      horaListo,
       data.observaciones || null,
       data.es_decorada ? 1 : 0,
       data.es_familiar ? 1 : 0
@@ -1183,15 +1236,6 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
         if (!cam) return;
         const countDia = countPorDia[cid]?.[dia] || 0;
         const aplicaExtra = countDia > 6;
-        const tieneFactura = Number(cam.factura) === 1;
-        let pagoFinal;
-        if (aplicaExtra) {
-          // Si aplica extra: (base/n) * (1+pct) + extra
-          pagoFinal = pagoBaseDividido * (1 + pct / 100) + (tieneFactura ? extraSi : extraNo);
-        } else {
-          // Si NO aplica extra: solo base/n (sin extra ni porcentaje)
-          pagoFinal = pagoBaseDividido;
-        }
         filasExpandidas.push({
           id: insp.id,
           modulo_nombre: insp.modulo_nombre,
@@ -1216,7 +1260,7 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
           pago_base: pagoBaseDividido,
           count_habitaciones_dia: countDia,
           aplica_extra: aplicaExtra,
-          pago_final: Math.round(pagoFinal * 100) / 100
+          pago_final: Math.round(pagoBaseDividido * 100) / 100
         });
       });
     });
@@ -1225,33 +1269,34 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
     const grupoPagos = {};
     filasExpandidas.forEach(r => {
       const cid = r.camarera_id;
+      const dia = String(r.fecha).slice(0, 10);
       if (!grupoPagos[cid]) {
         grupoPagos[cid] = {
-          base: 0,
           factura: Number(r.camarera_factura),
           nombre: r.camarera_nombre,
-          count_dia: {}
+          por_dia: {}
         };
       }
-      grupoPagos[cid].base += r.pago_base;
-      const dia = String(r.fecha).slice(0, 10);
-      if (!grupoPagos[cid].count_dia[dia]) grupoPagos[cid].count_dia[dia] = 0;
-      grupoPagos[cid].count_dia[dia]++;
+      if (!grupoPagos[cid].por_dia[dia]) {
+        grupoPagos[cid].por_dia[dia] = { base: 0, count: 0 };
+      }
+      grupoPagos[cid].por_dia[dia].base += r.pago_base;
+      grupoPagos[cid].por_dia[dia].count++;
     });
 
     let totalPagoFinal = 0;
     Object.keys(grupoPagos).forEach(cid => {
       const g = grupoPagos[cid];
-      let pagoTotal = 0;
-      Object.keys(g.count_dia).forEach(dia => {
-        const count = g.count_dia[dia];
-        const aplicaExtra = count > 6;
-        if (aplicaExtra) {
-          pagoTotal += g.base * (1 + pct / 100) + (g.factura ? extraSi : extraNo);
-        } else {
-          pagoTotal += g.base;
+      let totalBase = 0;
+      let totalExtra = 0;
+      Object.keys(g.por_dia).forEach(dia => {
+        const day = g.por_dia[dia];
+        totalBase += day.base;
+        if (day.count > 6) {
+          totalExtra += (g.factura ? extraSi : extraNo);
         }
       });
+      const pagoTotal = totalBase * (1 + pct / 100) + totalExtra;
       const rounded = Math.round(pagoTotal * 100) / 100;
       grupoPagos[cid].pagoFinal = rounded;
       totalPagoFinal += rounded;
@@ -1268,14 +1313,22 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
     Object.keys(grupoPagos).forEach(cid => {
       const g = grupoPagos[cid];
       const nombre = g.nombre;
-      const countDias = Object.keys(g.count_dia).length;
-      const aplicaExtra = Object.values(g.count_dia).some(c => c > 6);
+      const totalBase = Object.values(g.por_dia).reduce((s, d) => s + d.base, 0);
+      let totalExtra = 0;
+      let extraDays = 0;
+      Object.values(g.por_dia).forEach(d => {
+        if (d.count > 6) {
+          extraDays++;
+          totalExtra += (g.factura ? extraSi : extraNo);
+        }
+      });
       detallePagos[nombre] = {
         factura: g.factura,
-        pct: aplicaExtra ? pct : 0,
-        extra: aplicaExtra ? (g.factura ? extraSi : extraNo) : 0,
+        dias_extra: extraDays,
+        pct: extraDays > 0 ? pct : 0,
+        extra: Math.round(totalExtra * 100) / 100,
         pagoFinal: g.pagoFinal,
-        base: Math.round(g.base * 100) / 100,
+        base: Math.round(totalBase * 100) / 100,
         count_registros: filasExpandidas.filter(r => String(r.camarera_id) === String(cid)).length
       };
       porCamarera[nombre] = g.pagoFinal;
@@ -1334,13 +1387,12 @@ app.get("/api/reportes/rendimiento", requireAuthIfEnabled, async (req,res)=>{
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza)), 0), 0) AS promedio_minutos,
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.fin_limpieza, i.hora_checklist)), 0), 0) AS promedio_inspeccion_min,
         COUNT(DISTINCT CASE WHEN cnt_cams.count_camareras > 1 THEN i.id END) AS habitaciones_compartidas,
-        COALESCE(ROUND(AVG(CASE WHEN est.hora_listo_limpieza IS NOT NULL AND i.inicio_limpieza IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, est.hora_listo_limpieza, i.inicio_limpieza) END), 0), 0) AS promedio_tiempo_asignacion
+        COALESCE(ROUND(AVG(CASE WHEN i.hora_listo_limpieza IS NOT NULL AND i.inicio_limpieza IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, i.hora_listo_limpieza, i.inicio_limpieza) END), 0), 0) AS promedio_tiempo_asignacion
       FROM inspecciones i
       JOIN inspecciones_camareras ic ON ic.inspeccion_id = i.id
       JOIN camareras c ON c.id = ic.camarera_id
       LEFT JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
       LEFT JOIN precios_especiales_habitacion pe ON pe.habitacion_id = h.id AND pe.tipo_limpieza_id = i.tipo_limpieza_id AND pe.es_familiar = COALESCE(i.es_familiar, 0)
-      LEFT JOIN estados_habitacion est ON est.habitacion_id = h.id
       LEFT JOIN (
         SELECT inspeccion_id,
           SUM(estado = 'CUMPLE') * 100.0 / NULLIF(COUNT(*), 0) AS pct_cumple
@@ -1399,11 +1451,10 @@ app.get("/api/reportes/rendimiento/amas", requireAuthIfEnabled, async (req,res)=
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza)), 0), 0) AS promedio_minutos,
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.fin_limpieza, i.hora_checklist)), 0), 0) AS promedio_inspeccion_min,
         COUNT(DISTINCT CASE WHEN cnt_cams.count_camareras > 1 THEN i.id END) AS habitaciones_compartidas,
-        COALESCE(ROUND(AVG(CASE WHEN est.hora_listo_limpieza IS NOT NULL AND i.inicio_limpieza IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, est.hora_listo_limpieza, i.inicio_limpieza) END), 0), 0) AS promedio_tiempo_asignacion
+        COALESCE(ROUND(AVG(CASE WHEN i.hora_listo_limpieza IS NOT NULL AND i.inicio_limpieza IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, i.hora_listo_limpieza, i.inicio_limpieza) END), 0), 0) AS promedio_tiempo_asignacion
       FROM inspecciones i
       LEFT JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
       LEFT JOIN precios_especiales_habitacion pe ON pe.habitacion_id = h.id AND pe.tipo_limpieza_id = i.tipo_limpieza_id AND pe.es_familiar = COALESCE(i.es_familiar, 0)
-      LEFT JOIN estados_habitacion est ON est.habitacion_id = h.id
       LEFT JOIN (
         SELECT inspeccion_id,
           SUM(estado = 'CUMPLE') * 100.0 / NULLIF(COUNT(*), 0) AS pct_cumple
@@ -1465,13 +1516,13 @@ app.get("/api/reportes/rendimiento/daily", requireAuthIfEnabled, async (req,res)
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza)), 0), 0) AS tiempo_prom_min,
         COALESCE(SUM(COALESCE(pe.precio, 0) / NULLIF(cnt_cams.count_camareras, 0)), 0) AS pago_total,
         COUNT(DISTINCT CASE WHEN cnt_cams.count_camareras > 1 THEN i.id END) AS habitaciones_compartidas,
-        COALESCE(ROUND(AVG(CASE WHEN est.hora_listo_limpieza IS NOT NULL AND i.inicio_limpieza IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, est.hora_listo_limpieza, i.inicio_limpieza) END), 0), 0) AS tiempo_asignacion_min
+        COALESCE(ROUND(AVG(CASE WHEN i.hora_listo_limpieza IS NOT NULL AND i.inicio_limpieza IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, i.hora_listo_limpieza, i.inicio_limpieza) END), 0), 0) AS tiempo_asignacion_min,
+        COALESCE(SUM(CASE WHEN i.hora_listo_limpieza IS NOT NULL AND i.inicio_limpieza IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, i.hora_listo_limpieza, i.inicio_limpieza) END), 0) AS tiempo_asignacion_sum
       FROM inspecciones i
       JOIN inspecciones_camareras ic ON ic.inspeccion_id = i.id
       JOIN camareras c ON c.id = ic.camarera_id
       LEFT JOIN habitaciones h ON h.modulo_id = i.modulo_id AND h.etiqueta = i.habitacion_etiqueta
       LEFT JOIN precios_especiales_habitacion pe ON pe.habitacion_id = h.id AND pe.tipo_limpieza_id = i.tipo_limpieza_id AND pe.es_familiar = COALESCE(i.es_familiar, 0)
-      LEFT JOIN estados_habitacion est ON est.habitacion_id = h.id
       LEFT JOIN (
         SELECT inspeccion_id,
           SUM(estado = 'CUMPLE') * 100.0 / NULLIF(COUNT(*), 0) AS pct_cumple
@@ -1510,7 +1561,8 @@ app.get("/api/reportes/rendimiento/daily", requireAuthIfEnabled, async (req,res)
         puntuacion_prom: Number(r.puntuacion_prom),
         tiempo_prom_min: Number(r.tiempo_prom_min),
         pago_total: Number(r.pago_total),
-        tiempo_asignacion_min: Number(r.tiempo_asignacion_min || 0)
+        tiempo_asignacion_min: Number(r.tiempo_asignacion_min || 0),
+        tiempo_asignacion_sum: Number(r.tiempo_asignacion_sum || 0)
       });
     });
 
@@ -1520,6 +1572,53 @@ app.get("/api/reportes/rendimiento/daily", requireAuthIfEnabled, async (req,res)
     });
   }catch(e){
     console.error("Error en rendimiento daily:", e);
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// GET /api/reportes/rendimiento/detalle-dias?fecha_desde=YYYY-MM-DD&fecha_hasta=YYYY-MM-DD&camarera_id=N&ama_nombre=X
+// Retorna desglose por habitacion: asignacion, limpieza e inspeccion
+app.get("/api/reportes/rendimiento/detalle-dias", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const fecha_desde = String(req.query?.fecha_desde || "").trim();
+    const fecha_hasta = String(req.query?.fecha_hasta || "").trim();
+    const camarera_id = req.query?.camarera_id ? Number(req.query.camarera_id) : null;
+    const ama_nombre = String(req.query?.ama_nombre || "").trim() || null;
+
+    if (!fecha_desde || !fecha_hasta) {
+      return res.status(400).json({ ok:false, error:"Faltan fecha_desde y fecha_hasta" });
+    }
+
+    const sql = `
+      SELECT
+        i.fecha,
+        i.habitacion_etiqueta,
+        i.modulo_id,
+        i.inspector_nombre AS ama_nombre,
+        c.id AS camarera_id,
+        c.nombre AS camarera_nombre,
+        i.hora_listo_limpieza,
+        i.inicio_limpieza,
+        i.fin_limpieza,
+        i.hora_checklist,
+        TIMESTAMPDIFF(MINUTE, i.hora_listo_limpieza, i.inicio_limpieza) AS tiempo_asignacion_min,
+        TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza) AS tiempo_limpieza_min,
+        TIMESTAMPDIFF(MINUTE, i.fin_limpieza, i.hora_checklist) AS tiempo_inspeccion_min
+      FROM inspecciones i
+      JOIN inspecciones_camareras ic ON ic.inspeccion_id = i.id
+      JOIN camareras c ON c.id = ic.camarera_id
+      WHERE DATE(i.fecha) >= ? AND DATE(i.fecha) <= ?
+        AND (? IS NULL OR ic.camarera_id = ?)
+        AND (? IS NULL OR i.inspector_nombre = ?)
+      ORDER BY i.fecha, i.inspector_nombre, c.nombre, i.habitacion_etiqueta
+    `;
+
+    const queryParams = [fecha_desde, fecha_hasta, camarera_id, camarera_id, ama_nombre, ama_nombre];
+    const [rows] = await pool.query(sql, queryParams);
+
+    res.json({ ok:true, data: rows });
+  }catch(e){
+    console.error("Error en detalle-dias:", e);
     res.status(500).json({ ok:false, error: "Error interno del servidor" });
   }
 });
