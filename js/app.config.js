@@ -31,7 +31,7 @@ window.update = async function () {
       reg.update();
     }
 
-    var resp = await fetch(API_BASE + 'api/version', { cache: 'no-cache' });
+    var resp = await fetch(API_BASE + '/api/version', { cache: 'no-cache' });
     if (!resp.ok) return; // SW devuelve 503 "Offline" cuando no hay red
     var ct = resp.headers.get('content-type') || '';
     if (!ct.includes('application/json')) return;
