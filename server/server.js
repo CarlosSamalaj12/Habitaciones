@@ -2337,10 +2337,25 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
     // Enviar push notifications segun el tipo de cambio
     const oldEstado = cur?.estado || "";
     const newEstado = updated?.estado || "";
+    const oldPrio = cur?.prioridad_limpieza || "";
+    const newPrio = updated?.prioridad_limpieza || "";
     const src = String(source || "").trim().toLowerCase();
 
+    // Verificar si cambio la prioridad
+    const prioCambio = String(oldPrio || "").toLowerCase() !== String(newPrio || "").toLowerCase();
+    const tienePrio = String(newPrio || "").toLowerCase() === "alta";
+
+    // Si solo cambio prioridad (sin cambio de estado), notificar prioridad
+    if (prioCambio && oldEstado === newEstado) {
+      sendPushToRoles(
+        modulo_id + " - " + etiqueta,
+        tienePrio ? "🔴 PRIORIDAD ALTA - Habitacion marcada como prioridad" : "Prioridad removida",
+        "./index.html",
+        ["ADMIN", "AMA_LLAVES", "RECEPCION"]
+      ).catch(() => {});
+    }
     // OCUPADO → Notificar a Admin + Ama de llaves
-    if (newEstado === "ocupado") {
+    else if (newEstado === "ocupado") {
       sendPushToRoles(
         modulo_id + " - " + etiqueta,
         "OCUPADO - Habitacion ocupada",
