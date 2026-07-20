@@ -357,6 +357,24 @@ async function initDB(){
     console.warn("⚠️ No se pudo crear inspecciones_camareras:", e.message);
   }
 
+  // Migration: agregar columnas rectificado y motivo_rectificacion a inspecciones
+  try {
+    await pool.query("ALTER TABLE inspecciones ADD COLUMN rectificado TINYINT(1) DEFAULT 0 AFTER es_familiar");
+    console.log("✅ Columna rectificado agregada a inspecciones");
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME') {
+      console.warn("⚠️ No se pudo agregar rectificado:", e.message);
+    }
+  }
+  try {
+    await pool.query("ALTER TABLE inspecciones ADD COLUMN motivo_rectificacion TEXT DEFAULT NULL AFTER rectificado");
+    console.log("✅ Columna motivo_rectificacion agregada a inspecciones");
+  } catch (e) {
+    if (e.code !== 'ER_DUP_FIELDNAME') {
+      console.warn("⚠️ No se pudo agregar motivo_rectificacion:", e.message);
+    }
+  }
+
   // Migration: agregar columna hora_listo_limpieza a estados_habitacion (para medir tiempo de respuesta del ama de llaves)
   try {
     await pool.query("ALTER TABLE estados_habitacion ADD COLUMN hora_listo_limpieza DATETIME DEFAULT NULL AFTER inicio_limpieza");
@@ -1086,6 +1104,17 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
       console.warn("No se pudo capturar hora_listo_limpieza:", e.message);
     }
 
+    // Resolver modulo_nombre si no se proporciono
+    let moduloNombre = data.modulo_nombre;
+    if (!moduloNombre) {
+      try {
+        const [modRow] = await pool.query("SELECT descripcion FROM modulos WHERE id=?", [data.modulo_id]);
+        if (modRow.length) moduloNombre = modRow[0].descripcion;
+      } catch (e) {
+        console.warn("No se pudo resolver modulo_nombre:", e.message);
+      }
+    }
+
     const [header] = await pool.query(`
       INSERT INTO inspecciones
         (modulo_id, modulo_nombre, habitacion_etiqueta, fecha, camarera_id, tipo_limpieza_id,
@@ -1094,7 +1123,7 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `, [
       data.modulo_id,
-      data.modulo_nombre || '',
+      moduloNombre || '',
       data.habitacion_etiqueta,
       data.fecha,
       primaryCamareraId,
@@ -1165,13 +1194,13 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
         i.id, i.modulo_nombre, i.habitacion_etiqueta, i.fecha,
         i.inicio_limpieza, i.fin_limpieza, i.hora_checklist,
         i.es_familiar, i.observaciones,
-        i.camarera_id,
+        i.camarera_id, i.rectificado, i.motivo_rectificacion,
         t.id AS tipo_limpieza_id, t.nombre AS tipo_nombre,
         COALESCE(det.cumplen, 0) AS cumplen,
         COALESCE(det.no_cumplen, 0) AS no_cumplen,
         COALESCE(det.no_aplica, 0) AS no_aplica,
         COALESCE(det.total_items, 0) AS total_items,
-        COALESCE(pe.precio, 0) AS pago_base,
+        IF(i.rectificado = 1, 0, COALESCE(pe.precio, 0)) AS pago_base,
         GROUP_CONCAT(DISTINCT ic.camarera_id ORDER BY ic.camarera_id) AS camareras_list,
         GROUP_CONCAT(DISTINCT cam.nombre ORDER BY cam.id) AS camareras_nombres
       FROM inspecciones i
@@ -1255,6 +1284,8 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
           hora_checklist: insp.hora_checklist,
           es_familiar: insp.es_familiar,
           observaciones: insp.observaciones,
+          rectificado: insp.rectificado,
+          motivo_rectificacion: insp.motivo_rectificacion,
           camarera_id: cid,
           camarera_nombre: cam.nombre,
           camarera_factura: cam.factura,
@@ -1889,13 +1920,25 @@ app.post("/api/inspecciones/actualizar", requireAuthIfEnabled, async (req,res)=>
       updates.push("es_familiar=?");
       params.push(req.body.es_familiar ? 1 : 0);
     }
+    if (req.body?.rectificado !== undefined) {
+      updates.push("rectificado=?");
+      params.push(req.body.rectificado ? 1 : 0);
+    }
+    if (req.body?.motivo_rectificacion !== undefined) {
+      updates.push("motivo_rectificacion=?");
+      params.push(String(req.body.motivo_rectificacion || '').trim());
+    }
     if (req.body?.inspector_nombre !== undefined) {
       updates.push("inspector_nombre=?");
       params.push(String(req.body.inspector_nombre || '').trim());
     }
     if (req.body?.modulo_id !== undefined) {
-      updates.push("modulo_id=?");
-      params.push(String(req.body.modulo_id).trim());
+      // Al cambiar modulo_id, actualizar tambien modulo_nombre
+      const nuevoModuloId = String(req.body.modulo_id).trim();
+      updates.push("modulo_id=?", "modulo_nombre=?");
+      params.push(nuevoModuloId);
+      const [modRow] = await pool.query("SELECT descripcion FROM modulos WHERE id=?", [nuevoModuloId]);
+      params.push(modRow.length ? modRow[0].descripcion : nuevoModuloId);
     }
     if (req.body?.habitacion_etiqueta !== undefined) {
       updates.push("habitacion_etiqueta=?");
@@ -1908,6 +1951,15 @@ app.post("/api/inspecciones/actualizar", requireAuthIfEnabled, async (req,res)=>
 
     params.push(id);
     await pool.query(`UPDATE inspecciones SET ${updates.join(", ")} WHERE id=?`, params);
+
+    // Sincronizar inspecciones_camareras si se actualizo camarera_id
+    if (req.body?.camarera_id !== undefined) {
+      const newCamareraId = req.body.camarera_id ? Number(req.body.camarera_id) : null;
+      await pool.query("DELETE FROM inspecciones_camareras WHERE inspeccion_id=?", [id]);
+      if (newCamareraId) {
+        await pool.query("INSERT INTO inspecciones_camareras (inspeccion_id, camarera_id) VALUES (?,?)", [id, newCamareraId]);
+      }
+    }
 
     res.json({ ok: true });
   }catch(e){
@@ -1931,6 +1983,26 @@ app.post("/api/inspecciones/detalle/actualizar", requireAuthIfEnabled, async (re
     res.json({ ok: true });
   }catch(e){
     console.error("Error actualizando detalle:", e);
+    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+  }
+});
+
+// POST /api/inspecciones/eliminar - Eliminar una inspeccion
+app.post("/api/inspecciones/eliminar", requireAuthIfEnabled, async (req,res)=>{
+  try{
+    const id = Number(req.body?.id);
+    if (!id) return res.status(400).json({ ok:false, error:"ID requerido" });
+
+    const [exist] = await pool.query("SELECT id FROM inspecciones WHERE id=?", [id]);
+    if (!exist.length) return res.status(404).json({ ok:false, error:"Inspeccion no encontrada" });
+
+    await pool.query("DELETE FROM inspeccion_detalles WHERE inspeccion_id=?", [id]);
+    await pool.query("DELETE FROM inspecciones_camareras WHERE inspeccion_id=?", [id]);
+    await pool.query("DELETE FROM inspecciones WHERE id=?", [id]);
+
+    res.json({ ok: true });
+  }catch(e){
+    console.error("Error eliminando inspeccion:", e);
     res.status(500).json({ ok:false, error: "Error interno del servidor" });
   }
 });
