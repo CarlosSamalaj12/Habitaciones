@@ -330,12 +330,8 @@
       const m = String(now.getMonth() + 1).padStart(2, '0');
       const d = String(now.getDate()).padStart(2, '0');
       const today = `${y}-${m}-${d}`;
-      const past = new Date(now);
-      past.setDate(past.getDate() - 60);
-      const py = past.getFullYear();
-      const pm = String(past.getMonth() + 1).padStart(2, '0');
-      const pd = String(past.getDate()).padStart(2, '0');
-      if (!$("filtroDesde").value) $("filtroDesde").value = `${py}-${pm}-${pd}`;
+      const firstDay = `${y}-${m}-01`;
+      if (!$("filtroDesde").value) $("filtroDesde").value = firstDay;
       if (!$("filtroHasta").value) $("filtroHasta").value = today;
     }
 

@@ -1064,6 +1064,18 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
 
     if(existing.length){
       const inspeccion_id = existing[0].id;
+      // Actualizar cabecera con los nuevos valores (importante para tipo_limpieza_id, etc.)
+      const updFields = [];
+      const updParams = [];
+      if (data.tipo_limpieza_id) { updFields.push("tipo_limpieza_id=?"); updParams.push(Number(data.tipo_limpieza_id)); }
+      if (data.camarera_id) { updFields.push("camarera_id=?"); updParams.push(Number(data.camarera_id)); }
+      if (data.es_familiar !== undefined) { updFields.push("es_familiar=?"); updParams.push(data.es_familiar ? 1 : 0); }
+      if (data.inspector_nombre !== undefined) { updFields.push("inspector_nombre=?"); updParams.push(String(data.inspector_nombre || '').trim()); }
+      if (data.observaciones !== undefined) { updFields.push("observaciones=?"); updParams.push(String(data.observaciones || '').trim()); }
+      if (updFields.length) {
+        updParams.push(inspeccion_id);
+        await pool.query(`UPDATE inspecciones SET ${updFields.join(", ")} WHERE id=?`, updParams);
+      }
       // Reemplazar detalles (por si cambiaron estados)
       if(Array.isArray(data.detalles) && data.detalles.length){
         await pool.query("DELETE FROM inspeccion_detalles WHERE inspeccion_id=?", [inspeccion_id]);
@@ -1075,9 +1087,9 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
           await pool.query(`INSERT INTO inspeccion_detalles (inspeccion_id, item_id, estado) VALUES ${placeholders}`, validDetails.flat());
         }
       }
-      // Actualizar camareras si hay nuevas
+      // Actualizar camareras siempre (DELETE + INSERT)
+      await pool.query("DELETE FROM inspecciones_camareras WHERE inspeccion_id=?", [inspeccion_id]);
       if (camareraIds.length) {
-        await pool.query("DELETE FROM inspecciones_camareras WHERE inspeccion_id=?", [inspeccion_id]);
         const camPlaceholders = camareraIds.map(() => '(?,?)').join(',');
         await pool.query(`INSERT INTO inspecciones_camareras (inspeccion_id, camarera_id) VALUES ${camPlaceholders}`, camareraIds.flatMap(id => [inspeccion_id, id]));
       }
@@ -2404,7 +2416,7 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
     const updated = await fetchOneRoom(roomId);
     await logRoomEvent({ before: cur, after: updated, patch, actor, source });
 
-    io.emit("room:update", updated);
+    io.emit("room_update", updated);
 
     // Enviar push notifications segun el tipo de cambio
     const oldEstado = cur?.estado || "";

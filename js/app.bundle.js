@@ -435,7 +435,8 @@ function normalizeRoom(r) {
     desde: r.desde || null,
     adultos: Number(r.adultos ?? 0),
     ninos: Number(r.ninos ?? 0),
-    obs: r.obs || "",
+    obs: r.observaciones || r.obs || "",
+    observaciones: r.observaciones || r.obs || "",
     inicio_limpieza: r.inicio_limpieza || null,
     fin_limpieza: r.fin_limpieza || null,
     inicio_repaso: r.inicio_repaso || null,
@@ -443,6 +444,9 @@ function normalizeRoom(r) {
     estado_limpieza: r.estado_limpieza || null,
     obs_limpieza: r.obs_limpieza || "",
     inspected_by: r.inspected_by || null,
+    camarera_asignada: r.camarera_asignada || null,
+    tipo_limpieza: r.tipo_limpieza || null,
+    inspector_asignado: r.inspector_asignado || null,
     ts_mod: r.ts_mod || null
   };
 }
