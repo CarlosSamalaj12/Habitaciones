@@ -108,6 +108,7 @@
     .badgeNoCumple { background: rgba(255,77,109,.15); color: #FF4D6D; }
     .badgeNA { background: rgba(255,176,32,.15); color: #FFB020; }
     .familiarBadge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; background: rgba(255,176,32,.15); color: var(--warn); }
+    .rectificadoBadge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; background: rgba(255,77,109,.15); color: var(--bad); border: 1px solid rgba(255,77,109,.25); cursor: help; }
 
     /* Grupo de camarera con subtotales */
     .groupHeader td {
@@ -1448,7 +1449,7 @@
             <td style="font-size:12px">${getCamarerasDisplay(r)}</td>
             <td><strong>${escHtml(r.habitacion_etiqueta || "-")}</strong></td>
             <td>${escHtml(r.tipo_nombre || "-")}</td>
-            <td>${Number(r.es_familiar) ? '<span class="familiarBadge">Fam</span>' : '-'}</td>
+            <td>${Number(r.es_familiar) ? '<span class="familiarBadge">Fam</span>' : ''}${Number(r.rectificado) ? '<span class="rectificadoBadge" title="' + escHtml(r.motivo_rectificacion || 'Rectificado') + '">Rect</span>' : ''}${!Number(r.es_familiar) && !Number(r.rectificado) ? '-' : ''}</td>
             <td class="numCol">${fmtTime(r.inicio_limpieza)}</td>
             <td class="numCol">${fmtTime(r.fin_limpieza)}</td>
             <td class="numCol"><span class="badgePago badgeCumple">${ok}</span></td>

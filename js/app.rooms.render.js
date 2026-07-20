@@ -365,6 +365,9 @@ function renderRooms() {
       }
       if (!requireOnline()) return;
 
+      const confirmado = await confirmDialog(`¿Estás seguro de poner la habitacion ${room.etiqueta} en MANTENIMIENTO?`);
+      if (!confirmado) return;
+
       bMant.disabled = true;
       try {
         await updateRoom(room.modulo_id, room.etiqueta, {

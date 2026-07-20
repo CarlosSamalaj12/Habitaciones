@@ -99,6 +99,7 @@
       outline: none; font-size: 13px; min-width: 140px;
     }
     .filterGroup input:focus, .filterGroup select:focus { border-color: var(--primary); }
+    input[type="date"] { color-scheme: dark; }
 
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th, td { padding: 10px 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.06); }
@@ -263,6 +264,7 @@
             <input id="filtroHabitacion" type="text" placeholder="Ej: 02, 10" style="min-width:80px" />
           </div>
           <button class="primary" id="btnBuscar" type="button" style="height:38px">Buscar</button>
+          <button class="success" id="btnNuevo" type="button" style="height:38px">+ Agregar Nuevo</button>
         </div>
 
         <div id="resultsTableWrap" class="tableWrap">
@@ -499,10 +501,17 @@
     function renderEditor(data) {
       const body = $("editBody");
       const familiarChecked = Number(data.es_familiar) ? 'checked' : '';
+      const rectificadoChecked = Number(data.rectificado) ? 'checked' : '';
       const familiarHtml = `
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 0">
           <input type="checkbox" id="editFamiliar" ${familiarChecked} />
           <span style="font-size:13px;color:var(--muted)">Habitacion Familiar</span>
+        </label>
+      `;
+      const rectificadoHtml = `
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 0">
+          <input type="checkbox" id="editRectificado" ${rectificadoChecked} />
+          <span style="font-size:13px;color:#FFB020">Rectificado (precio cero)</span>
         </label>
       `;
 
@@ -546,14 +555,24 @@
             ${familiarHtml}
           </div>
           <div class="editField fullWidth">
+            ${rectificadoHtml}
+          </div>
+          <div class="editField fullWidth" id="motivoField" style="${rectificadoChecked ? '' : 'display:none'}">
+            <label>Motivo de Rectificacion</label>
+            <textarea id="editMotivo" rows="2">${escHtml(data.motivo_rectificacion || '')}</textarea>
+          </div>
+          <div class="editField fullWidth">
             <label>Observaciones</label>
             <textarea id="editObs" rows="3">${escHtml(data.observaciones || '')}</textarea>
           </div>
         </div>
         <div id="editChecklistArea"></div>
-        <div class="editActions">
-          <button class="primary" id="btnGuardarEdit" type="button">💾 Guardar Cambios</button>
-          <button id="btnCancelEdit" type="button" onclick="closeEditor()">Cancelar</button>
+        <div class="editActions" style="justify-content:space-between">
+          <div>
+            <button class="primary" id="btnGuardarEdit" type="button">💾 Guardar Cambios</button>
+            <button id="btnCancelEdit" type="button" onclick="closeEditor()">Cancelar</button>
+          </div>
+          <button class="danger" id="btnEliminar" type="button">🗑 Eliminar</button>
         </div>
         <div class="editStatus" id="editStatus"></div>
       `;
@@ -563,6 +582,14 @@
 
       // Event listeners
       $("btnGuardarEdit").addEventListener("click", guardarCambios);
+      $("btnEliminar").addEventListener("click", eliminarRegistro);
+      const rectChk = $("editRectificado");
+      if (rectChk) {
+        rectChk.addEventListener("change", function() {
+          const mf = $("motivoField");
+          if (mf) mf.style.display = this.checked ? "" : "none";
+        });
+      }
     }
 
     function renderChecklistEditor() {
@@ -643,6 +670,8 @@
       const inspector = $("editInspector")?.value.trim();
       const observaciones = $("editObs")?.value.trim();
       const es_familiar = $("editFamiliar")?.checked ? 1 : 0;
+      const rectificado = $("editRectificado")?.checked ? 1 : 0;
+      const motivo = $("editMotivo")?.value.trim();
 
       if (fecha) payload.fecha = fecha;
       if (modulo_id) payload.modulo_id = modulo_id;
@@ -652,6 +681,8 @@
       payload.inspector_nombre = inspector || '';
       payload.observaciones = observaciones || '';
       payload.es_familiar = es_familiar;
+      payload.rectificado = rectificado;
+      payload.motivo_rectificacion = motivo || '';
 
       const btn = $("btnGuardarEdit");
       const status = $("editStatus");
@@ -671,6 +702,178 @@
         status.textContent = '❌ Error: ' + (e?.message || 'Error');
         status.style.color = '#FF4D6D';
         toast("Error al guardar: " + (e?.message || e), false);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ===== ELIMINAR REGISTRO =====
+    async function eliminarRegistro() {
+      const data = CURRENT_INSPECCION;
+      if (!data || !data.id) return;
+
+      if (!confirm(`¿Estás seguro de eliminar la inspeccion #${data.id} de ${data.habitacion_etiqueta || "-"} del ${data.fecha || "-"}?\n\nEsta acción no se puede deshacer.`)) {
+        return;
+      }
+
+      const btn = $("btnEliminar");
+      const status = $("editStatus");
+      btn.disabled = true;
+      status.textContent = '⏳ Eliminando...';
+
+      try {
+        await apiPOST("/api/inspecciones/eliminar", { id: data.id });
+        status.textContent = '✅ Eliminado correctamente';
+        status.style.color = '#2EE59D';
+        toast(`Inspeccion #${data.id} eliminada.`, true, 2500);
+        setTimeout(() => {
+          buscarRegistros();
+          closeEditor();
+        }, 800);
+      } catch (e) {
+        status.textContent = '❌ Error: ' + (e?.message || 'Error');
+        status.style.color = '#FF4D6D';
+        toast("Error al eliminar: " + (e?.message || e), false);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ===== NUEVO REGISTRO =====
+    $("btnNuevo").addEventListener("click", abrirNuevoRegistro);
+
+    async function abrirNuevoRegistro() {
+      const modal = $("editOverlay");
+      const title = $("editTitle");
+      const sub = $("editSub");
+      const body = $("editBody");
+      if (!modal || !title || !sub || !body) return;
+
+      CURRENT_INSPECCION = null;
+      CURRENT_DETALLES = [];
+
+      modal.style.display = "grid";
+      title.textContent = "Nuevo Registro";
+      sub.textContent = "Agregar inspeccion faltante";
+
+      const familiarHtml = `
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 0">
+          <input type="checkbox" id="editFamiliar" />
+          <span style="font-size:13px;color:var(--muted)">Habitacion Familiar</span>
+        </label>
+      `;
+
+      body.innerHTML = `
+        <div class="editGrid">
+          <div class="editField">
+            <label>Modulo</label>
+            <select id="editModulo">
+              <option value="">Seleccionar...</option>
+              ${MODULOS.map(m =>
+                `<option value="${escHtml(m.id)}">${escHtml(m.descripcion || m.id)}</option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="editField">
+            <label>Habitacion</label>
+            <input id="editHabitacion" type="text" placeholder="Ej: 02, 10" />
+          </div>
+          <div class="editField">
+            <label>Fecha</label>
+            <input id="editFecha" type="date" />
+          </div>
+          <div class="editField">
+            <label>Camarera</label>
+            <select id="editCamarera">
+              <option value="">Seleccionar...</option>
+              ${CAMARERAS.map(c =>
+                `<option value="${c.id}">${escHtml(c.nombre)}</option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="editField">
+            <label>Tipo de Limpieza</label>
+            <select id="editTipo">
+              <option value="">Seleccionar...</option>
+              ${TIPOS.map(t =>
+                `<option value="${t.id}">${escHtml(t.nombre)}</option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="editField">
+            <label>Inspector</label>
+            <input id="editInspector" type="text" placeholder="Nombre del inspector" />
+          </div>
+          <div class="editField fullWidth">
+            ${familiarHtml}
+          </div>
+          <div class="editField fullWidth">
+            <label>Observaciones</label>
+            <textarea id="editObs" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="editActions">
+          <button class="success" id="btnGuardarNuevo" type="button">💾 Guardar Nuevo Registro</button>
+          <button id="btnCancelEdit" type="button" onclick="closeEditor()">Cancelar</button>
+        </div>
+        <div class="editStatus" id="editStatus"></div>
+      `;
+
+      // Set default date
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const fechaInput = $("editFecha");
+      if (fechaInput) fechaInput.value = `${y}-${m}-${d}`;
+
+      $("btnGuardarNuevo").addEventListener("click", guardarNuevoRegistro);
+    }
+
+    async function guardarNuevoRegistro() {
+      const modulo_id = $("editModulo")?.value;
+      const habitacion_etiqueta = $("editHabitacion")?.value.trim();
+      const fecha = $("editFecha")?.value;
+      const camarera_id = $("editCamarera")?.value;
+      const tipo_limpieza_id = $("editTipo")?.value;
+      const inspector_nombre = $("editInspector")?.value.trim();
+      const observaciones = $("editObs")?.value.trim();
+      const es_familiar = $("editFamiliar")?.checked ? 1 : 0;
+
+      if (!modulo_id || !habitacion_etiqueta || !fecha) {
+        toast("Modulo, habitacion y fecha son obligatorios", false);
+        return;
+      }
+
+      const payload = {
+        modulo_id,
+        habitacion_etiqueta,
+        fecha,
+        camarera_id: camarera_id ? Number(camarera_id) : undefined,
+        tipo_limpieza_id: tipo_limpieza_id ? Number(tipo_limpieza_id) : undefined,
+        inspector_nombre: inspector_nombre || '',
+        observaciones: observaciones || '',
+        es_familiar: !!es_familiar
+      };
+
+      const btn = $("btnGuardarNuevo") || $("btnGuardarEdit");
+      const status = $("editStatus");
+      btn.disabled = true;
+      status.textContent = '⏳ Guardando...';
+
+      try {
+        await apiPOST("/api/inspecciones/guardar", payload);
+        status.textContent = '✅ Registro creado exitosamente';
+        status.style.color = '#2EE59D';
+        toast("Nuevo registro creado.", true, 2500);
+        setTimeout(() => {
+          buscarRegistros();
+          closeEditor();
+        }, 800);
+      } catch (e) {
+        status.textContent = '❌ Error: ' + (e?.message || 'Error');
+        status.style.color = '#FF4D6D';
+        toast("Error al crear: " + (e?.message || e), false);
       } finally {
         btn.disabled = false;
       }
