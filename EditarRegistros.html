@@ -173,6 +173,10 @@
       background: rgba(10,14,28,.55); color: var(--text);
       outline: none; font-size: 13px;
     }
+    .editField input[type="checkbox"] {
+      width: auto; padding: 0; margin: 0; border: none; border-radius: 0;
+      background: none; outline: none; cursor: pointer;
+    }
     .editField input:focus, .editField select:focus, .editField textarea:focus { border-color: var(--primary); }
     .editField textarea { resize: vertical; min-height: 70px; }
 
@@ -298,6 +302,7 @@
     let CAMARERAS = [];
     let MODULOS = [];
     let TIPOS = [];
+    let HABITACIONES_EDIT = [];
     let CURRENT_INSPECCION = null;
     let CURRENT_DETALLES = [];
 
@@ -381,6 +386,35 @@
     async function loadTipos() {
       const data = await apiGET("/api/tipos-limpieza");
       TIPOS = Array.isArray(data?.data) ? data.data : [];
+    }
+
+    async function cargarHabitacionesEdit(moduloId, selectedHab) {
+      if (!moduloId) {
+        HABITACIONES_EDIT = [];
+        const sel = $("editHabitacion");
+        if (sel) {
+          sel.innerHTML = '<option value="">Seleccionar modulo primero...</option>';
+          sel.disabled = true;
+        }
+        return;
+      }
+      try {
+        const resp = await apiGET(`/api/rooms?modulo_id=${encodeURIComponent(moduloId)}`);
+        HABITACIONES_EDIT = Array.isArray(resp?.data) ? resp.data : [];
+        const sel = $("editHabitacion");
+        if (!sel) return;
+        sel.disabled = false;
+        sel.innerHTML = '<option value="">Seleccionar habitacion...</option>';
+        HABITACIONES_EDIT.forEach(h => {
+          const o = document.createElement("option");
+          o.value = h.etiqueta;
+          o.textContent = h.etiqueta + (Number(h.es_familiar) ? ' (Familiar)' : '');
+          if (selectedHab && String(h.etiqueta) === String(selectedHab)) o.selected = true;
+          sel.appendChild(o);
+        });
+      } catch (e) {
+        console.warn("Error cargando habitaciones:", e);
+      }
     }
 
     // ===== SEARCH =====
@@ -523,11 +557,18 @@
           </div>
           <div class="editField">
             <label>Modulo</label>
-            <input id="editModulo" type="text" value="${escHtml(data.modulo_id || '')}" />
+            <select id="editModulo">
+              <option value="">Seleccionar...</option>
+              ${MODULOS.map(m =>
+                `<option value="${escHtml(m.id)}" ${String(m.id) === String(data.modulo_id) ? 'selected' : ''}>${escHtml(m.descripcion || m.id)}</option>`
+              ).join('')}
+            </select>
           </div>
           <div class="editField">
             <label>Habitacion</label>
-            <input id="editHabitacion" type="text" value="${escHtml(data.habitacion_etiqueta || '')}" />
+            <select id="editHabitacion" ${data.modulo_id ? '' : 'disabled'}>
+              <option value="">${data.modulo_id ? 'Cargando...' : 'Selecciona un modulo primero...'}</option>
+            </select>
           </div>
           <div class="editField">
             <label>Camarera</label>
@@ -589,6 +630,16 @@
           const mf = $("motivoField");
           if (mf) mf.style.display = this.checked ? "" : "none";
         });
+      }
+      const modSel = $("editModulo");
+      if (modSel) {
+        modSel.addEventListener("change", function() {
+          cargarHabitacionesEdit(this.value, null);
+        });
+        // Cargar habitaciones del modulo actual al abrir
+        if (data.modulo_id) {
+          cargarHabitacionesEdit(data.modulo_id, data.habitacion_etiqueta);
+        }
       }
     }
 
@@ -776,7 +827,9 @@
           </div>
           <div class="editField">
             <label>Habitacion</label>
-            <input id="editHabitacion" type="text" placeholder="Ej: 02, 10" />
+            <select id="editHabitacion" disabled>
+              <option value="">Selecciona un modulo primero...</option>
+            </select>
           </div>
           <div class="editField">
             <label>Fecha</label>
@@ -826,6 +879,19 @@
       const d = String(now.getDate()).padStart(2, '0');
       const fechaInput = $("editFecha");
       if (fechaInput) fechaInput.value = `${y}-${m}-${d}`;
+
+      const modSelNuevo = $("editModulo");
+      if (modSelNuevo) {
+        modSelNuevo.addEventListener("change", function() {
+          cargarHabitacionesEdit(this.value, null);
+        });
+      }
+      // Reset habitacion select when opening new record
+      const habSel = $("editHabitacion");
+      if (habSel) {
+        habSel.disabled = true;
+        habSel.innerHTML = '<option value="">Selecciona un modulo primero...</option>';
+      }
 
       $("btnGuardarNuevo").addEventListener("click", guardarNuevoRegistro);
     }
