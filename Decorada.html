@@ -42,7 +42,7 @@
         <img class="logo" src="./Oficial_JDL_blanco.png" alt="Logo">
         <div>
           <h1>Formulario Decorada</h1>
-          <div class="hint">Registra la decoracion. Tipo de limpieza fijo: Salida.</div>
+          <div class="hint">Registra la decoracion. Selecciona el tipo de limpieza.</div>
         </div>
       </div>
     </div>
@@ -55,7 +55,7 @@
           <div><label>Encargada</label><select id="encargadaSel"><option value="">Cargando...</option></select></div>
           <div><label>Supervisor</label><input id="supervisorTxt" type="text" /></div>
           <div><label>Fecha</label><input id="fechaTxt" type="date" /></div>
-          <div><label>Tipo limpieza</label><input id="tipoTxt" type="text" value="Salida" readonly /></div>
+          <div><label>Tipo limpieza</label><select id="tipoLimpiezaSel"><option value="">Cargando...</option></select></div>
         </div>
         <div class="boxNote">Los checks no se muestran: se enviaran todos como <b>No Aplica</b>. La hora se toma al presionar <b>Guardar Decorada</b>.</div>
         <div class="btns">
@@ -69,7 +69,7 @@
     const $ = (id) => document.getElementById(id);
     const APP_BASE = window.location.pathname.replace(/\/[^/]*$/, "/").replace(/\/+$/, "");
     const API_BASE = window.location.origin + APP_BASE;
-    let TIME_OFFSET_MS = 0, MODULES = [], ROOMS_BY_MODULE = new Map(), CAMARERAS = [];
+    let TIME_OFFSET_MS = 0, MODULES = [], ROOMS_BY_MODULE = new Map(), CAMARERAS = [], TIPOS_LIMPIEZA = [];
     const qs = new URLSearchParams(window.location.search);
     const CTX = { moduleId: (qs.get("m") || "").trim(), user: (qs.get("u") || "").trim(), dept: (qs.get("d") || "").trim() };
 
@@ -154,6 +154,20 @@
       return ROOMS_BY_MODULE.get(m) || [];
     }
 
+    async function loadTiposLimpieza() {
+      const data = await apiGET("/api/tipos-limpieza");
+      TIPOS_LIMPIEZA = Array.isArray(data) ? data : [];
+      const sel = $("tipoLimpiezaSel");
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Seleccionar...</option>';
+      TIPOS_LIMPIEZA.forEach(t => {
+        const o = document.createElement("option");
+        o.value = t.id;
+        o.textContent = t.nombre;
+        sel.appendChild(o);
+      });
+    }
+
     async function renderRoomsForModule(mod) {
       const sel = $("habitacionSel");
       sel.innerHTML = '<option value="">Seleccionar...</option>';
@@ -177,6 +191,9 @@
       if (!etiqueta) { toast("Selecciona una habitacion.", false); return; }
       if (!encargada_id) { toast("Selecciona la encargada.", false); return; }
       if (!fecha) { toast("Selecciona la fecha.", false); return; }
+      const tipoLimpiezaId = $("tipoLimpiezaSel")?.value;
+      if (!tipoLimpiezaId) { toast("Selecciona el tipo de limpieza.", false); return; }
+      const tipoNombre = TIPOS_LIMPIEZA.find(t => String(t.id) === String(tipoLimpiezaId))?.nombre || "Salida";
 
       const encargada = CAMARERAS.find(c => String(c.id) === String(encargada_id));
       const encargadaName = encargada ? encargada.nombre : "";
@@ -185,7 +202,7 @@
         "Area: " + etiqueta,
         "Encargada: " + encargadaName,
         "Supervisor: " + (supervisor || "-"),
-        "Tipo de limpieza: Salida",
+        "Tipo de limpieza: " + tipoNombre,
         "Fecha: " + fecha,
         "Hora: " + ahoraGT,
         "Checklist: Todos en No Aplica (Decorada)."
@@ -204,7 +221,7 @@
         habitacion_etiqueta: etiqueta,
         fecha: fecha,
         camarera_id: encargada_id ? Number(encargada_id) : null,
-        tipo_limpieza_id: null,
+        tipo_limpieza_id: Number(tipoLimpiezaId),
         inspector_nombre: supervisor || CTX.user || "",
         inspector_dept: CTX.dept || "",
         inicio_limpieza: null,
@@ -268,6 +285,7 @@
         CAMARERAS = Array.isArray(camas) ? camas : [];
         renderModules();
         renderCamareras();
+        await loadTiposLimpieza();
         await renderRoomsForModule($("moduloSel").value);
         // Mostrar formulario
         $("loadingMsg").style.display = "none";
