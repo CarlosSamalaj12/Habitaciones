@@ -440,14 +440,16 @@ function normalizeRoom(r) {
     inicio_limpieza: r.inicio_limpieza || null,
     fin_limpieza: r.fin_limpieza || null,
     inicio_repaso: r.inicio_repaso || null,
-   fin_repaso: r.fin_repaso || null,
+   repaso: r.repaso || null,
     estado_limpieza: r.estado_limpieza || null,
     obs_limpieza: r.obs_limpieza || "",
     inspected_by: r.inspected_by || null,
     camarera_asignada: r.camarera_asignada || null,
     tipo_limpieza: r.tipo_limpieza || null,
     inspector_asignado: r.inspector_asignado || null,
-    ts_mod: r.ts_mod || null
+    prioridad_limpieza: r.prioridad_limpieza || null,
+    decorada: r.decorada,
+    actualizado: r.actualizado || null
   };
 }
 
