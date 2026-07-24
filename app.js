@@ -1626,12 +1626,12 @@ function renderRooms() {
       </div>
 
       <div class="roomActions">
-        <button class="raBtn ocupado" data-action="ocupado" aria-label="Ocupado">${ICONS.ocupado}</button>
-        <button class="raBtn limpieza" data-action="limpieza" aria-label="Lista / Iniciar limpieza">${ICONS.limpieza}</button>
-        <button class="raBtn mant" data-action="mant" aria-label="Mantenimiento">${ICONS.mant}</button>
-        <button class="raBtn liberar" data-action="liberar" aria-label="Liberar habitacion">${ICONS.liberar}</button>
-        <button class="raBtn prio" data-action="prio" aria-label="Prioridad limpieza">${ICONS.prio}</button>
-        <button class="raBtn repaso" data-action="repaso" aria-label="Repaso">${ICONS.repaso}</button>
+        <button class="raBtn ocupado" data-action="ocupado" data-mobile-label="OCUP" aria-label="Ocupado">${ICONS.ocupado}</button>
+        <button class="raBtn limpieza" data-action="limpieza" data-mobile-label="LIMP" aria-label="Lista / Iniciar limpieza">${ICONS.limpieza}</button>
+        <button class="raBtn mant" data-action="mant" data-mobile-label="MANT" aria-label="Mantenimiento">${ICONS.mant}</button>
+        <button class="raBtn liberar" data-action="liberar" data-mobile-label="LIBRE" aria-label="Liberar habitacion">${ICONS.liberar}</button>
+        <button class="raBtn prio" data-action="prio" data-mobile-label="PRIO" aria-label="Prioridad limpieza">${ICONS.prio}</button>
+        <button class="raBtn repaso" data-action="repaso" data-mobile-label="REP" aria-label="Repaso">${ICONS.repaso}</button>
       </div>
     `;
 
