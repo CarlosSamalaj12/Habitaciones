@@ -1240,7 +1240,128 @@ body.layout-mobile .brandText #summaryProgressAll{
       0 0 30px rgba(var(--accent), .30);
   }
 
-  /* Room index strip */
+  /* Search row: sticky justo arriba del roomIndex */
+  .searchRow{
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    background: linear-gradient(180deg, var(--bg0) 75%, transparent 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 4px 0 6px;
+  }
+  .searchRow .searchWrap{
+    flex: 1;
+    position: relative;
+    box-shadow: 0 6px 18px rgba(0,0,0,.35), 0 0 0 1px rgba(124,58,237,.12);
+    border-radius: 14px;
+    transition: box-shadow .2s ease, transform .2s ease;
+  }
+  .searchRow .searchWrap:hover{
+    box-shadow: 0 8px 22px rgba(0,0,0,.4), 0 0 0 1px rgba(124,58,237,.22);
+  }
+  .searchRow .searchWrap:focus-within{
+    box-shadow:
+      0 8px 22px rgba(0,0,0,.4),
+      0 0 0 2px rgba(124,58,237,.55),
+      0 0 24px rgba(124,58,237,.18);
+    transform: translateY(-1px);
+  }
+  .searchRow .searchInput{
+    width: 100%;
+    /* font-size >=16px evita que iOS auto-zoomee al hacer focus */
+    font-size: 16px;
+    padding: 9px 38px 9px 34px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.10);
+    background: linear-gradient(180deg, rgba(124,58,237,.06), rgba(255,255,255,.02));
+    color: var(--text);
+    font-weight: 600;
+    letter-spacing: .01em;
+    transition: border-color .2s ease, background .2s ease;
+  }
+  .searchRow .searchInput::placeholder{
+    color: rgba(234,240,255,.45);
+    font-weight: 500;
+  }
+  .searchRow .searchWrap::before{
+    content:"🔍";
+    position:absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    pointer-events: none;
+    opacity: .75;
+    transition: opacity .2s ease, transform .2s ease;
+  }
+  .searchRow .searchWrap:focus-within::before{
+    opacity: 1;
+    transform: translateY(-50%) scale(1.1);
+  }
+  .searchRow .searchWrap::after{
+    content: "✕";
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%) scale(.7);
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: rgba(255,255,255,.08);
+    color: rgba(234,240,255,.6);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease, background .18s ease;
+  }
+  .searchRow .searchWrap.has-value::after{
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+    pointer-events: auto;
+  }
+  .searchRow .searchWrap:focus-within::after,
+  .searchRow .searchWrap.has-value:hover::after{ background: rgba(239,68,68,.35); color: #fff; }
+  .searchRow .searchWrap.has-value:active::after{ background: rgba(239,68,68,.55); }
+  .searchRow .searchClearBtn{
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%) scale(.7);
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255,255,255,.08);
+    color: rgba(234,240,255,.7);
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 2;
+    transition: opacity .18s ease, transform .18s ease, background .18s ease, color .18s ease;
+  }
+  .searchRow .searchWrap.has-value .searchClearBtn{
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+    pointer-events: auto;
+  }
+  .searchRow .searchWrap.has-value .searchClearBtn:hover{
+    background: rgba(239,68,68,.35);
+    color: #fff;
+  }
+  .searchRow .searchWrap.has-value .searchClearBtn:active{
+    background: rgba(239,68,68,.55);
+  }
+
+  /* Room index strip: sticky justo debajo del buscador */
   .roomIndex{
     display: flex;
     flex-wrap: nowrap;
@@ -1252,6 +1373,17 @@ body.layout-mobile .brandText #summaryProgressAll{
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     scroll-snap-type: x mandatory;
+    position: sticky;
+    top: 44px;
+    z-index: 5;
+    background: linear-gradient(180deg, var(--bg0) 70%, transparent 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: transform .25s ease;
+    will-change: transform;
+  }
+  .roomIndex.roomIndexHidden{
+    transform: translateY(-100%);
   }
   .roomIndex::-webkit-scrollbar{ display: none; }
   .roomIndexBtn{
