@@ -244,7 +244,9 @@
   <script src="./app.js?v=20260214e"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      var swUrl = './sw.js?v=' + Date.now();
+      // URL estatica: NO usar Date.now() (causa loop infinito de reload).
+      // El cache-busting lo hace updateViaCache:'none' + el cambio de CACHE_NAME en sw.js.
+      var swUrl = './sw.js?v=hk-v1.1.5';
       navigator.serviceWorker.register(swUrl, { updateViaCache: 'none' }).then(function(reg) {
         window.__swReg = reg;
 
@@ -254,21 +256,15 @@
           if (!newSW) return;
           newSW.addEventListener('statechange', function() {
             if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-              window.__swUpdatePending = true;
-              // Esperar un instante y forzar SKIP_WAITING del nuevo SW
-              setTimeout(function() {
-                if (newSW && newSW.state === 'installed') {
-                  newSW.postMessage({ type: 'SKIP_WAITING' });
-                }
-              }, 800);
+              // Solo mostrar toast. NO forzar SKIP_WAITING ni recargar solo.
+              showSwUpdateToast('Nueva version disponible. Toca Actualizar para aplicarla.');
             }
           });
         });
 
-        // Si ya hay un SW esperando, activarlo ya
-        if (reg.waiting) {
-          window.__swUpdatePending = true;
-          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        // Si ya hay un SW esperando, mostrar toast (no auto-reload)
+        if (reg.waiting && navigator.serviceWorker.controller) {
+          showSwUpdateToast('Nueva version disponible. Toca Actualizar para aplicarla.');
         }
 
         // Verificar version contra el servidor
@@ -278,34 +274,18 @@
       }).catch(function(err) {
         console.warn('[SW] No se pudo registrar:', err);
       });
-
-      // Cuando el nuevo SW toma el control, recargar
-      var refreshing = false;
-      navigator.serviceWorker.addEventListener('controllerchange', function() {
-        if (refreshing) return;
-        if (window.__swUpdatePending) {
-          refreshing = true;
-          location.reload();
-        }
-      });
     }
 
-    // Verificar actualizaciones: al volver a la app y cada 10 min
-    function triggerAppUpdate() {
+    // Verificar actualizaciones periodicamente (cada 15 min, sin spamear)
+    setInterval(function() {
       if (typeof window.update === 'function') {
         window.__updateChecked = false;
         window.update();
       }
-      // Forzar al SW a re-chequear su propio archivo
       if (window.__swReg && typeof window.__swReg.update === 'function') {
         window.__swReg.update().catch(function(){});
       }
-    }
-    window.addEventListener('focus', triggerAppUpdate);
-    document.addEventListener('visibilitychange', function() {
-      if (document.visibilityState === 'visible') triggerAppUpdate();
-    });
-    setInterval(triggerAppUpdate, 10 * 60 * 1000);
+    }, 15 * 60 * 1000);
 
     function showSwUpdateToast(msg) {
       var existing = document.getElementById('swUpdateToast');
