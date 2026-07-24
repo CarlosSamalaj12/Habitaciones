@@ -1,4 +1,4 @@
-const CACHE_NAME = "hk-cache-v1.1.4";
+const CACHE_NAME = "hk-cache-v1.1.5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -52,6 +52,13 @@ self.addEventListener("install", (e) => {
     })
   );
   self.skipWaiting();
+});
+
+// Mensajes desde la pagina: forzar SKIP_WAITING cuando el usuario acepta la actualizacion
+self.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 // Activacion: limpiar caches viejos
