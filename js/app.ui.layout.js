@@ -37,15 +37,20 @@ function adjustMobileLayout() {
     document.body.classList.add('layout-mobile');
   } else if (!isMobile && alreadyMobile) {
     const $userLabel = $('#activeUserLabel');
+    const $subtitle = document.querySelector('.brandText > .t2:not(#activeUserLabel)');
     const $row = document.querySelector('.summaryRow');
     if ($row) {
-      if ($brand && $logoBox) {
-        $brand.prepend($logoBox);
+      if ($summary && $logoBox) {
+        $summary.appendChild($logoBox);
         $logoBox.classList.remove('logo-moved');
       }
-      if ($userLabel) {
-        $userLabel.before($progAll);
-        $userLabel.before($summary);
+      // Reinsert summary y progress en su lugar original (despues del subtitulo)
+      if ($subtitle) {
+        $subtitle.after($summary);
+        $summary.after($progAll);
+      } else if ($userLabel) {
+        $userLabel.closest('.titleRow').after($summary);
+        $summary.after($progAll);
       }
       $row.remove();
     }

@@ -1113,8 +1113,8 @@ function adjustMobileLayout() {
     const $userLabel = $('#activeUserLabel');
     const $row = document.querySelector('.summaryRow');
     if ($row) {
-      if ($brand && $logoBox) {
-        $brand.prepend($logoBox);
+      if ($summary && $logoBox) {
+        $summary.appendChild($logoBox);
         $logoBox.classList.remove('logo-moved');
       }
       if ($userLabel) {

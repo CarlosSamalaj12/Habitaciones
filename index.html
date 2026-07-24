@@ -54,12 +54,11 @@
   <!-- TOP -->
   <div class="top">
     <div class="brand">
-      <div class="logoBox">
-        <img class="logoImg" src="./Oficial_JDL_blanco.png" alt="Logo" />
-        <img class="logoImg" src="./cronografo.png" alt="Logo" />
-      </div>
       <div class="brandText">
-        <div class="t1">Gestion de Habitaciones</div>
+        <div class="titleRow">
+          <div class="t1">Gestion de Habitaciones</div>
+          <div class="t2" id="activeUserLabel">Usuario: -</div>
+        </div>
         <div class="t2">Recepcion / Camareria - Control de limpieza</div>
         <div class="summaryBar" id="summaryBar">
           <div class="summaryPill sucias"><span data-short="OCUP.">Ocupadas Sucias</span><b id="sumSucias">0</b></div>
@@ -71,6 +70,10 @@
           <div class="summaryPill prioridad"><span data-short="PRIO.">Prioridad</span><b id="sumPrio">0</b></div>
           <div class="summaryPill inspeccion"><span data-short="INSP.">Inspeccion</span><b id="sumInspeccion">0</b></div>
           <div class="summaryPill repaso"><span data-short="REP.">Repaso</span><b id="sumRepaso">0</b></div>
+          <div class="logoBox" id="logoBox">
+            <img class="logoImg" src="./Oficial_JDL_blanco.png" alt="Logo" />
+            <img class="logoImg" src="./cronografo.png" alt="Logo" />
+          </div>
         </div>
 
         <div class="summaryProgress" id="summaryProgressAll">
@@ -82,17 +85,43 @@
             <div class="summaryProgFill" id="sumProgFillAll"></div>
           </div>
         </div>
-
-        <div class="t2" id="activeUserLabel">Usuario: -</div>
       </div>
     </div>
 
     <div class="rightTop">
-      <button id="btnLock" class="btnGhost" type="button">BLOQUEAR</button>
+      <button id="btnMenu" class="btnGhost menuBtn" type="button" title="Menu">
+        <span class="menuIcon">☰</span>
+      </button>
+      <div id="menuDropdown" class="menuDropdown hidden">
+        <div class="menuDropdownContent">
+          <div class="menuUserSection" id="menuUserSection">
+            <div class="menuUserAvatar" id="menuUserAvatar">👤</div>
+            <div class="menuUserInfo">
+              <div class="menuUserName" id="menuUserName">Usuario</div>
+              <div class="menuUserRole" id="menuUserRole">-</div>
+            </div>
+          </div>
+          <div class="menuDivider"></div>
+          <div class="menuSection">
+            <div class="menuSectionTitle">📋 Modulos</div>
+            <div id="menuModules" class="menuModules"></div>
+          </div>
+          <div class="menuDivider"></div>
+          <div class="menuSection">
+            <div class="menuSectionTitle">🔧 Acciones</div>
+            <button id="menuBtnLock" class="menuActionBtn" type="button">🔒 Bloquear sesion</button>
+            <button id="menuBtnReportes" class="menuActionBtn hidden" type="button">📊 Reportes</button>
+            <button id="menuBtnEditarReg" class="menuActionBtn hidden" type="button">📝 Editar Registros</button>
+            <button id="menuBtnAdmin" class="menuActionBtn hidden" type="button">⚙️ Admin</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botones originales ocultos (compatibilidad JS) -->
+      <button id="btnLock" class="btnGhost hidden" type="button">BLOQUEAR</button>
       <button id="btnReportes" class="btnGhost hidden" type="button">REPORTES</button>
       <button id="btnEditarReg" class="btnGhost hidden" type="button">EDITAR</button>
       <button id="btnAdmin" class="btnGhost hidden" type="button">ADMIN</button>
-
     </div>
   </div>
 
@@ -107,7 +136,7 @@
       <div class="headLeft">
         <h2>Habitaciones</h2>
         <div class="searchWrap">
-          <input id="roomSearch" class="searchInput" type="text" placeholder="Buscar habitacion..." autocomplete="off" />
+          <input id="roomSearch" class="searchInput" type="text" placeholder="Buscar en todos los modulos..." autocomplete="off" />
         </div>
       </div>
       <div class="headActions">

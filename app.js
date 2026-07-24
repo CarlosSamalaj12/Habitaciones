@@ -230,6 +230,9 @@ function updateAdminUI() {
   const btnAdmin = $("btnAdmin");
   const btnReportes = $("btnReportes");
   const btnEditarReg = $("btnEditarReg");
+  const menuBtnReportes = $("menuBtnReportes");
+  const menuBtnEditarReg = $("menuBtnEditarReg");
+  const menuBtnAdmin = $("menuBtnAdmin");
   const sess = getSession();
   const role = roleOf(sess);
   const visible = sess?.name && isAdmin(role);
@@ -244,6 +247,18 @@ function updateAdminUI() {
   if (btnEditarReg) {
     if (sess?.name && canViewReports(role)) btnEditarReg.classList.remove("hidden");
     else btnEditarReg.classList.add("hidden");
+  }
+  if (menuBtnReportes) {
+    if (sess?.name && canViewReports(role)) menuBtnReportes.classList.remove("hidden");
+    else menuBtnReportes.classList.add("hidden");
+  }
+  if (menuBtnEditarReg) {
+    if (sess?.name && canViewReports(role)) menuBtnEditarReg.classList.remove("hidden");
+    else menuBtnEditarReg.classList.add("hidden");
+  }
+  if (menuBtnAdmin) {
+    if (visible) menuBtnAdmin.classList.remove("hidden");
+    else menuBtnAdmin.classList.add("hidden");
   }
 }
 
@@ -677,12 +692,13 @@ function showRoomNotification(title, body, tag) {
 function unlockNotifAudio() {
   if (notifAudioUnlocked) return;
   try {
-    if (typeof AudioContext !== "undefined" || typeof webkitAudioContext !== "undefined") {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === "suspended") audioCtx.resume();
-      notifAudioUnlocked = true;
-    }
-  } catch (e) {}
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (typeof Ctx === "undefined") return;
+    // Se llama desde un listener de click/touchstart/keydown, asi que estamos en un user gesture.
+    // Crear el AudioContext aqui lo deja en estado "running" automaticamente.
+    audioCtx = new Ctx();
+    notifAudioUnlocked = true;
+  } catch (e) { /* silencio: no es critico */ }
 }
 
 ["click", "touchstart", "keydown"].forEach(ev => {
@@ -691,7 +707,11 @@ function unlockNotifAudio() {
 
 function playNotificationSound() {
   try {
-    if (!audioCtx || audioCtx.state !== "running") return;
+    if (!audioCtx) return;
+    if (audioCtx.state === "suspended") {
+      // Sin user gesture, resume() tira warning. Silenciosamente no suena.
+      return;
+    }
     [800, 1000].forEach((freq, i) => {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
@@ -704,7 +724,7 @@ function playNotificationSound() {
       osc.start(audioCtx.currentTime + i * 0.15);
       osc.stop(audioCtx.currentTime + i * 0.15 + 0.25);
     });
-  } catch (e) {}
+  } catch (e) { /* silencio: no es critico */ }
 }
 
 async function requestNotifPermission() {
@@ -981,6 +1001,7 @@ $("btnLogin").addEventListener("click", async () => {
     renderAll();
     renderActiveUser();
     adjustMobileLayout();
+    adjustSummaryLabels();
   } catch (e) {
     $("loginErr").classList.remove("hidden");
     toast("err", "Error", e.message || "Contrasena incorrecta");
@@ -1012,6 +1033,128 @@ function saveCleanedMap(map) {
   try { localStorage.setItem(CLEANED_KEY, JSON.stringify(map)); } catch {}
 }
 
+let menuOpen = false;
+
+function toggleMenu() {
+  menuOpen = !menuOpen;
+  const dropdown = $("menuDropdown");
+  const btn = $("btnMenu");
+  if (!dropdown || !btn) return;
+  if (menuOpen) {
+    dropdown.classList.remove("hidden");
+    btn.classList.add("open");
+    // Posicionar dropdown justo debajo del boton en mobile, alineado al borde del boton
+    if (window.innerWidth <= 767) {
+      const rect = btn.getBoundingClientRect();
+      const ddWidth = dropdown.offsetWidth || 320;
+      const viewportW = window.innerWidth;
+      // Preferir alineado al borde izquierdo del boton; si no cabe, alinear al derecho
+      let left = rect.left;
+      if (left + ddWidth > viewportW - 8) {
+        left = Math.max(8, rect.right - ddWidth);
+      }
+      dropdown.style.top = (rect.bottom + 6) + "px";
+      dropdown.style.left = left + "px";
+      dropdown.style.right = "auto";
+    } else {
+      // Resetear estilos inline en desktop (deja que el CSS position:absolute funcione)
+      dropdown.style.top = "";
+      dropdown.style.right = "";
+      dropdown.style.left = "";
+    }
+    renderMenuModules();
+  } else {
+    dropdown.classList.add("hidden");
+    btn.classList.remove("open");
+  }
+}
+
+function closeMenu() {
+  if (!menuOpen) return;
+  menuOpen = false;
+  const dropdown = $("menuDropdown");
+  const btn = $("btnMenu");
+  if (dropdown) dropdown.classList.add("hidden");
+  if (btn) btn.classList.remove("open");
+}
+
+function updateMenuUser() {
+  const nameEl = $("menuUserName");
+  const roleEl = $("menuUserRole");
+  const avatarEl = $("menuUserAvatar");
+  if (!nameEl) return;
+  const sess = getSession();
+  if (sess?.name) {
+    nameEl.textContent = sess.name;
+    const role = roleOf(sess);
+    const roleLabels = { ADMIN: "Administrador", GERENCIA: "Gerencia", REPORTES: "Reportes", AMA_LLAVES: "Ama de Llaves", RECEPCION: "Recepcion" };
+    roleEl.textContent = roleLabels[role] || role;
+    const avatars = { ADMIN: "⚙️", GERENCIA: "📋", REPORTES: "📊", AMA_LLAVES: "🧹", RECEPCION: "🔑" };
+    if (avatarEl) avatarEl.textContent = avatars[role] || "👤";
+  } else {
+    nameEl.textContent = "Sin sesion";
+    roleEl.textContent = "-";
+    if (avatarEl) avatarEl.textContent = "👤";
+  }
+}
+
+function renderMenuModules() {
+  updateMenuUser();
+  const container = $("menuModules");
+  if (!container) return;
+  container.innerHTML = "";
+  MODULES.forEach(m => {
+    const b = document.createElement("button");
+    b.className = "menuModuleItem" + (String(m.id) === String(activeModuleId) ? " active" : "");
+    b.innerHTML = `<span class="menuModDot"></span>${m.descripcion}`;
+    b.addEventListener("click", async () => {
+      activeModuleId = String(m.id);
+      $("selModule").textContent = m.descripcion;
+      if (!roomsCache.get(activeModuleId)) {
+        await loadRooms(activeModuleId);
+      }
+      renderModules();
+      renderMenuModules();
+      renderRooms();
+      closeMenu();
+    });
+    container.appendChild(b);
+  });
+}
+
+$("btnMenu")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  toggleMenu();
+});
+
+document.addEventListener("click", (e) => {
+  if (!menuOpen) return;
+  const dropdown = $("menuDropdown");
+  const btn = $("btnMenu");
+  if (!dropdown || !btn) return;
+  if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+    closeMenu();
+  }
+});
+
+$("menuBtnLock")?.addEventListener("click", () => {
+  closeMenu();
+  unsubscribeFromPush();
+  showLogin();
+});
+$("menuBtnReportes")?.addEventListener("click", () => {
+  closeMenu();
+  openReportes();
+});
+$("menuBtnEditarReg")?.addEventListener("click", () => {
+  closeMenu();
+  openEditarRegistros();
+});
+$("menuBtnAdmin")?.addEventListener("click", () => {
+  closeMenu();
+  openAdminPanel();
+});
+
 function renderModules() {
   const row = $("modulesRow");
   row.innerHTML = "";
@@ -1030,7 +1173,9 @@ function renderModules() {
       }
 
       renderModules();
+      renderMenuModules();
       renderRooms();
+      closeMenu();
     });
 
     row.appendChild(b);
@@ -1208,15 +1353,20 @@ function adjustMobileLayout() {
     document.body.classList.add('layout-mobile');
   } else if (!isMobile && alreadyMobile) {
     const $userLabel = $('#activeUserLabel');
+    const $subtitle = document.querySelector('.brandText > .t2:not(#activeUserLabel)');
     const $row = document.querySelector('.summaryRow');
     if ($row) {
-      if ($brand && $logoBox) {
-        $brand.prepend($logoBox);
+      if ($summary && $logoBox) {
+        $summary.appendChild($logoBox);
         $logoBox.classList.remove('logo-moved');
       }
-      if ($userLabel) {
-        $userLabel.before($progAll);
-        $userLabel.before($summary);
+      // Reinsert summary y progress en su lugar original (despues del subtitulo)
+      if ($subtitle) {
+        $subtitle.after($summary);
+        $summary.after($progAll);
+      } else if ($userLabel) {
+        $userLabel.closest('.titleRow').after($summary);
+        $summary.after($progAll);
       }
       $row.remove();
     }
@@ -1350,10 +1500,18 @@ function renderRooms() {
   const sess = getSession();
   const role = roleOf(sess);
 
-  const rooms = roomsCache.get(String(activeModuleId)) || [];
-  if (!rooms.length) {
-    grid.innerHTML = '<div class="emptyRooms">No hay habitaciones en este modulo.</div>';
-    return;
+  // Cuando hay texto en el buscador, buscar en TODOS los modulos
+  const isGlobalSearch = !!roomSearchQuery;
+  let rooms;
+  if (isGlobalSearch) {
+    rooms = [];
+    roomsCache.forEach(arr => { if (Array.isArray(arr)) rooms.push(...arr); });
+  } else {
+    rooms = roomsCache.get(String(activeModuleId)) || [];
+    if (!rooms.length) {
+      grid.innerHTML = '<div class="emptyRooms">No hay habitaciones en este modulo.</div>';
+      return;
+    }
   }
 
   let filteredRooms = rooms;
@@ -1363,13 +1521,11 @@ function renderRooms() {
       return etiqueta.includes(roomSearchQuery);
     });
     if (!filteredRooms.length) {
-      grid.innerHTML = '<div class="emptyRooms">Sin resultados para "' + roomSearchQuery + '"</div>';
+      grid.innerHTML = '<div class="emptyRooms">Sin resultados para "' + roomSearchQuery + '" en ningun modulo</div>';
       updateSummaryCounts();
       return;
     }
   }
-
-  const moduleName = MODULES.find(m => String(m.id) === String(activeModuleId))?.descripcion || "";
 
   const cleanedMap = loadCleanedMap();
   let cleanedDirty = false;
@@ -1378,6 +1534,7 @@ function renderRooms() {
   sorted.forEach(room => {
     const k = roomKey(room.modulo_id, room.etiqueta);
     const { cls, badge } = roomClassByEstado(room.estado);
+    const roomModuleName = MODULES.find(m => String(m.id) === String(room.modulo_id))?.descripcion || "";
 
     let cleanedAt = cleanedMap[k] || null;
     if (room.estado !== "libre" && cleanedAt) {
@@ -1452,7 +1609,7 @@ function renderRooms() {
       ${cleanTagHTML}
       ${decoradaTagHTML}
       <div class="roomNum">${room.etiqueta}</div>
-      <div class="roomState">${moduleName}</div>
+      <div class="roomState">${roomModuleName}</div>
       <div class="roomOcc">${(showOccupied) && (room.adultos > 0 || room.ninos > 0) ? `&#128101; ${room.adultos || 0} / ${room.ninos || 0}` : ""}</div>
       ${precioStr}
       ${obsChips}
@@ -1938,8 +2095,34 @@ setInterval(syncServerTime, 5 * 60 * 1000);
 let resizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(adjustMobileLayout, 200);
+  resizeTimer = setTimeout(() => {
+    adjustMobileLayout();
+    adjustSummaryLabels();
+  }, 200);
 });
+
+// Swaps pill labels to short version on mobile, full on desktop.
+// Stores the original text on first run.
+let _pillLabelOriginals = null;
+function adjustSummaryLabels() {
+  const isMobile = window.innerWidth <= 767;
+  const pills = document.querySelectorAll('#summaryBar .summaryPill span');
+  if (!_pillLabelOriginals) {
+    _pillLabelOriginals = new Map();
+    pills.forEach((el, i) => {
+      _pillLabelOriginals.set(el, el.textContent);
+    });
+  }
+  pills.forEach((el) => {
+    const full = _pillLabelOriginals.get(el);
+    if (isMobile) {
+      const short = el.getAttribute('data-short');
+      if (short) el.textContent = short;
+    } else {
+      if (full) el.textContent = full;
+    }
+  });
+}
 
 /* =========================
    INIT
@@ -1961,6 +2144,7 @@ window.addEventListener('resize', () => {
     renderAll();
     renderActiveUser();
     adjustMobileLayout();
+    adjustSummaryLabels();
     requestNotifPermission();
   } catch (e) {
     console.error(e);
