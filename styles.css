@@ -1021,7 +1021,10 @@ body.layout-mobile .brandText #summaryProgressAll{
   h2{
     font-size: 13px;
     margin:4px 0;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
+  .headLeft{ flex: 1 1 auto; min-width: 0; }
   .headActions{
     gap:6px;
   }
@@ -1393,9 +1396,11 @@ body.layout-mobile .brandText #summaryProgressAll{
   align-items:center;
   gap:12px;
   flex-wrap:wrap;
+  min-width: 0;
 }
 .searchWrap{
   position:relative;
+  min-width: 0;
 }
 .searchInput{
   padding:8px 12px 8px 32px;
@@ -1405,15 +1410,13 @@ body.layout-mobile .brandText #summaryProgressAll{
   color:var(--text);
   outline:none;
   font-size:13px;
-  width:170px;
-  transition:width .2s ease,border-color .2s ease;
+  transition:width .2s ease,border-color .2s ease,box-shadow .2s ease;
 }
 .searchInput::placeholder{
   color:var(--muted);
   opacity:.7;
 }
 .searchInput:focus{
-  width:220px;
   border-color:rgba(124,58,237,.5);
   box-shadow:0 0 0 3px rgba(124,58,237,.15);
 }
@@ -1426,6 +1429,12 @@ body.layout-mobile .brandText #summaryProgressAll{
   font-size:12px;
   pointer-events:none;
   opacity:.5;
+}
+
+/* Desktop: ancho fijo del input + expansion al focus */
+@media (min-width: 768px){
+  .searchInput{ width: 170px; }
+  .searchInput:focus{ width: 240px; }
 }
 
 /* =========================
