@@ -973,6 +973,9 @@ body.layout-mobile .brandText #summaryProgressAll{
     height: 100dvh;
     min-height: 100dvh;
     overflow: hidden;
+    /* Prevenir que iOS auto-zoomee al enfocar inputs pequenos */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
   .top{
     position: relative;
@@ -1207,12 +1210,16 @@ body.layout-mobile .brandText #summaryProgressAll{
   }
   .searchInput{
     width: 100%;
-    font-size: 12px;
-    padding: 6px 10px 6px 28px;
+    /* font-size >=16px evita que iOS auto-zoomee al hacer focus */
+    font-size: 16px;
+    padding: 7px 10px 7px 28px;
   }
   .searchInput:focus{
     width: 100%;
+    font-size: 16px;
   }
+  /* Regla global: en mobile, todos los inputs con font-size >= 16px para evitar el auto-zoom de iOS */
+  input, textarea, select{ font-size: 16px !important; }
   .searchWrap::before{
     font-size: 10px;
     left: 8px;
