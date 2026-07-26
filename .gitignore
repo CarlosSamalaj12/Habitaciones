@@ -47,3 +47,4 @@ build/
 # Archivos específicos a ignorar
 nul
 null
+bdcama.sql

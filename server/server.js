@@ -1,11 +1,11 @@
 // server.js (Backend único: MariaDB + Socket.io + APIs)
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 console.log("🔥 SERVER NUEVO CARGADO:", __filename);
 
 const os = require("os");
 const express = require("express");
 const http = require("http");
-const path = require("path");
 const cors = require("cors");
 const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
@@ -91,6 +91,7 @@ app.use(express.static(path.join(__dirname, ".."), {
 }));
 
 const io = new Server(server, { cors: corsOptions });
+
 
 function signAccessToken(user){
   return jwt.sign(
