@@ -13,6 +13,59 @@ const jwt = require("jsonwebtoken");
 const { Server } = require("socket.io");
 const webpush = require("web-push");
 
+// ===== AUTO-INCREMENT VERSION =====
+(function autoIncrementVersion() {
+  try {
+    const fs = require("fs");
+    const jsonPath = path.join(__dirname, "../version.json");
+    const swPath = path.join(__dirname, "../sw.js");
+    const indexPath = path.join(__dirname, "../index.html");
+
+    let major = 1;
+    let minor = 3;
+    let build = 6;
+
+    if (fs.existsSync(jsonPath)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(jsonPath, "utf8"));
+        major = data.major !== undefined ? data.major : major;
+        minor = data.minor !== undefined ? data.minor : minor;
+        build = data.build !== undefined ? Number(data.build) + 1 : build;
+      } catch (e) {
+        console.warn("⚠️ Error parseando version.json, usando defaults:", e);
+      }
+    }
+
+    // Guardar version.json
+    fs.writeFileSync(jsonPath, JSON.stringify({ major, minor, build }, null, 2), "utf8");
+    const vStr = `${major}.${minor}.${build}`;
+    console.log(`📦 VERSION AUTO-INCREMENTADA A: v${vStr}`);
+
+    // Modificar sw.js
+    if (fs.existsSync(swPath)) {
+      let swContent = fs.readFileSync(swPath, "utf8");
+      swContent = swContent.replace(/const CACHE_NAME = "[^"]+";/g, `const CACHE_NAME = "hk-cache-v${vStr}";`);
+      fs.writeFileSync(swPath, swContent, "utf8");
+      console.log(`✅ sw.js actualizado con CACHE_NAME "hk-cache-v${vStr}"`);
+    }
+
+    // Modificar index.html
+    if (fs.existsSync(indexPath)) {
+      let indexContent = fs.readFileSync(indexPath, "utf8");
+      // Reemplazar la referencia de app.js en script
+      indexContent = indexContent.replace(/app\.js\?v=[a-zA-Z0-9\._-]+/g, `app.js?v=${vStr}`);
+      // Reemplazar la referencia de sw.js en la url
+      indexContent = indexContent.replace(/sw\.js\?v=[a-zA-Z0-9\._-]+/g, `sw.js?v=hk-v${vStr}`);
+      // Reemplazar el texto visible de la versión en el pie de página
+      indexContent = indexContent.replace(/v[0-9]+\.[0-9]+\.[0-9]+ \| Created By - Carlos S/g, `v${vStr} | Created By - Carlos S`);
+      fs.writeFileSync(indexPath, indexContent, "utf8");
+      console.log(`✅ index.html actualizado con versión "v${vStr}"`);
+    }
+  } catch (err) {
+    console.error("❌ Error en auto-incremento de versiones:", err);
+  }
+})();
+
 // ===== VAPID Keys (Push Notifications) =====
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "BBNU_k9XBvfFRjyb-J6o4pWRtkBjT4jIeecqU9XoNPk5-fzEhlK_wC-d0AlUr8gBoTZ2wQQ4O57mjZ8idcB5yFI";
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "n5Zb8cj0nuMVkfaHs8jqC0n1i8R7uaBgn0q-K_V7g4U";
