@@ -17,7 +17,7 @@ window.TIME_OFFSET_MS = 0;
 /* =========================
    VERSION CONTROL
    ========================= */
-window.APP_VERSION = "1.3.12";
+window.APP_VERSION = "1.3.13";
 window.__swReg = null;
 window.__updateChecked = false;
 

@@ -1,5 +1,6 @@
 // server.js (Backend único: MariaDB + Socket.io + APIs)
 const path = require("path");
+const fs = require("fs");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 console.log("🔥 SERVER NUEVO CARGADO:", __filename);
 
@@ -22,7 +23,6 @@ const webpush = require("web-push");
     return;
   }
   try {
-    const fs = require("fs");
     const jsonPath = path.join(__dirname, "../version.json");
     const swPath = path.join(__dirname, "../sw.js");
     const indexPath = path.join(__dirname, "../index.html");
