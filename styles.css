@@ -75,7 +75,7 @@ body{
   background: var(--bg0);
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 150;
 }
 .brand{ display:flex; gap:12px; align-items:center; min-width:0; flex: 1 1 auto; }
 .brandText{ flex: 1 1 auto; min-width:0; }

@@ -951,7 +951,7 @@
         const el = document.getElementById(id);
         if (el) el.disabled = true;
       });
-      ["btnStart", "btnEnd", "btnGuardar", "btnFamiliar", "btnAllNA"].forEach(id => {
+      ["btnStart", "btnEnd", "btnGuardar", "btnFamiliar", "btnAllNA", "btnSelectCamareras"].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = true;
       });
@@ -1192,9 +1192,13 @@
         container.innerHTML = "";
         return;
       }
-      container.innerHTML = _selectedCamareras.map(c =>
-        `<span class="camTag">${escHtml(c.nombre)} <button type="button" onclick="removeCamarera(${c.id})">X</button></span>`
-      ).join("");
+      const startedOrReadOnly = !!startAtDT || isReadOnlyRole();
+      container.innerHTML = _selectedCamareras.map(c => {
+        const removeBtn = startedOrReadOnly 
+          ? "" 
+          : ` <button type="button" onclick="removeCamarera(${c.id})">X</button>`;
+        return `<span class="camTag">${escHtml(c.nombre)}${removeBtn}</span>`;
+      }).join("");
     }
 
     window.removeCamarera = function(id) {
@@ -1216,6 +1220,7 @@
     }
 
     function openCamarerasModal() {
+      if (startAtDT || isReadOnlyRole()) return;
       const modal = $("camarerasModal");
       const list = $("camarerasModalList");
       if (!modal || !list) return;
@@ -1268,6 +1273,7 @@
         const opt = sel.querySelector(`option[value="${c.id}"]`);
         if (opt) opt.selected = true;
       });
+      sel.dispatchEvent(new Event("change"));
     }
 
     function clearCamarerasSelection() {
@@ -1602,9 +1608,18 @@
               endAtDT = target.fin_limpieza;
             }
           }
-          if (!$("camarera").value && target.camarera_asignada) {
-            const cId = getCamareraIdFromName(target.camarera_asignada);
-            if (cId) $("camarera").value = String(cId);
+          if (!_selectedCamareras.length && target.camarera_asignada) {
+            const parts = String(target.camarera_asignada).split(",").map(p => p.trim()).filter(p => p);
+            _selectedCamareras = parts.map(part => {
+              const cId = getCamareraIdFromName(part);
+              if (cId) {
+                const cam = CAMARERAS.find(c => c.id === cId);
+                return cam ? { id: cId, nombre: cam.nombre } : { id: cId, nombre: part };
+              }
+              return null;
+            }).filter(c => c);
+            syncHiddenSelectCamareras();
+            renderCamarerasTags();
           }
           if (!$("tipoLimpieza").value && target.tipo_limpieza) $("tipoLimpieza").value = target.tipo_limpieza;
         } else {
@@ -1632,6 +1647,19 @@
 
       btnStart.textContent = started ? `✔ ${fmtTimeFromMySQL(startAtDT)}` : "Empezar limpieza";
       btnEnd.textContent = ended ? `✔ ${fmtTimeFromMySQL(endAtDT)}` : "Terminar limpieza";
+
+      const btnSelect = $("btnSelectCamareras");
+      if (btnSelect) {
+        btnSelect.disabled = started;
+        if (started) {
+          btnSelect.style.opacity = "0.5";
+          btnSelect.style.cursor = "not-allowed";
+        } else {
+          btnSelect.style.opacity = "1";
+          btnSelect.style.cursor = "pointer";
+        }
+      }
+      renderCamarerasTags();
     }
 
     btnStart.addEventListener("click", async () => {
@@ -1675,7 +1703,7 @@
           const updated = await updateRoomDB(CTX.modulo, CTX.habitacion, {
             estado: "limpieza",
             inicio_limpieza: startAtDT,
-            camarera_asignada: getCamarerasNombres()[0] || null,
+            camarera_asignada: getCamarerasNombres().join(", ") || null,
             tipo_limpieza: tipoSel,
             inspector_asignado: CTX.usuario || null,
             observaciones: nextObs
@@ -1710,12 +1738,12 @@
             currentRoomObservaciones,
             "FIN LIMPIEZA",
             endAtDT,
-            `Camarera encargada de limpieza: ${$("camarera").value || "-"}`
+            `Camarera encargada de limpieza: ${getCamarerasNombres().join(", ") || "-"}`
           );
           const updated = await updateRoomDB(CTX.modulo, CTX.habitacion, {
             estado: "inspeccion",
             fin_limpieza: endAtDT,
-            camarera_asignada: $("camarera").value || null,
+            camarera_asignada: getCamarerasNombres().join(", ") || null,
             tipo_limpieza: $("tipoLimpieza").value || null,
             inspector_asignado: CTX.usuario || null,
             observaciones: nextObs
@@ -1928,7 +1956,7 @@
       if (isReadOnlyRole()) return;
       if (!startAtDT || endAtDT) return;
       if (isSyncingLimpieza) return;
-      const camareraSel = $("camarera").value || null;
+      const camareraSel = getCamarerasNombres().join(", ") || null;
       const tipoSel = $("tipoLimpieza").value || null;
       if (!camareraSel && !tipoSel) return;
       isSyncingLimpieza = true;

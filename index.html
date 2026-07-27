@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
@@ -277,6 +277,14 @@
       }).catch(function(err) {
         console.warn('[SW] No se pudo registrar:', err);
       });
+
+      // Recargar al cambiar de controlador (cuando el nuevo SW toma el mando)
+      var refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
     }
 
     // Verificar actualizaciones periodicamente (cada 15 min, sin spamear)
@@ -290,13 +298,21 @@
       }
     }, 15 * 60 * 1000);
 
+    window.triggerSwUpdate = function() {
+      if (window.__swReg && window.__swReg.waiting) {
+        window.__swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      } else {
+        window.location.reload();
+      }
+    };
+
     function showSwUpdateToast(msg) {
       var existing = document.getElementById('swUpdateToast');
       if (existing) return;
       var toast = document.createElement('div');
       toast.id = 'swUpdateToast';
       toast.className = 'swUpdateToast';
-      toast.innerHTML = '<span class="swUpdateIcon">🔄</span><span class="swUpdateText">' + msg + '</span><button class="swUpdateBtn" onclick="location.reload()">Actualizar</button>';
+      toast.innerHTML = '<span class="swUpdateIcon">🔄</span><span class="swUpdateText">' + msg + '</span><button class="swUpdateBtn" onclick="window.triggerSwUpdate()">Actualizar</button>';
       document.body.appendChild(toast);
     }
   </script>

@@ -1,4 +1,4 @@
-﻿/* =========================
+/* =========================
    CONFIG
 ========================= */
 window.APP_BASE = window.location.pathname
@@ -43,7 +43,7 @@ window.update = async function () {
       var toast = document.createElement('div');
       toast.id = 'swUpdateToast';
       toast.className = 'swUpdateToast';
-      toast.innerHTML = '<span class="swUpdateIcon">🔄</span><span class="swUpdateText">Nueva version ' + data.version + ' disponible.</span><button class="swUpdateBtn" onclick="location.reload()">Actualizar</button>';
+      toast.innerHTML = '<span class="swUpdateIcon">🔄</span><span class="swUpdateText">Nueva version ' + data.version + ' disponible.</span><button class="swUpdateBtn" onclick="window.triggerSwUpdate()">Actualizar</button>';
       document.body.appendChild(toast);
     }
   } catch (e) {
@@ -447,11 +447,9 @@ function initSocket() {
     const idx = arr.findIndex(x => String(x.etiqueta).toUpperCase() === String(updated.etiqueta).toUpperCase());
 
     const dedupKey = `socket:${data.modulo_id}:${updated.etiqueta}:${updated.estado}`;
-    // isDuplicate actualiza el cache siempre, asi que el resto del flujo
-    // (incluyendo el guardado de socket.lastUpdateKey) se vuelve innecesario.
     const isDup = isDuplicate(dedupKey, 2000);
     if (isDup) {
-      arr[idx] = updated;
+      if (idx >= 0) arr[idx] = updated;
       renderRooms();
       return;
     }
@@ -459,10 +457,29 @@ function initSocket() {
     if (idx >= 0) {
       const oldEstado = arr[idx].estado;
       const newEstado = updated.estado;
+      const oldPrio = arr[idx].prioridad_limpieza;
+      const newPrio = updated.prioridad_limpieza;
       arr[idx] = updated;
-      addRecentNotification(data.modulo_id, updated.etiqueta, oldEstado, newEstado);
+      addRecentNotification(data.modulo_id, updated.etiqueta, oldEstado, newEstado, oldPrio, newPrio);
       renderRooms();
       updateSummaryCounts();
+
+      // Mostrar Toast visual en tiempo real en la página para cambios de otros usuarios
+      const prioCambio = String(oldPrio || "").toLowerCase() !== String(newPrio || "").toLowerCase();
+      const tienePrio = String(newPrio || "").toLowerCase() === "alta";
+
+      if (prioCambio && oldEstado === newEstado) {
+        playNotificationSound();
+        if (tienePrio) {
+          toast("warn", "Prioridad", `Habitación ${updated.etiqueta} marcada como PRIORIDAD ALTA.`);
+        } else {
+          toast("ok", "Prioridad", `Habitación ${updated.etiqueta} sin prioridad.`);
+        }
+      } else if (oldEstado !== newEstado) {
+        playNotificationSound();
+        const label = ESTADO_LABELS[newEstado] || newEstado;
+        toast("ok", "Habitación " + updated.etiqueta, `Estado cambió a ${label}`);
+      }
     } else {
       arr.push(updated);
       renderRooms();
@@ -548,21 +565,34 @@ const ESTADO_LABELS = {
   "repaso": "REPASO"
 };
 
-function addRecentNotification(modulo_id, etiqueta, oldEstado, newEstado) {
-  const dedupKey = `${modulo_id}:${etiqueta}:${newEstado}`;
+function addRecentNotification(modulo_id, etiqueta, oldEstado, newEstado, oldPrio, newPrio) {
+  const prioCambio = String(oldPrio || "").toLowerCase() !== String(newPrio || "").toLowerCase();
+  const tienePrio = String(newPrio || "").toLowerCase() === "alta";
+
+  const dedupKey = prioCambio && oldEstado === newEstado
+    ? `${modulo_id}:${etiqueta}:prio:${newPrio}`
+    : `${modulo_id}:${etiqueta}:${newEstado}`;
+    
   if (isDuplicate(dedupKey, 2000)) return;
 
   const mod = MODULES.find(m => String(m.id) === String(modulo_id));
   const moduloNombre = mod?.descripcion || mod?.nombre || modulo_id || "?";
-  const oldLabel = ESTADO_LABELS[oldEstado] || oldEstado || "?";
-  const newLabel = ESTADO_LABELS[newEstado] || newEstado || "?";
+  
+  let oldLabel = ESTADO_LABELS[oldEstado] || oldEstado || "?";
+  let newLabel = ESTADO_LABELS[newEstado] || newEstado || "?";
+  
+  if (prioCambio && oldEstado === newEstado) {
+    oldLabel = "Prioridad";
+    newLabel = tienePrio ? "⭐ PRIORIDAD ALTA" : "Normal";
+  }
+
   const time = new Date().toLocaleTimeString("es-GT", { hour: "2-digit", minute: "2-digit" });
   recentNotifications.unshift({
-    id: now + Math.random(),
+    id: Date.now() + Math.random(),
     modulo: moduloNombre,
     etiqueta: etiqueta,
     oldEstado: oldEstado,
-    newEstado: newEstado,
+    newEstado: prioCambio && oldEstado === newEstado ? (tienePrio ? "prioridad_alta" : "prioridad_normal") : newEstado,
     oldLabel: oldLabel,
     newLabel: newLabel,
     time: time
@@ -620,7 +650,7 @@ function normalizeRoom(r) {
   };
 }
 
-function applyRoomUpdate(updatedRow) {
+function applyRoomUpdate(updatedRow, forceOldEstado, forceOldPrio) {
   const updated = normalizeRoom(updatedRow);
   const modId = String(updated.modulo_id);
 
@@ -628,20 +658,26 @@ function applyRoomUpdate(updatedRow) {
   if (arr) {
     const idx = arr.findIndex(x => String(x.etiqueta).toUpperCase() === String(updated.etiqueta).toUpperCase());
     if (idx >= 0) {
-      const oldEstado = arr[idx].estado;
+      const oldEstado = forceOldEstado !== undefined ? forceOldEstado : arr[idx].estado;
       const newEstado = updated.estado;
+      const oldPrio = forceOldPrio !== undefined ? forceOldPrio : arr[idx].prioridad_limpieza;
+      const newPrio = updated.prioridad_limpieza;
+      
       arr[idx] = updated;
+      
       // Marca el dedup con la misma key que usa el socket handler, asi
       // cuando el server hace eco del update via socket.isDuplicate()
       // lo detecta y omite la notificacion duplicada.
       const dedupKey = `socket:${modId}:${updated.etiqueta}:${newEstado}`;
       isDuplicate(dedupKey, 2000);
-      if (oldEstado !== newEstado) {
-        addRecentNotification(modId, updated.etiqueta, oldEstado, newEstado);
+      
+      if (oldEstado !== newEstado || oldPrio !== newPrio) {
+        addRecentNotification(modId, updated.etiqueta, oldEstado, newEstado, oldPrio, newPrio);
       }
+      
       scheduleRenderRooms();
       updateSummaryCounts();
-      showNotification(updated.etiqueta, newEstado);
+      showNotification(updated.etiqueta, newEstado, oldPrio, newPrio);
       return;
     }
   }
@@ -657,9 +693,27 @@ function applyRoomUpdate(updatedRow) {
    UPDATE ROOM (DB)
 ========================= */
 async function updateRoom(modulo_id, etiqueta, patch, source = "app") {
-  const resp = await apiPOST("/api/room/update", { modulo_id, etiqueta, patch, actor: getActor(), source });
-  applyRoomUpdate(resp.data);
-  return resp.data;
+  const cacheKey = String(modulo_id);
+  const rooms = roomsCache.get(cacheKey) || [];
+  const localRoom = rooms.find(r => String(r.etiqueta).toUpperCase() === String(etiqueta).toUpperCase());
+  const expectedState = localRoom?.estado || null;
+  const oldEstado = localRoom?.estado || null;
+  const oldPrio = localRoom?.prioridad_limpieza || null;
+
+  try {
+    const resp = await apiPOST("/api/room/update", { modulo_id, etiqueta, patch, expectedState, actor: getActor(), source });
+    applyRoomUpdate(resp.data, oldEstado, oldPrio);
+    return resp.data;
+  } catch (err) {
+    if (err.message && err.message.includes("DESACTUALIZADO")) {
+      toast("err", "Pantalla desactualizada", `La habitación ${etiqueta} cambió de estado recientemente. Tu pantalla se actualizará.`);
+      loadRooms(modulo_id).then(() => {
+        renderRooms();
+        updateSummaryCounts();
+      }).catch(() => {});
+    }
+    throw err;
+  }
 }
 /* =========================
    TOAST
@@ -738,18 +792,24 @@ function unsubscribeFromPush() {
   pushSubscription = null;
 }
 
-function showRoomNotification(title, body, tag) {
+async function showRoomNotification(title, body, tag) {
   if (!("Notification" in window && notifPermission === "granted")) return;
   playNotificationSound();
   try {
-    const n = new Notification(title, {
+    const options = {
       body: body,
       icon: "./Oficial_JDL_blanco.png",
       badge: "./Oficial_JDL_blanco.png",
       tag: tag || "room-update",
       silent: false
-    });
-    setTimeout(function() { n.close(); }, 5000);
+    };
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title, options);
+    } else {
+      const n = new Notification(title, options);
+      setTimeout(function() { n.close(); }, 5000);
+    }
   } catch(e) {
     console.warn("Notificacion fallo:", e);
   }
@@ -832,22 +892,42 @@ function urlBase64ToUint8Array(base64) {
   return out;
 }
 
-async function showNotification(etiqueta, estado) {
+async function showNotification(etiqueta, estado, oldPrio, newPrio) {
   if (notifPermission !== "granted") return;
-  const dedupKey = `notif:${etiqueta}:${estado}`;
+  
+  const prioCambio = String(oldPrio || "").toLowerCase() !== String(newPrio || "").toLowerCase();
+  const tienePrio = String(newPrio || "").toLowerCase() === "alta";
+  const isPrioOnly = prioCambio && (oldPrio !== newPrio);
+
+  const dedupKey = isPrioOnly
+    ? `notif:${etiqueta}:prio:${newPrio}`
+    : `notif:${etiqueta}:${estado}`;
+    
   if (isDuplicate(dedupKey, 2000)) return;
   playNotificationSound();
   try {
     const title = `Hab ${etiqueta}`;
-    const body = ESTADO_LABELS[estado] || estado;
-    const n = new Notification(title, {
+    let body = ESTADO_LABELS[estado] || estado;
+    
+    if (isPrioOnly) {
+      body = tienePrio ? "🔴 PRIORIDAD ALTA" : "Prioridad removida";
+    }
+    
+    const options = {
       body,
       icon: "./icon-192x192.png?v=1",
       badge: "./icon-192x192.png?v=1",
-      tag: `room-${etiqueta}`,
+      tag: isPrioOnly ? `room-prio-${etiqueta}` : `room-${etiqueta}-${estado}`,
       silent: false
-    });
-    setTimeout(function() { n.close(); }, 5000);
+    };
+
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title, options);
+    } else {
+      const n = new Notification(title, options);
+      setTimeout(function() { n.close(); }, 5000);
+    }
   } catch(e) {
     console.warn("Notificacion fallo:", e);
   }
@@ -865,7 +945,9 @@ const NOTIF_ICON_MAP = {
   "inspeccion": "🟢",
   "libre": "🟢",
   "mantenimiento": "🟣",
-  "repaso": "🟤"
+  "repaso": "🟤",
+  "prioridad_alta": "⚡",
+  "prioridad_normal": "🔔"
 };
 
 // Devuelve el HTML de un solo .notifItem. Reutilizado por renderNotifPanel
@@ -1343,9 +1425,27 @@ modalOverlay.addEventListener("click", (e) => { if (e.target === modalOverlay) c
    UPDATE ROOM (DB)
 ========================= */
 async function updateRoom(modulo_id, etiqueta, patch, source = "app") {
-  const resp = await apiPOST("/api/room/update", { modulo_id, etiqueta, patch, actor: getActor(), source });
-  applyRoomUpdate(resp.data);
-  return resp.data;
+  const cacheKey = String(modulo_id);
+  const rooms = roomsCache.get(cacheKey) || [];
+  const localRoom = rooms.find(r => String(r.etiqueta).toUpperCase() === String(etiqueta).toUpperCase());
+  const expectedState = localRoom?.estado || null;
+  const oldEstado = localRoom?.estado || null;
+  const oldPrio = localRoom?.prioridad_limpieza || null;
+
+  try {
+    const resp = await apiPOST("/api/room/update", { modulo_id, etiqueta, patch, expectedState, actor: getActor(), source });
+    applyRoomUpdate(resp.data, oldEstado, oldPrio);
+    return resp.data;
+  } catch (err) {
+    if (err.message && err.message.includes("DESACTUALIZADO")) {
+      toast("err", "Pantalla desactualizada", `La habitación ${etiqueta} cambió de estado recientemente. Tu pantalla se actualizará.`);
+      loadRooms(modulo_id).then(() => {
+        renderRooms();
+        updateSummaryCounts();
+      }).catch(() => {});
+    }
+    throw err;
+  }
 }
 /* =========================
    MOBILE LAYOUT ADJUST
@@ -2071,7 +2171,7 @@ async function doPrio(room, btn) {
   try {
     await updateRoom(cur.modulo_id, cur.etiqueta, {
       prioridad_limpieza: next,
-      estado: cur.estado,
+      _skipEstadoUpdate: true,
       desde: cur.desde,
       inicio_limpieza: cur.inicio_limpieza,
       fin_limpieza: cur.fin_limpieza,
