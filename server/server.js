@@ -54,6 +54,8 @@ const webpush = require("web-push");
       let indexContent = fs.readFileSync(indexPath, "utf8");
       // Reemplazar la referencia de app.js en script
       indexContent = indexContent.replace(/app\.js\?v=[a-zA-Z0-9\._-]+/g, `app.js?v=${vStr}`);
+      // Reemplazar la referencia de styles.css
+      indexContent = indexContent.replace(/styles\.css\?v=[a-zA-Z0-9\._-]+/g, `styles.css?v=${vStr}`);
       // Reemplazar la referencia de sw.js en la url
       indexContent = indexContent.replace(/sw\.js\?v=[a-zA-Z0-9\._-]+/g, `sw.js?v=hk-v${vStr}`);
       // Reemplazar el texto visible de la versión en el pie de página
@@ -96,7 +98,7 @@ const MONDAY_TOKEN = process.env.MONDAY_TOKEN || "";
 const MONDAY_BOARD_ID = Number(process.env.MONDAY_BOARD_ID || 0);
 const MONDAY_API = "https://api.monday.com/v2";
 const JWT_SECRET = String(process.env.JWT_SECRET || "").trim();
-const JWT_EXPIRES = process.env.JWT_EXPIRES || "8h";
+const JWT_EXPIRES = process.env.JWT_EXPIRES || "10h";
 const REQUIRE_AUTH = String(process.env.REQUIRE_AUTH || "1").trim() === "1";
 const ALLOWED_ORIGINS = String(process.env.ALLOWED_ORIGINS || "")
   .split(",")
@@ -2522,38 +2524,34 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
 
     // Si solo cambio prioridad (sin cambio de estado), notificar prioridad
     if (prioCambio && oldEstado === newEstado) {
-      sendPushToRoles(
+      sendPushToAll(
         modulo_id + " - " + etiqueta,
         tienePrio ? "🔴 PRIORIDAD ALTA - Habitacion marcada como prioridad" : "Prioridad removida",
-        "./index.html",
-        ["ADMIN", "AMA_LLAVES", "RECEPCION"]
+        "./index.html"
       ).catch(() => {});
     }
-    // OCUPADO → Notificar a Admin + Ama de llaves
+    // OCUPADO → Notificar a todos
     else if (newEstado === "ocupado") {
-      sendPushToRoles(
+      sendPushToAll(
         modulo_id + " - " + etiqueta,
         "OCUPADO - Habitacion ocupada",
-        "./index.html",
-        ["ADMIN", "AMA_LLAVES"]
+        "./index.html"
       ).catch(() => {});
     }
-    // LISTA (liberada para limpieza) → Notificar a Admin + Ama de llaves
+    // LISTA (liberada para limpieza) → Notificar a todos
     else if ((oldEstado === "ocupado" || oldEstado === "ocupada limpia") && newEstado === "lista") {
-      sendPushToRoles(
+      sendPushToAll(
         modulo_id + " - " + etiqueta,
         "LISTA PARA LIMPIEZA - Habitacion liberada para limpieza",
-        "./index.html",
-        ["ADMIN", "AMA_LLAVES"]
+        "./index.html"
       ).catch(() => {});
     }
-    // INSPECCION COMPLETADA (inspeccion → libre desde flujo inspeccion) → Notificar a Recepcion + Admin
+    // INSPECCION COMPLETADA (inspeccion → libre desde flujo inspeccion) → Notificar a todos
     else if (oldEstado === "inspeccion" && newEstado === "libre" && src === "inspeccion") {
-      sendPushToRoles(
+      sendPushToAll(
         modulo_id + " - " + etiqueta,
         "INSPECCION COMPLETADA - Habitacion liberada",
-        "./index.html",
-        ["ADMIN", "RECEPCION"]
+        "./index.html"
       ).catch(() => {});
     }
     // Otros cambios: notificar a todos

@@ -8,7 +8,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Gestion Habitaciones</title>
 
-  <link rel="stylesheet" href="./styles.css?v=20260214a" />
+  <link rel="stylesheet" href="./styles.css?v=1.3.8" />
 </head>
 <body>
 
@@ -46,7 +46,7 @@
       </div>
 
       <div class="loginFooter">
-        <div class="creatorNote">v1.3.6 | Created By - Carlos S - Cel: 502-56325547</div>
+        <div class="creatorNote">v1.3.8 | Created By - Carlos S - Cel: 502-56325547</div>
         <div style="color:rgba(234,240,255,.70); font-size:12px;">Hotel Jardines Del Lago</div>
       </div>
     </div>
@@ -156,7 +156,7 @@
     <div id="roomIndex" class="roomIndex"></div>
 
     <div id="roomsGrid" class="roomsGrid"></div>
-      <div class="creatorNote creatorNotePage">v1.3.6 | Created By - Carlos S - Cel: 502-56325547</div>
+      <div class="creatorNote creatorNotePage">v1.3.8 | Created By - Carlos S - Cel: 502-56325547</div>
   </div>
 
   <!-- Modal ocupacion -->
@@ -238,18 +238,25 @@
       <span class="notifPanelTitle">Cambios recientes</span>
       <button id="notifPanelClose" class="notifPanelClose" type="button">X</button>
     </div>
+    <div class="notifPanelToggleRow">
+      <span class="notifToggleLabel">Recibir Notificaciones (Push)</span>
+      <label class="switch">
+        <input type="checkbox" id="notifToggleSwitch" />
+        <span class="slider round"></span>
+      </label>
+    </div>
     <div class="notifPanelBody" id="notifPanelBody">
       <div class="notifEmpty">Sin cambios recientes</div>
     </div>
   </div>
 
   <script src="./socket.io/socket.io.js"></script>
-  <script src="./app.js?v=1.3.6"></script>
+  <script src="./app.js?v=1.3.8"></script>
   <script>
     if ('serviceWorker' in navigator) {
       // URL estatica: NO usar Date.now() (causa loop infinito de reload).
       // El cache-busting lo hace updateViaCache:'none' + el cambio de CACHE_NAME en sw.js.
-      var swUrl = './sw.js?v=hk-v1.3.6';
+      var swUrl = './sw.js?v=hk-v1.3.8';
       navigator.serviceWorker.register(swUrl, { updateViaCache: 'none' }).then(function(reg) {
         window.__swReg = reg;
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = "hk-cache-v1.3.6";
+const CACHE_NAME = "hk-cache-v1.3.8";
 const ASSETS = [
   "./",
   "./index.html",
@@ -81,6 +81,8 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
 
   const url = new URL(e.request.url);
+  // Ignorar esquemas no soportados por Cache API (chrome-extension, etc.)
+  if (url.protocol !== "http:" && url.protocol !== "https:") return;
 
   // No cachear llamadas API
   if (url.pathname.includes("/api/")) {
@@ -132,24 +134,36 @@ self.addEventListener("fetch", (e) => {
 
 // Notificaciones Push (para cuando la app este en HTTPS)
 self.addEventListener("push", (e) => {
+  console.log("[SW] Evento push recibido");
   let data = {};
   try {
     data = e.data ? e.data.json() : {};
   } catch (err) {
+    console.warn("[SW] Falló parsear JSON de push, usando texto plano:", err);
     data = { title: "Habitaciones", body: e.data?.text() || "" };
   }
 
   const title = data.title || "Gestion de Habitaciones";
+  
+  // Usar URLs absolutas para garantizar que el navegador encuentre los iconos
+  const iconUrl = new URL("./Oficial_JDL_blanco.png", self.location.origin).href;
+  const badgeUrl = new URL("./Oficial_JDL_blanco.png", self.location.origin).href;
+  const targetUrl = data.url ? new URL(data.url, self.location.origin).href : self.location.origin;
+
   const options = {
     body: data.body || "",
-    icon: "./Oficial_JDL_blanco.png",
-    badge: "./Oficial_JDL_blanco.png",
+    icon: iconUrl,
+    badge: badgeUrl,
     vibrate: [200, 100, 200, 100, 200],
-    data: { url: data.url || "./index.html" },
+    data: { url: targetUrl },
     requireInteraction: true
   };
 
-  e.waitUntil(self.registration.showNotification(title, options));
+  e.waitUntil(
+    self.registration.showNotification(title, options)
+      .then(() => console.log("[SW] Notificación push mostrada con éxito"))
+      .catch((err) => console.error("[SW] Falló mostrar notificación push:", err))
+  );
 });
 
 // Click en notificacion: abrir la app

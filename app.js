@@ -11,7 +11,7 @@ window.LS_FORCE_LOGIN = "hk_force_login";
 window.LS_ACTOR_CACHE = "hk_actor_cache_v1";
 window.LS_LEGACY_USER_NAME = "hk_logged_user_name";
 window.LS_LEGACY_USER_DEPT = "hk_logged_user_dept";
-window.AUTOLOCK_MS = 60 * 60 * 1000;
+window.AUTOLOCK_MS = 3 * 60 * 60 * 1000;
 window.TIME_OFFSET_MS = 0;
 
 /* =========================
@@ -700,6 +700,13 @@ async function updateRoom(modulo_id, etiqueta, patch, source = "app") {
   const oldEstado = localRoom?.estado || null;
   const oldPrio = localRoom?.prioridad_limpieza || null;
 
+  // Registrar clave de deduplicacion preventivamente para evitar carrera del socket
+  const nextEstado = patch.estado || expectedState;
+  if (nextEstado) {
+    const dedupKey = `socket:${modulo_id}:${etiqueta}:${nextEstado}`;
+    isDuplicate(dedupKey, 2000);
+  }
+
   try {
     const resp = await apiPOST("/api/room/update", { modulo_id, etiqueta, patch, expectedState, actor: getActor(), source });
     applyRoomUpdate(resp.data, oldEstado, oldPrio);
@@ -854,6 +861,9 @@ function playNotificationSound() {
 }
 
 async function requestNotifPermission() {
+  // Si el usuario desactivo explicitamente las notificaciones en esta maquina, no suscribir en boot
+  if (localStorage.getItem("hk_notif_enabled") === "0") return;
+
   if (!("Notification" in window)) return;
   if (Notification.permission === "denied") return;
   
@@ -866,12 +876,13 @@ async function requestNotifPermission() {
   const perm = await Notification.requestPermission();
   notifPermission = perm;
   if (perm === "granted") {
+    localStorage.setItem("hk_notif_enabled", "1");
     await subscribePush();
   }
 }
 
 async function subscribePush() {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
   try {
     const registration = await navigator.serviceWorker.ready;
     const sub = await registration.pushManager.subscribe({
@@ -889,8 +900,16 @@ async function subscribePush() {
         keys: json.keys
       }
     });
+    return true;
   } catch (e) {
     console.warn("Push subscribe failed:", e);
+    const msg = String(e.message || "");
+    if (msg.includes("push service error")) {
+      toast("err", "Error en Brave", "Brave bloquea las notificaciones. Ve a Configuración -> Privacidad y seguridad -> Activa 'Servicios de Google para mensajería push' y reinicia Brave.");
+    } else {
+      toast("err", "Error", "No se pudo registrar el servicio de notificaciones en el navegador.");
+    }
+    throw e;
   }
 }
 
@@ -1007,6 +1026,7 @@ $("btnNotifBell")?.addEventListener("click", () => {
     panel.classList.remove("hidden");
     renderNotifPanel();
     updateBellDot();
+    updateNotifSwitchState();
   } else {
     panel.classList.add("hidden");
   }
@@ -1028,6 +1048,64 @@ document.addEventListener("click", (e) => {
     notifPanelOpen = false;
     panel.classList.add("hidden");
     updateBellDot();
+  }
+});
+
+async function updateNotifSwitchState() {
+  const switchEl = $("notifToggleSwitch");
+  if (!switchEl) return;
+  try {
+    const swReg = window.__swReg || (await navigator.serviceWorker.ready.catch(() => null));
+    if (!swReg || !("pushManager" in swReg)) {
+      switchEl.checked = false;
+      switchEl.disabled = true;
+      return;
+    }
+    const sub = await swReg.pushManager.getSubscription();
+    pushSubscription = sub;
+    switchEl.checked = !!sub && localStorage.getItem("hk_notif_enabled") !== "0";
+    switchEl.disabled = false;
+  } catch (err) {
+    console.warn("Error leyendo suscripcion push:", err);
+    switchEl.checked = false;
+  }
+}
+
+$("notifToggleSwitch")?.addEventListener("change", async (e) => {
+  const checked = e.target.checked;
+  if (checked) {
+    if (!("Notification" in window)) {
+      toast("err", "No soportado", "Las notificaciones no están soportadas en este dispositivo.");
+      e.target.checked = false;
+      return;
+    }
+    const currentPermission = Notification.permission;
+    if (currentPermission === "denied") {
+      toast("err", "Permiso denegado", "Por favor habilita los permisos de notificaciones en tu navegador.");
+      e.target.checked = false;
+      return;
+    }
+    
+    localStorage.setItem("hk_notif_enabled", "1");
+    
+    try {
+      const perm = await Notification.requestPermission();
+      notifPermission = perm;
+      if (perm === "granted") {
+        await subscribePush();
+        toast("ok", "Notificaciones activadas", "Recibirás alertas push en este dispositivo.");
+      } else {
+        toast("err", "Permiso denegado", "No se pudieron activar las notificaciones.");
+        e.target.checked = false;
+      }
+    } catch(err) {
+      e.target.checked = false;
+      localStorage.setItem("hk_notif_enabled", "0");
+    }
+  } else {
+    localStorage.setItem("hk_notif_enabled", "0");
+    unsubscribePush();
+    toast("ok", "Notificaciones silenciadas", "Ya no recibirás alertas push en este dispositivo.");
   }
 });
 /* =========================
@@ -1442,6 +1520,13 @@ async function updateRoom(modulo_id, etiqueta, patch, source = "app") {
   const expectedState = localRoom?.estado || null;
   const oldEstado = localRoom?.estado || null;
   const oldPrio = localRoom?.prioridad_limpieza || null;
+
+  // Registrar clave de deduplicacion preventivamente para evitar carrera del socket
+  const nextEstado = patch.estado || expectedState;
+  if (nextEstado) {
+    const dedupKey = `socket:${modulo_id}:${etiqueta}:${nextEstado}`;
+    isDuplicate(dedupKey, 2000);
+  }
 
   try {
     const resp = await apiPOST("/api/room/update", { modulo_id, etiqueta, patch, expectedState, actor: getActor(), source });
