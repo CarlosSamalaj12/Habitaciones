@@ -28,14 +28,14 @@ INSERT IGNORE INTO camareras (nombre) VALUES
 -- Configuracion de pagos (parametros editables para factura)
 CREATE TABLE IF NOT EXISTS configuracion_pagos (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  porcentaje_factura DECIMAL(5,2) NOT NULL DEFAULT 33.00 COMMENT '% extra si factura',
+  porcentaje_factura DECIMAL(5,2) NOT NULL DEFAULT 30.00 COMMENT '% extra si factura',
   extra_factura_si DECIMAL(10,2) NOT NULL DEFAULT 46.00 COMMENT 'Q extras si factura',
   extra_factura_no DECIMAL(10,2) NOT NULL DEFAULT 36.00 COMMENT 'Q extras si NO factura',
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT IGNORE INTO configuracion_pagos (id, porcentaje_factura, extra_factura_si, extra_factura_no)
-VALUES (1, 33.00, 46.00, 36.00);
+VALUES (1, 30.00, 46.00, 36.00);
 
 -- Categorias del checklist (Baño, Habitacion)
 CREATE TABLE IF NOT EXISTS checklist_categorias (

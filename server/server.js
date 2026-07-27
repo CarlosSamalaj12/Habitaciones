@@ -258,7 +258,7 @@ async function initDB(){
     await pool.query(`
       CREATE TABLE IF NOT EXISTS configuracion_pagos (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        porcentaje_factura DECIMAL(5,2) NOT NULL DEFAULT 33.00,
+        porcentaje_factura DECIMAL(5,2) NOT NULL DEFAULT 30.00,
         extra_factura_si DECIMAL(10,2) NOT NULL DEFAULT 46.00,
         extra_factura_no DECIMAL(10,2) NOT NULL DEFAULT 36.00,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -273,11 +273,14 @@ async function initDB(){
   try {
     const [cnt] = await pool.query("SELECT COUNT(*) AS c FROM configuracion_pagos");
     if (cnt[0].c === 0) {
-      await pool.query("INSERT INTO configuracion_pagos (porcentaje_factura, extra_factura_si, extra_factura_no) VALUES (33.00, 46.00, 36.00)");
+      await pool.query("INSERT INTO configuracion_pagos (porcentaje_factura, extra_factura_si, extra_factura_no) VALUES (30.00, 46.00, 36.00)");
       console.log("✅ Valores por defecto insertados en configuracion_pagos");
+    } else {
+      // Si ya existe la fila y su valor es 33.00, lo actualizamos a 30.00
+      await pool.query("UPDATE configuracion_pagos SET porcentaje_factura = 30.00 WHERE porcentaje_factura = 33.00");
     }
   } catch (e) {
-    console.warn("⚠️ No se pudo insertar config por defecto:", e.message);
+    console.warn("⚠️ No se pudo insertar/actualizar config por defecto:", e.message);
   }
 
   // Migración: agregar 'inspeccion' al ENUM de estados_habitacion.estado si no existe
@@ -931,7 +934,7 @@ app.post("/api/camareras/delete", requireAuthIfEnabled, async (req,res)=>{
 app.get("/api/config-pagos", async (req,res)=>{
   try{
     const [rows] = await pool.query("SELECT id, porcentaje_factura, extra_factura_si, extra_factura_no FROM configuracion_pagos LIMIT 1");
-    const config = rows[0] || { porcentaje_factura: 33.00, extra_factura_si: 46.00, extra_factura_no: 36.00 };
+    const config = rows[0] || { porcentaje_factura: 30.00, extra_factura_si: 46.00, extra_factura_no: 36.00 };
     res.json({ ok:true, data: config });
   }catch(e){
     res.status(500).json({ ok:false, error: "Error interno del servidor" });
@@ -1346,11 +1349,11 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
     });
 
     // Obtener configuracion de pagos
-    let pct = 33, extraSi = 46, extraNo = 36;
+    let pct = 30, extraSi = 46, extraNo = 36;
     try {
       const [cfg] = await pool.query("SELECT porcentaje_factura, extra_factura_si, extra_factura_no FROM configuracion_pagos LIMIT 1");
       if (cfg.length) {
-        pct = Number(cfg[0].porcentaje_factura) || 33;
+        pct = cfg[0].porcentaje_factura !== undefined ? Number(cfg[0].porcentaje_factura) : 30;
         extraSi = Number(cfg[0].extra_factura_si) || 46;
         extraNo = Number(cfg[0].extra_factura_no) || 36;
       }
@@ -1438,7 +1441,8 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
           totalExtra += (g.factura ? extraSi : extraNo);
         }
       });
-      const pagoTotal = totalBase * (1 + pct / 100) + totalExtra;
+      const actualPct = g.factura ? pct : 0;
+      const pagoTotal = totalBase * (1 + actualPct / 100) + totalExtra;
       const rounded = Math.round(pagoTotal * 100) / 100;
       grupoPagos[cid].pagoFinal = rounded;
       totalPagoFinal += rounded;
@@ -1467,7 +1471,7 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
       detallePagos[nombre] = {
         factura: g.factura,
         dias_extra: extraDays,
-        pct: extraDays > 0 ? pct : 0,
+        pct: g.factura ? pct : 0,
         extra: Math.round(totalExtra * 100) / 100,
         pagoFinal: g.pagoFinal,
         base: Math.round(totalBase * 100) / 100,

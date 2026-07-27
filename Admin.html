@@ -254,7 +254,7 @@
             <div class="formGroup">
               <label>% Aumento si factura</label>
               <div style="display:flex;align-items:center;gap:6px">
-                <input id="cfgPorcentaje" type="number" step="0.5" min="0" max="1000" value="33" style="width:100px" />
+                <input id="cfgPorcentaje" type="number" step="0.5" min="0" max="1000" value="30" style="width:100px" />
                 <span style="color:var(--muted);font-size:13px">%</span>
               </div>
             </div>
@@ -748,7 +748,7 @@
         const j = await r.json();
         if (!j?.ok) throw new Error(j?.error || 'Error');
         const data = j.data || {};
-        $("cfgPorcentaje").value = Number(data.porcentaje_factura || 33).toFixed(1);
+        $("cfgPorcentaje").value = Number(data.porcentaje_factura || 30).toFixed(1);
         $("cfgExtraSi").value = Number(data.extra_factura_si || 46).toFixed(2);
         $("cfgExtraNo").value = Number(data.extra_factura_no || 36).toFixed(2);
       } catch (e) {
