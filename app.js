@@ -885,9 +885,16 @@ async function subscribePush() {
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
   try {
     const registration = await navigator.serviceWorker.ready;
+    
+    // Si ya existe una suscripción (por ejemplo, con la llave vieja), desuscribirse primero
+    const existingSub = await registration.pushManager.getSubscription();
+    if (existingSub) {
+      await existingSub.unsubscribe().catch(() => {});
+    }
+
     const sub = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array("BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U")
+      applicationServerKey: urlBase64ToUint8Array("BBNU_k9XBvfFRjyb-J6o4pWRtkBjT4jIeecqU9XoNPk5-fzEhlK_wC-d0AlUr8gBoTZ2wQQ4O57mjZ8idcB5yFI")
     });
     pushSubscription = sub;
     const json = sub.toJSON();
@@ -905,7 +912,7 @@ async function subscribePush() {
     console.warn("Push subscribe failed:", e);
     const msg = String(e.message || "");
     if (msg.includes("push service error")) {
-      toast("err", "Error en Brave", "Brave bloquea las notificaciones. Ve a Configuración -> Privacidad y seguridad -> Activa 'Servicios de Google para mensajería push' y reinicia Brave.");
+      toast("err", "Error de notificaciones", "El servicio de notificaciones de tu navegador está desactivado. Actívalo en la configuración de tu navegador.");
     } else {
       toast("err", "Error", "No se pudo registrar el servicio de notificaciones en el navegador.");
     }
@@ -1061,9 +1068,27 @@ async function updateNotifSwitchState() {
       switchEl.disabled = true;
       return;
     }
+
+    if (Notification.permission === "denied") {
+      switchEl.checked = false;
+      switchEl.disabled = true;
+      localStorage.setItem("hk_notif_enabled", "0");
+      return;
+    }
+
+    const enabledPref = localStorage.getItem("hk_notif_enabled") !== "0";
     const sub = await swReg.pushManager.getSubscription();
     pushSubscription = sub;
-    switchEl.checked = !!sub && localStorage.getItem("hk_notif_enabled") !== "0";
+
+    if (enabledPref && !sub && Notification.permission === "granted") {
+      try {
+        await subscribePush();
+      } catch (err) {
+        console.warn("Re-suscripcion automatica fallo:", err);
+      }
+    }
+
+    switchEl.checked = enabledPref;
     switchEl.disabled = false;
   } catch (err) {
     console.warn("Error leyendo suscripcion push:", err);

@@ -918,6 +918,7 @@
     const FAMILIAR_ROOMS = new Set(["02", "06"]);
     let useFamiliarArea = false;
     let isSavingInspection = false;
+    let isRestoring = false;
 
     function setGuardarStatus(message, type = "") {
       const el = $("guardarStatus");
@@ -1573,6 +1574,7 @@
     }
 
     async function restoreFromDB() {
+      isRestoring = true;
       try {
         if (!CTX.modulo || !CTX.habitacion) return;
         const r = await fetch(`${API_BASE}/api/rooms?modulo_id=${encodeURIComponent(CTX.modulo)}`, { cache: "no-store" });
@@ -1632,6 +1634,9 @@
         renderAllNABtn();
         saveSession();
       } catch { }
+      finally {
+        setTimeout(() => { isRestoring = false; }, 100);
+      }
     }
 
     // ===== Start/End buttons =====
@@ -1953,6 +1958,7 @@
 
     let isSyncingLimpieza = false;
     async function syncLimpiezaMeta() {
+      if (isRestoring) return; // Omitir sincronizaciones automáticas durante la carga de la página
       if (isReadOnlyRole()) return;
       if (!startAtDT || endAtDT) return;
       if (isSyncingLimpieza) return;

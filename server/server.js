@@ -15,6 +15,12 @@ const webpush = require("web-push");
 
 // ===== AUTO-INCREMENT VERSION =====
 (function autoIncrementVersion() {
+  // Solo auto-incrementar en tu máquina de desarrollo (Windows).
+  // En el VPS (Linux) no se autoincrementa, así Git no detectará cambios locales en producción.
+  if (process.platform !== "win32") {
+    console.log("ℹ️ Entorno de producción (VPS Linux) detectado. Omitiendo auto-incremento de versión.");
+    return;
+  }
   try {
     const fs = require("fs");
     const jsonPath = path.join(__dirname, "../version.json");
@@ -62,6 +68,14 @@ const webpush = require("web-push");
       indexContent = indexContent.replace(/v[0-9]+\.[0-9]+\.[0-9]+ \| Created By - Carlos S/g, `v${vStr} | Created By - Carlos S`);
       fs.writeFileSync(indexPath, indexContent, "utf8");
       console.log(`✅ index.html actualizado con versión "v${vStr}"`);
+    }
+    // Modificar app.js
+    const appPath = path.join(__dirname, "../app.js");
+    if (fs.existsSync(appPath)) {
+      let appContent = fs.readFileSync(appPath, "utf8");
+      appContent = appContent.replace(/window\.APP_VERSION = "[^"]+";/g, `window.APP_VERSION = "${vStr}";`);
+      fs.writeFileSync(appPath, appContent, "utf8");
+      console.log(`✅ app.js actualizado con window.APP_VERSION "${vStr}"`);
     }
   } catch (err) {
     console.error("❌ Error en auto-incremento de versiones:", err);
@@ -569,11 +583,15 @@ app.post("/api/push/unsubscribe", requireAuthIfEnabled, async (req, res) => {
 });
 
 // ===== VERSION =====
-const APP_VERSION = "1.0.0";
 const APP_BUILD_TIME = new Date().toISOString();
 
 app.get("/api/version", (req, res) => {
-  res.json({ ok: true, version: APP_VERSION, buildTime: APP_BUILD_TIME });
+  let version = "1.0.0";
+  try {
+    const verData = JSON.parse(fs.readFileSync(path.join(__dirname, "../version.json"), "utf8"));
+    version = `${verData.major}.${verData.minor}.${verData.build}`;
+  } catch (err) {}
+  res.json({ ok: true, version, buildTime: APP_BUILD_TIME });
 });
 
 // ===== HEALTH =====
@@ -2610,16 +2628,22 @@ async function sendPushToRoles(title, body, url, targetRoles) {
 /** Enviar push notification a todos los usuarios suscritos */
 async function sendPushToAll(title, body, url) {
   try {
+    console.log(`-> [PUSH ALL] Iniciando envío de push. Título: "${title}", Cuerpo: "${body}"`);
     const [rows] = await pool.query("SELECT id, endpoint, auth, p256dh FROM push_subscriptions");
+    console.log(`-> [PUSH ALL] Suscripciones totales encontradas en BD: ${rows.length}`);
     if (!rows.length) return;
 
     const payload = JSON.stringify({ title, body, url: url || "./index.html" });
 
     await Promise.allSettled(rows.map(async (sub) => {
       try {
+        console.log(`   - Enviando push a ID ${sub.id}...`);
         await webpush.sendNotification({ endpoint: sub.endpoint, keys: { auth: sub.auth, p256dh: sub.p256dh } }, payload);
+        console.log(`   - Push enviada con éxito a ID ${sub.id}`);
       } catch (err) {
+        console.warn(`   - Error enviando a ID ${sub.id}:`, err.message);
         if (err.statusCode === 410 || err.statusCode === 404) {
+          console.log(`   - Eliminando suscripción inválida/vencida ID ${sub.id}`);
           await pool.query("DELETE FROM push_subscriptions WHERE id=?", [sub.id]);
         }
       }

@@ -1,4 +1,4 @@
-const CACHE_NAME = "hk-cache-v1.3.8";
+const CACHE_NAME = "hk-cache-v1.3.9";
 const ASSETS = [
   "./",
   "./index.html",
@@ -51,7 +51,6 @@ self.addEventListener("install", (e) => {
       });
     })
   );
-  self.skipWaiting();
 });
 
 // Mensajes desde la pagina: forzar SKIP_WAITING cuando el usuario acepta la actualizacion
