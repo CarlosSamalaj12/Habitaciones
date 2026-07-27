@@ -855,8 +855,14 @@ function playNotificationSound() {
 
 async function requestNotifPermission() {
   if (!("Notification" in window)) return;
-  if (Notification.permission === "granted") return;
   if (Notification.permission === "denied") return;
+  
+  if (Notification.permission === "granted") {
+    notifPermission = "granted";
+    await subscribePush();
+    return;
+  }
+  
   const perm = await Notification.requestPermission();
   notifPermission = perm;
   if (perm === "granted") {
@@ -874,9 +880,14 @@ async function subscribePush() {
     });
     pushSubscription = sub;
     const json = sub.toJSON();
+    const ses = getSession();
     await apiPOST("/api/push/subscribe", {
-      endpoint: json.endpoint,
-      keys: json.keys
+      usuario_nombre: ses?.name || "Desconocido",
+      usuario_dept: ses?.dept || null,
+      subscription: {
+        endpoint: json.endpoint,
+        keys: json.keys
+      }
     });
   } catch (e) {
     console.warn("Push subscribe failed:", e);
