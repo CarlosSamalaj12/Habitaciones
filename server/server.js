@@ -220,6 +220,22 @@ async function initDB(){
     console.warn("⚠️ No se pudo migrar columna estado:", e.message);
   }
 
+  // Migración: migrar observaciones de estados_habitacion a TEXT para evitar Data too long
+  try {
+    await pool.query("ALTER TABLE estados_habitacion MODIFY COLUMN observaciones TEXT");
+    console.log("✅ Columna observaciones migrada a TEXT en estados_habitacion");
+  } catch (e) {
+    console.warn("⚠️ No se pudo migrar columna observaciones a TEXT:", e.message);
+  }
+
+  // Migración: migrar patch_json de estados_habitacion_log a TEXT
+  try {
+    await pool.query("ALTER TABLE estados_habitacion_log MODIFY COLUMN patch_json TEXT");
+    console.log("✅ Columna patch_json migrada a TEXT en estados_habitacion_log");
+  } catch (e) {
+    console.warn("⚠️ No se pudo migrar columna patch_json a TEXT:", e.message);
+  }
+
   // Migración: agregar columna precio_especial a habitaciones
   try {
     await pool.query("ALTER TABLE habitaciones ADD COLUMN precio_especial DECIMAL(10,2) DEFAULT NULL AFTER etiqueta");
@@ -2263,6 +2279,8 @@ function normalizePatch(patch){
   const p = patch || {};
   const out = {};
 
+  if ("_skipEstadoUpdate" in p) out._skipEstadoUpdate = p._skipEstadoUpdate;
+
   const hasEstado = ("estado" in p);
   if (hasEstado) out.estado = p.estado ?? null;
   else out.estado = "libre";
@@ -2353,6 +2371,8 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
     const actor     = req.body?.actor || null;
     const source    = req.body?.source || null;
 
+    const expectedState = req.body?.expectedState || null;
+
     if(!modulo_id || !etiqueta || !patch){
       return res.status(400).json({ ok:false, error:"Faltan datos (modulo_id, etiqueta, patch)" });
     }
@@ -2366,8 +2386,22 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
     }
 
     const roomId = await getRoomId(modulo_id, etiqueta);
-    const cur = await fetchOneRoom(roomId);
     if(!roomId) return res.status(404).json({ ok:false, error:"Habitación no existe" });
+    const cur = await fetchOneRoom(roomId);
+
+    console.log("=== API UPDATE ROOM ===");
+    console.log("-> Body recibido:", JSON.stringify(req.body));
+    console.log("-> Estado actual en BD (cur):", cur?.estado);
+
+    if (expectedState && cur && String(expectedState).trim().toLowerCase() !== String(cur.estado || "libre").trim().toLowerCase()) {
+      console.log("-> [BLOQUEADO] Pantalla desactualizada detected");
+      return res.status(409).json({ ok:false, error:"DESACTUALIZADO", message:"La habitación cambió de estado en la base de datos." });
+    }
+
+    if (patch && !("estado" in patch)) {
+      console.log("-> [INYECTADO] Inyectando estado de BD:", cur?.estado);
+      patch.estado = cur?.estado || "libre";
+    }
 
     if (patch?.estado === "mantenimiento") {
       if (cur?.estado === "ocupado" || cur?.estado === "ocupada limpia") {
@@ -2392,10 +2426,13 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
       }
 
       if (role === "AMA_LLAVES") {
-        // ✅ AMA DE LLAVES puede liberar desde: mantenimiento, inspeccion
+        // ✅ AMA DE LLAVES puede liberar desde: mantenimiento, inspeccion, y tambien limpieza (si viene del flujo de inspeccion)
         const estadosPermitidos = ["mantenimiento", "inspeccion"];
+        if (fromInspeccion) {
+          estadosPermitidos.push("limpieza");
+        }
         if (!estadosPermitidos.includes(curEstado)) {
-          return res.status(403).json({ ok:false, error:"Ama de llaves solo puede liberar habitaciones en MANTENIMIENTO o INSPECCIÓN." });
+          return res.status(403).json({ ok:false, error:"Ama de llaves solo puede liberar habitaciones en MANTENIMIENTO, INSPECCIÓN o LIMPIEZA." });
         }
       } else if (role === "RECEPCION") {
         const allowed = new Set(["ocupado", "ocupada limpia", "mantenimiento", "lista"]);
@@ -2483,21 +2520,33 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
 /** Enviar push notification solo a usuarios con ciertos roles */
 async function sendPushToRoles(title, body, url, targetRoles) {
   try {
-    const targets = (targetRoles || []).map(r => String(r).trim().toLowerCase());
-    const roleList = targets.map(() => '?').join(',');
+    const targets = (targetRoles || []).map(r => String(r).trim().toUpperCase());
+    console.log("-> [PUSH] Enviando push por roles. Destinos permitidos:", targets);
+    
     const [rows] = await pool.query(
-      `SELECT id, endpoint, auth, p256dh FROM push_subscriptions WHERE LOWER(usuario_dept) IN (${roleList})`,
-      targets
+      `SELECT id, endpoint, auth, p256dh, usuario_dept FROM push_subscriptions`
     );
-    if (!rows.length) return;
+    console.log(`-> [PUSH] Suscripciones totales encontradas en BD: ${rows.length}`);
+    
+    const filteredRows = rows.filter(sub => {
+      const normalized = normalizeRole(sub.usuario_dept);
+      console.log(`   - Suscripción ID ${sub.id}: departamento crudo "${sub.usuario_dept}" -> rol normalizado "${normalized}"`);
+      return targets.includes(normalized);
+    });
+    
+    console.log(`-> [PUSH] Suscripciones filtradas que recibirán la push: ${filteredRows.length}`);
+    if (!filteredRows.length) return;
 
     const payload = JSON.stringify({ title, body, url: url || "./index.html" });
 
-    await Promise.allSettled(rows.map(async (sub) => {
+    await Promise.allSettled(filteredRows.map(async (sub) => {
       try {
         await webpush.sendNotification({ endpoint: sub.endpoint, keys: { auth: sub.auth, p256dh: sub.p256dh } }, payload);
+        console.log(`-> [PUSH] Push enviada con éxito a suscripción ID ${sub.id}`);
       } catch (err) {
+        console.warn(`-> [PUSH] Error enviando a suscripción ID ${sub.id}:`, err.message);
         if (err.statusCode === 410 || err.statusCode === 404) {
+          console.log(`-> [PUSH] Eliminando suscripción inactiva ID ${sub.id}`);
           await pool.query("DELETE FROM push_subscriptions WHERE id=?", [sub.id]);
         }
       }
