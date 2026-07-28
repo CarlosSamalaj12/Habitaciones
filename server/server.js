@@ -2396,6 +2396,12 @@ function normalizePatch(patch){
 async function upsertEstadoByRoomId(habitacion_id, patch){
   const p = normalizePatch(patch);
 
+  // Si las columnas no están presentes en el patch original, ponemos 1 (skip). Si están, ponemos 0.
+  const skipCamarera = (patch && "camarera_asignada" in patch) ? 0 : 1;
+  const skipTipo = (patch && "tipo_limpieza" in patch) ? 0 : 1;
+  const skipInspector = (patch && "inspector_asignado" in patch) ? 0 : 1;
+  const skipPrioridad = (patch && "prioridad_limpieza" in patch) ? 0 : 1;
+
   await pool.query(`
     INSERT INTO estados_habitacion
       (habitacion_id, estado, adultos, ninos, observaciones, desde, inicio_limpieza, fin_limpieza, inicio_repaso, repaso, camarera_asignada, tipo_limpieza, decorada, inspector_asignado, prioridad_limpieza, hora_listo_limpieza)
@@ -2411,11 +2417,11 @@ async function upsertEstadoByRoomId(habitacion_id, patch){
       fin_limpieza = COALESCE(VALUES(fin_limpieza), fin_limpieza),
       inicio_repaso = COALESCE(VALUES(inicio_repaso), inicio_repaso),
       repaso = COALESCE(VALUES(repaso), repaso),
-      camarera_asignada = VALUES(camarera_asignada),
-      tipo_limpieza = VALUES(tipo_limpieza),
+      camarera_asignada = CASE WHEN ? = 1 THEN camarera_asignada ELSE VALUES(camarera_asignada) END,
+      tipo_limpieza = CASE WHEN ? = 1 THEN tipo_limpieza ELSE VALUES(tipo_limpieza) END,
       decorada = CASE WHEN ? IS NULL THEN decorada ELSE VALUES(decorada) END,
-      inspector_asignado = VALUES(inspector_asignado),
-      prioridad_limpieza = VALUES(prioridad_limpieza),
+      inspector_asignado = CASE WHEN ? = 1 THEN inspector_asignado ELSE VALUES(inspector_asignado) END,
+      prioridad_limpieza = CASE WHEN ? = 1 THEN prioridad_limpieza ELSE VALUES(prioridad_limpieza) END,
       hora_listo_limpieza = COALESCE(VALUES(hora_listo_limpieza), hora_listo_limpieza),
       actualizado = CURRENT_TIMESTAMP
   `, [
@@ -2436,7 +2442,11 @@ async function upsertEstadoByRoomId(habitacion_id, patch){
     p.prioridad_limpieza,
     p.hora_listo_limpieza,
     p._skipEstadoUpdate ? 1 : 0,
-    p.decorada
+    skipCamarera,
+    skipTipo,
+    p.decorada,
+    skipInspector,
+    skipPrioridad
   ]);
 }
 
