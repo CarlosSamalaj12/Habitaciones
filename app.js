@@ -2259,6 +2259,7 @@ async function doLiberar(room, btn) {
       desde: null,
       inicio_limpieza: null,
       fin_limpieza: null,
+      prioridad_limpieza: null,
       observaciones: ""
     });
     toast("ok", "Habitacion liberada", `${current.etiqueta} -> LIBRE`);

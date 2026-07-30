@@ -2140,6 +2140,7 @@
           await updateRoomDB(CTX.modulo, CTX.habitacion, {
             estado: nextEstado,
             decorada: 0,
+            prioridad_limpieza: null,
             source: "inspeccion"
           });
         } catch (e) {
