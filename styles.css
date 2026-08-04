@@ -1928,6 +1928,27 @@ input:checked + .slider:before{
   filter:brightness(1.1);
   transform:translateY(-1px);
 }
+.swUpdateClose{
+  width:28px;
+  height:28px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.04);
+  color:var(--text);
+  cursor:pointer;
+  font-weight:800;
+  font-size:13px;
+  line-height:1;
+  padding:0;
+  transition:background .12s,border-color .12s,transform .12s;
+}
+.swUpdateClose:hover{
+  background:rgba(255,255,255,.10);
+  border-color:rgba(255,255,255,.32);
+  transform:translateY(-1px);
+}
 
 /* =========================
    MENU DESPLEGABLE PREMIUM

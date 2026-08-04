@@ -17,9 +17,39 @@ window.TIME_OFFSET_MS = 0;
 /* =========================
    VERSION CONTROL
    ========================= */
-window.APP_VERSION = "1.3.13";
+window.APP_VERSION = "1.3.17";
 window.__swReg = null;
 window.__updateChecked = false;
+window.LS_SW_UPDATE_DISMISSED = "hk_sw_update_dismissed_v1";
+
+// Fallback: si la página no define triggerSwUpdate, no dejes al botón "Actualizar" roto.
+window.triggerSwUpdate = function () {
+  try {
+    var reg = window.__swReg;
+    if (reg && reg.waiting) {
+      reg.waiting.postMessage({ type: "SKIP_WAITING" });
+    } else {
+      window.location.reload();
+    }
+  } catch (e) {
+    console.warn("[Update] triggerSwUpdate fallback error:", e);
+    window.location.reload();
+  }
+};
+
+function dismissSwUpdateToast(reason) {
+  try {
+    var el = document.getElementById("swUpdateToast");
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  } catch {}
+  try {
+    // Guarda la versión actual como "descartada" para no volver a mostrarla
+    // en la misma sesión / hasta que cambie de versión.
+    localStorage.setItem(LS_SW_UPDATE_DISMISSED, String(window.APP_VERSION || ""));
+  } catch {}
+}
+
+window.dismissSwUpdateToast = dismissSwUpdateToast;
 
 window.update = async function () {
   if (window.__updateChecked) return;
@@ -28,7 +58,7 @@ window.update = async function () {
   try {
     var reg = window.__swReg;
     if (reg && typeof reg.update === 'function') {
-      reg.update();
+      try { reg.update(); } catch {}
     }
 
     var resp = await fetch(API_BASE + '/api/version', { cache: 'no-cache' });
@@ -37,15 +67,39 @@ window.update = async function () {
     if (!ct.includes('application/json')) return;
     var data = await resp.json();
 
-    if (data.ok && data.version !== APP_VERSION) {
-      var existing = document.getElementById('swUpdateToast');
-      if (existing) return;
-      var toast = document.createElement('div');
-      toast.id = 'swUpdateToast';
-      toast.className = 'swUpdateToast';
-      toast.innerHTML = '<span class="swUpdateIcon">🔄</span><span class="swUpdateText">Nueva version ' + data.version + ' disponible.</span><button class="swUpdateBtn" onclick="window.triggerSwUpdate()">Actualizar</button>';
-      document.body.appendChild(toast);
+    if (!data.ok || data.version === APP_VERSION) return;
+
+    // El toast solo tiene sentido si HAY un SW nuevo esperando activarse.
+    // Si no hay waiting, el chequeo se hizo "por las dudas" pero la app ya está
+    // al día. En ese caso no molestamos al usuario.
+    if (!reg || !reg.waiting) {
+      // Si la página cargó sin controller (primer arranque), el SW nuevo es el que
+      // se acaba de instalar y todavía no hay waiting. En ese caso permitimos el
+      // toast igual, pero solo la primera vez.
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) return;
     }
+
+    // Si el usuario ya descartó ESTA versión, no le volvemos a mostrar.
+    var dismissed = "";
+    try { dismissed = localStorage.getItem(LS_SW_UPDATE_DISMISSED) || ""; } catch {}
+    if (dismissed && dismissed === String(APP_VERSION)) return;
+
+    var existing = document.getElementById('swUpdateToast');
+    if (existing) return;
+    var toast = document.createElement('div');
+    toast.id = 'swUpdateToast';
+    toast.className = 'swUpdateToast';
+    toast.innerHTML =
+      '<span class="swUpdateIcon">🔄</span>' +
+      '<span class="swUpdateText">Nueva version ' + data.version + ' disponible.</span>' +
+      '<button class="swUpdateBtn" id="swUpdateBtnApply" type="button">Actualizar</button>' +
+      '<button class="swUpdateClose" id="swUpdateBtnClose" type="button" aria-label="Cerrar">✕</button>';
+    document.body.appendChild(toast);
+
+    var applyBtn = document.getElementById('swUpdateBtnApply');
+    var closeBtn = document.getElementById('swUpdateBtnClose');
+    if (applyBtn) applyBtn.addEventListener('click', function () { window.triggerSwUpdate(); });
+    if (closeBtn) closeBtn.addEventListener('click', function () { window.dismissSwUpdateToast('user'); });
   } catch (e) {
     console.warn('[Update] No se pudo verificar version:', e);
   }
@@ -192,6 +246,9 @@ function canUseDecorada(role) {
 }
 function canViewReports(role) {
   return role === "ADMIN" || role === "GERENCIA" || role === "REPORTES";
+}
+function isReadOnlyRole(role) {
+  return role === "GERENCIA" || role === "REPORTES";
 }
 function isAdmin(role) {
   return role === "ADMIN";
@@ -1990,8 +2047,7 @@ function renderRooms() {
     // (no se agregan listeners individuales: un unico handler delegado en roomsGrid
     // se encarga de todos los clicks via event delegation)
     const raBtns = btn.querySelectorAll(".raBtn");
-    const isReadOnlyRole = role === "GERENCIA" || role === "REPORTES";
-    if (isReadOnlyRole) {
+    if (isReadOnlyRole(role)) {
       raBtns.forEach(b => { b.disabled = true; b.title = "Solo lectura"; });
     }
     if (!canUseLiberar(role)) {
@@ -2042,8 +2098,7 @@ function renderRooms() {
 function doOcupado(room, btn) {
   if (isLocked()) { showLogin(); return; }
   const role = roleOf(getSession());
-  if (role === "GERENCIA") {
-    toast("err", "Restringido", "Gerencia solo puede visualizar.");
+  if (isReadOnlyRole(role)) { toast("err", "Restringido", "Este rol solo puede visualizar.");
     return;
   }
   if (!canReception(role)) {
@@ -2056,8 +2111,7 @@ function doOcupado(room, btn) {
 async function doLimpieza(room, btn) {
   if (isLocked()) { showLogin(); return; }
   const role = roleOf(getSession());
-  if (role === "GERENCIA") {
-    toast("err", "Restringido", "Gerencia solo puede visualizar.");
+  if (isReadOnlyRole(role)) { toast("err", "Restringido", "Este rol solo puede visualizar.");
     return;
   }
 
@@ -2136,8 +2190,7 @@ async function doLimpieza(room, btn) {
 async function doMant(room, btn) {
   if (isLocked()) { showLogin(); return; }
   const role = roleOf(getSession());
-  if (role === "GERENCIA") {
-    toast("err", "Restringido", "Gerencia solo puede visualizar.");
+  if (isReadOnlyRole(role)) { toast("err", "Restringido", "Este rol solo puede visualizar.");
     return;
   }
 
@@ -2148,6 +2201,18 @@ async function doMant(room, btn) {
 
   if (room.estado === "ocupado" || room.estado === "ocupada limpia") {
     toast("err", "No permitido", "No podes poner MANTENIMIENTO si esta OCUPADO.");
+    return;
+  }
+  if (room.estado === "limpieza") {
+    toast("err", "No permitido", "Termina la LIMPIEZA antes de poner MANTENIMIENTO.");
+    return;
+  }
+  if (room.estado === "inspeccion") {
+    toast("err", "No permitido", "Termina la INSPECCION antes de poner MANTENIMIENTO.");
+    return;
+  }
+  if (room.estado === "repaso") {
+    toast("err", "No permitido", "Libera la habitacion del REPASO antes de poner MANTENIMIENTO.");
     return;
   }
   if (!requireOnline()) return;
@@ -2176,8 +2241,7 @@ async function doMant(room, btn) {
 async function doRepaso(room, btn) {
   if (isLocked()) { showLogin(); return; }
   const role = roleOf(getSession());
-  if (role === "GERENCIA") {
-    toast("err", "Restringido", "Gerencia solo puede visualizar.");
+  if (isReadOnlyRole(role)) { toast("err", "Restringido", "Este rol solo puede visualizar.");
     return;
   }
   if (!canReception(role)) {
@@ -2209,8 +2273,7 @@ async function doRepaso(room, btn) {
 async function doLiberar(room, btn) {
   if (isLocked()) { showLogin(); return; }
   const role = roleOf(getSession());
-  if (role === "GERENCIA") {
-    toast("err", "Restringido", "Gerencia solo puede visualizar.");
+  if (isReadOnlyRole(role)) { toast("err", "Restringido", "Este rol solo puede visualizar.");
     return;
   }
 
@@ -2273,8 +2336,7 @@ async function doLiberar(room, btn) {
 async function doPrio(room, btn) {
   if (isLocked()) { showLogin(); return; }
   const role = roleOf(getSession());
-  if (role === "GERENCIA") {
-    toast("err", "Restringido", "Gerencia solo puede visualizar.");
+  if (isReadOnlyRole(role)) { toast("err", "Restringido", "Este rol solo puede visualizar.");
     return;
   }
   if (!canReception(role)) {

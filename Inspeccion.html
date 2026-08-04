@@ -1967,8 +1967,13 @@
       if (!camareraSel && !tipoSel) return;
       isSyncingLimpieza = true;
       try {
+        // NO mandar `estado: "limpieza"` en el patch: la habitacion ya esta
+        // en limpieza (el sync solo corre entre Empezar y Terminar), y mandar
+        // el estado duplicaba la entrada `estado_limpieza` en el historial.
+        // El server (normalizePatch + skip=1) deja el estado real intacto y
+        // registra el movimiento como `room_update`, que es lo correcto
+        // porque el estado no cambio, solo se actualizo la camarera/tipo.
         await updateRoomDB(CTX.modulo, CTX.habitacion, {
-          estado: "limpieza",
           camarera_asignada: camareraSel,
           tipo_limpieza: tipoSel,
           inspector_asignado: CTX.usuario || null
