@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Estados de Habitación — Interacciones e Historial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --paper: #ffffff;
+    --ink: #14171e;
+    --ink-soft: #3a4256;
+    --muted: #7c7a72;
+    --line: #e9e3d6;
+    --line-soft: #f0ead9;
+    --primary: #2f6f5e;
+    --primary-soft: #e3efeb;
+    --accent: #c97b3f;
+    --accent-soft: #f6e7d4;
+    --warn: #b06367;
+    --warn-soft: #f5e0e0;
+    --info: #4a6b8a;
+    --info-soft: #e0e7f0;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before, body::after {
+    content: "";
+    position: fixed;
+    width: 520px; height: 520px;
+    border-radius: 50%;
+    filter: blur(110px);
+    opacity: 0.18;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::before { background: var(--primary); top: -260px; left: -180px; }
+  body::after { background: var(--accent); bottom: -260px; right: -180px; opacity: 0.10; }
+  main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 56px 28px 96px; }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--primary);
+    font-weight: 600; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .eyebrow svg { width: 14px; height: 14px; }
+  h1 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-weight: 400;
+    font-size: 44px;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    margin: 0 0 16px;
+  }
+  .lead {
+    color: var(--ink-soft);
+    font-size: 17px;
+    max-width: 720px;
+    margin: 0 0 8px;
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 56px;
+  }
+
+  section { margin-bottom: 72px; scroll-margin-top: 24px; }
+  h2 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-weight: 400;
+    font-size: 28px;
+    margin: 0 0 8px;
+    letter-spacing: -0.005em;
+  }
+  .h2-sub {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0 0 28px;
+    max-width: 720px;
+  }
+
+  /* === STATE CHIPS === */
+  .state {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .s-libre { background: #e6efe6; color: #2f6f5e; }
+  .s-ocupado { background: #f5e0e0; color: #b06367; }
+  .s-ocupada-limpia { background: #f0e7e3; color: #8b5a3c; }
+  .s-lista { background: #fdf0d0; color: #a07c2a; }
+  .s-limpieza { background: #d9e8f3; color: #2e5a7a; }
+  .s-inspeccion { background: #e2d8ef; color: #5a4585; }
+  .s-mantenimiento { background: #f3dada; color: #8b3a3a; }
+  .s-repaso { background: #e6f0e2; color: #4a6b3a; }
+  .s-prio-alta { background: #fff3d6; color: #b8821c; }
+  .s-prio-norm { background: #ece9e0; color: #6b6757; }
+
+  /* === ROLE CHIPS === */
+  .role {
+    display: inline-block;
+    padding: 3px 9px; border-radius: 6px;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.02em;
+    background: #ece9e0; color: #4a4636;
+  }
+  .role-rec { background: #e0e7f0; color: #2e4a6a; }
+  .role-ama { background: #f0e3d2; color: #7a4a1a; }
+  .role-adm { background: #efe2e2; color: #6a2e2e; }
+
+  /* === MAIN TABLE === */
+  .table-wrap {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  }
+  table.matrix { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.matrix thead th {
+    background: #fafaf3;
+    text-align: left;
+    padding: 16px 18px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--line);
+  }
+  table.matrix tbody td {
+    padding: 18px;
+    border-top: 1px solid var(--line-soft);
+    vertical-align: top;
+  }
+  table.matrix tbody tr:hover { background: #fcfaf3; }
+  table.matrix td.col-act { font-weight: 600; color: var(--ink); }
+  table.matrix td.col-act small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  table.matrix .col-arrows { font-family: 'JetBrains Mono', monospace; color: var(--ink-soft); font-size: 13px; }
+  .arrow-prev::after { content: " → "; color: var(--muted); margin: 0 4px; }
+  .evento {
+    display: inline-block; padding: 3px 8px; border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11.5px;
+    background: #ecebe4; color: #2a2a2a; border: 1px solid #d8d6c8;
+    word-break: break-all;
+  }
+  .evento-e_xxx { background: #e6efe6; color: #2f6f5e; border-color: #c8dccd; }
+  .evento-room_update { background: #f6e7d4; color: #8b5a25; border-color: #e3c89a; }
+  .hist-desc { color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+
+  /* === STATE MACHINE === */
+  .machine {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 32px 28px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  }
+  .machine-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .node {
+    background: #fafaf3;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    position: relative;
+  }
+  .node .name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 8px;
+  }
+  .node .name .badge-num {
+    display: inline-block; width: 20px; height: 20px;
+    border-radius: 50%; background: var(--primary); color: white;
+    text-align: center; line-height: 20px;
+    font-size: 11px; margin-right: 6px;
+  }
+  .node .transitions { font-size: 11.5px; color: var(--ink-soft); line-height: 1.6; }
+  .node .transitions b { color: var(--ink); font-weight: 600; }
+
+  /* === NOTES === */
+  .note-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .note {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px;
+  }
+  .note h3 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .note h3 svg { width: 18px; height: 18px; color: var(--primary); }
+  .note p { margin: 0 0 8px; color: var(--ink-soft); font-size: 13.5px; line-height: 1.5; }
+  .note .code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: #f0ead9; padding: 1px 6px; border-radius: 4px; color: #5a4632; }
+
+  /* === SOURCE FILES === */
+  .src { display: flex; flex-wrap: wrap; gap: 8px; }
+  .src a {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    background: #f0ead9; color: #5a4632;
+    text-decoration: none;
+    border: 1px solid #e3dac0;
+    transition: background .12s;
+  }
+  .src a:hover { background: #e6dcc0; }
+  .src a svg { width: 12px; height: 12px; }
+
+  @media (max-width: 880px) {
+    h1 { font-size: 32px; }
+    h2 { font-size: 22px; }
+    main { padding: 32px 18px 64px; }
+    .machine-grid { grid-template-columns: repeat(2, 1fr); }
+    table.matrix thead { display: none; }
+    table.matrix, table.matrix tbody, table.matrix tr, table.matrix td { display: block; width: 100%; }
+    table.matrix tr { border-top: 1px solid var(--line); padding: 12px 0; }
+    table.matrix td { padding: 8px 16px; border: none; }
+    table.matrix td::before {
+      content: attr(data-label);
+      display: block;
+      font-size: 11px; font-weight: 600;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+  }
+  @media (max-width: 520px) {
+    .machine-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <div class="eyebrow">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg>
+    CRM JDL · Habitaciones
+  </div>
+  <h1>Estados de habitación — interacciones e historial</h1>
+  <p class="lead">Mapa completo de cómo cada acción de la UI cambia el estado de una habitación, y exactamente qué fila aparece en el historial (<code style="font-family:'JetBrains Mono',monospace; font-size:13px">estados_habitacion_log</code>) y en la timeline del módulo Reportes.</p>
+  <p class="meta">Tabla basada en el código actual de <code style="font-family:'JetBrains Mono',monospace">app.js</code>, <code style="font-family:'JetBrains Mono',monospace">Inspeccion.html</code>, <code style="font-family:'JetBrains Mono',monospace">Decorada.html</code> y el endpoint <code style="font-family:'JetBrains Mono',monospace">server/server.js</code>.</p>
+
+  <!-- ============================== SECTION 1: LEGEND ============================== -->
+  <section>
+    <h2>Estados posibles</h2>
+    <p class="h2-sub">Estos son los 8 estados que puede tener una habitación, con su color y nomenclatura.</p>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:24px;">
+      <span class="state s-libre">libre</span>
+      <span class="state s-ocupado">ocupado</span>
+      <span class="state s-ocupada-limpia">ocupada limpia</span>
+      <span class="state s-lista">lista</span>
+      <span class="state s-limpieza">limpieza</span>
+      <span class="state s-inspeccion">inspeccion</span>
+      <span class="state s-mantenimiento">mantenimiento</span>
+      <span class="state s-repaso">repaso</span>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; color:var(--ink-soft); font-size:13px;">
+      <span>Roles:</span>
+      <span class="role role-rec">RECEPCION</span>
+      <span class="role role-ama">AMA_LLAVES</span>
+      <span class="role role-adm">ADMIN</span>
+      <span class="role">GERENCIA / REPORTES</span>
+      <span style="color:var(--muted)">(solo lectura)</span>
+    </div>
+  </section>
+
+  <!-- ============================== SECTION 2: MAIN TABLE ============================== -->
+  <section>
+    <h2>Tabla principal · interacción → estado nuevo → historial</h2>
+    <p class="h2-sub">Cada fila es una acción del UI. La columna "Historial" refleja exactamente lo que se guarda en la tabla <code style="font-family:'JetBrains Mono',monospace; font-size:12.5px">estados_habitacion_log</code> y lo que muestra la timeline en Reportes.</p>
+
+    <div class="table-wrap">
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th style="width:18%">Interacción (UI)</th>
+            <th style="width:10%">Rol</th>
+            <th style="width:24%">Estado previo</th>
+            <th style="width:24%">Estado nuevo</th>
+            <th style="width:24%">En el historial (evento · descripción)</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <!-- OCUPAR -->
+          <tr>
+            <td class="col-act" data-label="Interacción">
+              Botón <b>OCUPAR</b> (modal adultos/niños)
+              <small>index.html → <code>doOcupado()</code></small>
+            </td>
+            <td data-label="Rol"><span class="role role-rec">RECEPCION</span></td>
+            <td data-label="Estado previo">
+              <span class="state s-libre">libre</span> o cualquier estado permitido
+            </td>
+            <td data-label="Estado nuevo"><span class="state s-ocupado">ocupado</span></td>
+            <td data-label="Historial">
+              <span class="evento evento-e_xxx">estado_ocupado</span>
+              <div class="hist-desc" style="margin-top:6px;">
+                Guarda también <code>adultos</code>, <code>ninos</code> y <code>observaciones</code>. Dispara push global "OCUPADO".
+              </div>
+            </td>
+          </tr>
+
+          <!-- LISTA (Recepción) -->
+          <tr>
+            <td class="col-act" data-label="Interacción">
+              Botón <b>LIMP</b> (cuando es Recepción)
+              <small>index.html → <code>doLimpieza()</code> rol RECEPCION</small>
+            </td>
+            <td data-label="Rol"><span class="role role-rec">RECEPCION</span></td>
+            <td data-label="Estado previo">
+              <span class="state s-ocupado">ocupado</span> o <span class="state s-ocupada-limpia">ocupada limpia</span>
+            </td>
+            <td data-label="Estado nuevo"><span class="state s-lista">lista</span></td>
+            <td data-label="Historial">
+              <span class="evento evento-e_xxx">estado_lista</span>
+              <div class="hist-desc" style="margin-top:6px;">
+                Setea <code>desde</code>, <code>hora_listo_limpieza</code>. Limpia camarera, inspector y tipo de limpieza. Dispara push "LISTA".
+              </div>
+            </td>
+          </tr>
+
+          <!-- EMPEZAR LIMPIEZA -->
+          <tr>
+            <td class="col-act" data-label="Interacción">
+              Botón <b>Empezar limpieza</b>
+              <small>Inspeccion.html → <code>btnStart.addEventListener</code></small>
+            </td>
+            <td data-label="Rol"><span class="role role-ama">AMA_LLAVES</span></td>
+            <td data-label="Estado previo">
+              <span class="state s-lista">lista</span> (o re-pressing durante limpieza)
+            </td>
+            <td data-label="Estado nuevo"><span class="state s-limpieza">limpieza</span></td>
+            <td data-label="Historial">
+              <span class="evento evento-e_xxx">estado_limpieza</span>
+              <div class="hist-desc" style="margin-top:6px;">
+                <b>+</b> en la timeline de inspecciones aparece un evento separado <b>INICIO LIMPIEZA</b> con la camarera y el tipo de limpieza.
+              </div>
+            </td>
+          </tr>
+
+          <!-- TERMINAR LIMPIEZA -->
+          <tr>
+            <td class="col-act" data-label="Interacción">
+              Botón <b>Terminar limpieza</b>
+              <small>Inspeccion.html → <code>btnEnd.addEventListener</code></small>
+            </td>
+            <td data-label="Rol"><span class="role role-ama">AMA_LLAVES</span></td>
+            <td data-label="Estado previo"><span class="state s-limpieza">limpieza</span></td>
+            <td data-label="Estado nuevo"><span class="state s-inspeccion">inspeccion</span></td>
+            <td data-label="Historial">
+              <span class="evento evento-e_xxx">estado_inspeccion</span>
+              <div class="hist-desc" style="margin-top:6px;">
+                <b>+</b> evento <b>FIN LIMPIEZA</b> en la timeline (color celeste). Setea <code>fin_limpieza</code>.
+              </div>
+            </td>
+          </tr>
+
+          <!-- GUARDAR CHECKLIST (LIBRE) -->
+          <tr>
+            <td class="col-act" data-label="Interacción">
+              Botón <b>Guardar checklist</b>
+              <small>Inspeccion.html → <code>btnGuardar</code> con tipo de limpieza ≠ "estadia"</small>
+            </td>
+            <td data-label="Rol"><span class="role role-ama">AMA_LLAVES</span></td>
+            <td data-label="Estado previo"><span class="state s-inspeccion">inspeccion</span></td>
+            <td data-label="Estado nuevo"><span class="state s-libre">libre</span></td>
+            <td data-label="Historial">
+              <span class="evento evento-e_xxx">estado_libre</span>
+              <div class="hist-desc" style="margin-top:6px;">
+                <b>+</b> evento <b>INSPECCION COMPLETADA</b> en la timeline (color verde) con el nombre del inspector.
+              </div>
+            </td>
+          </tr>
+
+          <!-- GUARDAR CHECKLIST (OCUPADA LIMPIA) -->
+          <tr>
+            <td class="col-act" data-label="Interacción">
+              Botón <b>Guardar checklist</b>
+              <small>Inspeccion.html → <code>btnGuardar</code> con tipo de limpieza = "estadia"</small>
+            </td>
+            <td data-label="Rol"><span class="role role-ama">AMA_LLAVES</span></td>
+            <td data-label="Estado previo"><span class="state s-inspeccion">inspeccion</span></td>
+            <td data-label="Estado nuevo"><span class="state s-ocupada-limpia">ocupada limpia</span></td>
+            <td data-label="Historial">
+              <span class="evento evento-e_xxx">estado_ocupada_limpia</span>
+              <div class="hist-desc" style="margin-top:6px;">
+                <b>+</b> evento <b>INSPECCION COMPLETADA</b> en la timeline. Mantiene la habitación ocupada pero ya limpia para check-out.
+              </div>
+            </td>
+          </tr>
+
+          <!-- MANTENIMIENTO -->
+          <tr>
+            <td class="col-act" data-label="Interacción">
+              Botón <b>MANT</b>
+              <small>index.html → <code>doMant()</code></small>
+            </td>
+            <td data-label="Rol">
+              <span class="role role-rec">RECEPCION</span> o <span class="role role-ama">AMA_LLAVES</span>
+            </td>
+            <td data-label="Estado previo">
+              Solo <span class="state s-libre">libre</span> o <span class="state s-lista">lista</span>
+              <div style="margin-top:6px; font-size:11.5px; color:var(--muted);">
+                <b>Bloqueado</b> desde: <span class="state s-ocupado">ocupado</span>, <span class="state s-ocupada-limpia">ocupada limpia</span>, <span class="state s-limpieza">limpieza</span>, <span class="state s-inspeccion">inspeccion</span>, <span class="state s-repaso">repaso</span>
+              </div>
+            </td>
+            <td data-label="Estado nuevo"><span class="state s-mantenimiento">mantenimiento</span></td>
+            <td data-label="Historial">
+              <span class="evento evento-e_xxx">estado_mantenimiento</span>
+              <div class="hist-desc" style="margin-top:6px;">
+                Pide confirmación. Limpia <code>camarera_asignada</code>. Append "MANTENIMIENTO" a observaciones.
+              </div>
+            </td>
+          </tr>
+
+          <!-- REPASO -->
+          <tr>
+            <td class="col-act" data-label="Interacción">
+              Botón <b>REP</b>
+              <small>index.html → <code>doRepaso()</code></small>
+            </td>
+            <td data-label="Rol"><span class="role role-rec">RECEPCION</span></td>
+            <td data-label="Estado previo"><span class="state s-libre">libre</span> (único permitido)</td>
+            <td data-label="Estado nuevo"><span class="state s-repaso">repaso</span></td>
+            <td data-label="Historial">
+              <span class="evento evento-e_xxx">estado_repaso</span>
+              <div class="hist-desc" style="margin-top:6px;">
+                Setea <code>repaso: "si"</code> e <code>inicio_repaso</code>. Dispara el timer de repaso.
+              </div>
+            </td>
+          </tr>
+
+          <!-- LIBERAR GENERAL -->
+          <tr>
+            <td class="col-act" data-label="Interacción">
+              Botón <b>LIBRE</b> (general)
+              <small>index.html → <code>doLiberar()</code></small>
+            </td>
+            <td data-label="Rol">
+              <span class="role role-rec">RECEPCION</span> / <span class="role role-ama">AMA_LLAVES</span> / <span class="role role-adm">ADMIN</span>
+            </td>
+            <td data-label="Estado previo">
+              <span class="role role-rec">RECEPCION</span>: ocupado, ocupada limpia, mantenimiento, lista<br>
+              <span class="role role-ama">AMA_LLAVES</span>: mantenimiento, inspeccion<br>
+              <span class="role role-adm">ADMIN</span>: cualquiera de los anteriores + limpieza, inspeccion
+            </td>
+            <td data-label="Estado nuevo"><span class="state s-libre">libre</span></td>
+            <td data-label="Historial">
+              <span class="evento evento-e_xxx">estado_libre</span>
+              <div class="hist-desc" style="margin-top:6px;">
+                Limpia adultos/niños, camarera, desde, inicio/fin de limpieza, prioridad y observaciones.
+              </div>
+            </td>
+          </tr>
+
+          <!-- LIBERAR desde REPASO -->
+          <tr>
+            <td class="col-act" data-label="Interacción">
+              Botón <b>LIMP</b> (cuando es Ama y está REPASO)
+              <small>index.html → <code>doLimpieza()</code> rama AMA_LLAVES en repaso</small>
+            </td>
+            <td data-label="Rol"><span class="role role-ama">AMA_LLAVES</span></td>
+            <td data-label="Estado previo"><span class="state s-repaso">repaso</span></td>
+            <td data-label="Estado nuevo"><span class="state s-libre">libre</span></td>
+            <td data-label="Historial">
+              <span class="evento evento-e_xxx">estado_libre</span>
+              <div class="hist-desc" style="margin-top:6px;">
+                Mismo evento que "LIBRE" general. Pide confirmación.
+              </div>
+            </td>
+          </tr>
+
+          <!-- PRIORIDAD -->
+          <tr>
+            <td class="col-act" data-label="Interacción">
+              Botón <b>PRIO</b> (toggle)
+              <small>index.html → <code>doPrio()</code></small>
+            </td>
+            <td data-label="Rol"><span class="role role-rec">RECEPCION</span></td>
+            <td data-label="Estado previo">
+              Cualquiera <b>excepto</b> <span class="state s-ocupado">ocupado</span> y <span class="state s-ocupada-limpia">ocupada limpia</span>
+            </td>
+            <td data-label="Estado nuevo">
+              <b>Igual</b> al estado previo (no cambia). Solo cambia <code>prioridad_limpieza</code>
+            </td>
+            <td data-label="Historial">
+              <span class="evento evento-room_update">room_update</span>
+              <div class="hist-desc" style="margin-top:6px;">
+                Aparece como "Cambio de estado: <code>{prev}</code> → <code>{new}</code>" pero ambos son iguales. La campanita del front-end lo trata especialmente como "⭐ PRIORIDAD ALTA" o "Normal". <b>No hay evento dedicado en el log</b> — el cambio se ve revisando <code>patch_json</code>.
+              </div>
+            </td>
+          </tr>
+
+          <!-- DECORADA -->
+          <tr>
+            <td class="col-act" data-label="Interacción">
+              Botón <b>Guardar decorada</b>
+              <small>Decorada.html → <code>apiPOST("/api/room/update")</code> con <code>decorada: 1</code></small>
+            </td>
+            <td data-label="Rol">
+              <span class="role role-rec">RECEPCION</span> o <span class="role role-ama">AMA_LLAVES</span>
+            </td>
+            <td data-label="Estado previo">
+              Sin cambio (no toca <code>estado</code>)
+            </td>
+            <td data-label="Estado nuevo">
+              <b>Igual</b> al estado previo. Solo cambia <code>decorada</code>
+            </td>
+            <td data-label="Historial">
+              <span class="evento evento-room_update">room_update</span>
+              <div class="hist-desc" style="margin-top:6px;">
+                Aparece como "Cambio de estado: <code>{prev}</code> → <code>{new}</code>" (ambos iguales). El cambio real está en <code>patch_json.decorada: 1</code>.
+              </div>
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================== SECTION 3: STATE MACHINE ============================== -->
+  <section>
+    <h2>Mapa de transiciones válidas</h2>
+    <p class="h2-sub">Cada flecha representa una interacción de la tabla anterior. Las transiciones no listadas están bloqueadas por la app (toast de error).</p>
+
+    <div class="machine">
+      <div class="machine-grid">
+
+        <div class="node">
+          <div class="name"><span class="badge-num">1</span>libre</div>
+          <div class="transitions">
+            → <b>ocupado</b> (OCUPAR)<br>
+            → <b>mantenimiento</b> (MANT)<br>
+            → <b>repaso</b> (REP)
+          </div>
+        </div>
+
+        <div class="node">
+          <div class="name"><span class="badge-num">2</span>ocupado</div>
+          <div class="transitions">
+            → <b>lista</b> (LIMP · Recepción)<br>
+            → <b>libre</b> (LIBRE · Recepción/Admin)
+          </div>
+        </div>
+
+        <div class="node">
+          <div class="name"><span class="badge-num">3</span>ocupada limpia</div>
+          <div class="transitions">
+            → <b>lista</b> (LIMP · Recepción)<br>
+            → <b>libre</b> (LIBRE · Recepción/Admin)
+          </div>
+        </div>
+
+        <div class="node">
+          <div class="name"><span class="badge-num">4</span>lista</div>
+          <div class="transitions">
+            → <b>limpieza</b> (Empezar limpieza)<br>
+            → <b>libre</b> (LIBRE · Recepción/Admin)<br>
+            → <b>mantenimiento</b> (MANT)
+          </div>
+        </div>
+
+        <div class="node">
+          <div class="name"><span class="badge-num">5</span>limpieza</div>
+          <div class="transitions">
+            → <b>inspeccion</b> (Terminar limpieza)<br>
+            → <b>libre</b> (LIBRE · Admin, o flujo inspección Ama)
+          </div>
+        </div>
+
+        <div class="node">
+          <div class="name"><span class="badge-num">6</span>inspeccion</div>
+          <div class="transitions">
+            → <b>libre</b> (Guardar checklist · no estadia)<br>
+            → <b>ocupada limpia</b> (Guardar checklist · estadia)<br>
+            → <b>libre</b> (LIBRE · Ama/Admin)
+          </div>
+        </div>
+
+        <div class="node">
+          <div class="name"><span class="badge-num">7</span>mantenimiento</div>
+          <div class="transitions">
+            → <b>libre</b> (LIBRE · cualquier rol)
+          </div>
+        </div>
+
+        <div class="node">
+          <div class="name"><span class="badge-num">8</span>repaso</div>
+          <div class="transitions">
+            → <b>libre</b> (LIMP · Ama de llaves con confirmación)
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== SECTION 4: NOTES ============================== -->
+  <section>
+    <h2>Casos especiales y notas</h2>
+    <p class="h2-sub">Tres situaciones que no son "cambio de estado" pero quedan registradas en el log.</p>
+
+    <div class="note-grid">
+      <div class="note">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Prioridad (PRIO)
+        </h3>
+        <p>No cambia <code>estado</code>, solo <code>prioridad_limpieza</code> entre <span class="code">alta</span> y <span class="code">baja</span>. En el log figura como <span class="evento evento-room_update">room_update</span> con <code>estado_prev</code> = <code>estado_new</code>, lo cual hace creer que no pasó nada. La UI del front-end sí lo distingue en la campanita.</p>
+      </div>
+
+      <div class="note">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          Decorada
+        </h3>
+        <p>Marca la habitación con <code>decorada: 1</code> pero no toca <code>estado</code>. En el log se ve como <span class="evento evento-room_update">room_update</span> con estados iguales. El cambio real está en <code>patch_json.decorada</code>. Aparece en el módulo Reportes solo si filtrás por patch.</p>
+      </div>
+
+      <div class="note">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Inspecciones como eventos
+        </h3>
+        <p>La timeline del historial une dos fuentes: el <code>estados_habitacion_log</code> y la tabla <code>inspecciones</code>. Por eso una limpieza deja 3-4 entradas: <span class="evento evento-e_xxx">estado_limpieza</span> + <b>INICIO LIMPIEZA</b>, luego <span class="evento evento-e_xxx">estado_inspeccion</span> + <b>FIN LIMPIEZA</b>, y al guardar <span class="evento evento-e_xxx">estado_libre</span> + <b>INSPECCION COMPLETADA</b>.</p>
+      </div>
+
+      <div class="note">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          Desactualizado
+        </h3>
+        <p>Si la habitación cambió de estado entre que cargaste la vista y tocaste el botón, el server devuelve <code>DESACTUALIZADO</code> y la app recarga la lista completa. No genera entrada nueva en el log; solo evita pisar cambios de otro usuario.</p>
+      </div>
+
+      <div class="note">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          MANT y trabajo en curso
+        </h3>
+        <p>El botón <b>MANT</b> está bloqueado cuando la habitación está en <span class="state s-limpieza">limpieza</span>, <span class="state s-inspeccion">inspeccion</span> o <span class="state s-repaso">repaso</span> (además de <span class="state s-ocupado">ocupado</span> / <span class="state s-ocupada-limpia">ocupada limpia</span>). Solo se permite desde <span class="state s-libre">libre</span> o <span class="state s-lista">lista</span>, así no se pisota el trabajo de la camarera o el inspector.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================== SECTION 5: SOURCE ============================== -->
+  <section>
+    <h2>Archivos fuente</h2>
+    <p class="h2-sub">Todo el mapeo anterior sale de estas ubicaciones del código.</p>
+    <div class="src">
+      <a href="../app.js">app.js (handlers de acción)</a>
+      <a href="../Inspeccion.html">Inspeccion.html (flujo limpieza → inspección)</a>
+      <a href="../Decorada.html">Decorada.html (decorada)</a>
+      <a href="../server/server.js">server/server.js (/api/room/update + logRoomEvent)</a>
+      <a href="../sql/estados_habitacion_log.sql">sql/estados_habitacion_log.sql (schema)</a>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

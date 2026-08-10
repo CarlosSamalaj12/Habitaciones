@@ -22,10 +22,51 @@ const webpush = require("web-push");
     console.log("ℹ️ Entorno de producción (VPS Linux) detectado. Omitiendo auto-incremento de versión.");
     return;
   }
+  // Forzar bump con BUMP_VERSION=1 (útil para limpiar caches en prod dev sin cambios de código).
+  const forceBump = process.env.BUMP_VERSION === "1";
+
   try {
+    const crypto = require("crypto");
     const jsonPath = path.join(__dirname, "../version.json");
     const swPath = path.join(__dirname, "../sw.js");
     const indexPath = path.join(__dirname, "../index.html");
+    const hashPath = path.join(__dirname, "../.versionhash");
+
+    // Archivos cuyo contenido define "hay una nueva versión que repartir".
+    const trackedFiles = [
+      "../sw.js",
+      "../app.js",
+      "../styles.css",
+      "../index.html",
+      "../app.webmanifest",
+      "../Admin.html",
+      "../EditarRegistros.html",
+      "../Reportes.html",
+      "../Inspeccion.html",
+      "../Decorada.html"
+    ];
+
+    // Calcula hash SHA-256 de los archivos rastreados.
+    const currentHash = crypto.createHash("sha256");
+    for (const rel of trackedFiles) {
+      const p = path.join(__dirname, rel);
+      if (fs.existsSync(p)) {
+        currentHash.update(fs.readFileSync(p));
+      }
+    }
+    const currentHashHex = currentHash.digest("hex");
+
+    // Lee el hash previo si existe.
+    let lastHash = "";
+    if (fs.existsSync(hashPath)) {
+      try { lastHash = fs.readFileSync(hashPath, "utf8").trim(); } catch {}
+    }
+
+    // Si el código no cambió y no se forzó el bump, no hacemos nada.
+    if (!forceBump && lastHash && lastHash === currentHashHex && fs.existsSync(jsonPath)) {
+      console.log("ℹ️ Sin cambios de código desde el último bump. No se incrementa la versión.");
+      return;
+    }
 
     let major = 1;
     let minor = 3;
@@ -44,8 +85,10 @@ const webpush = require("web-push");
 
     // Guardar version.json
     fs.writeFileSync(jsonPath, JSON.stringify({ major, minor, build }, null, 2), "utf8");
+    // Guardar hash para el próximo arranque.
+    fs.writeFileSync(hashPath, currentHashHex, "utf8");
     const vStr = `${major}.${minor}.${build}`;
-    console.log(`📦 VERSION AUTO-INCREMENTADA A: v${vStr}`);
+    console.log(`📦 VERSION AUTO-INCREMENTADA A: v${vStr}${forceBump ? " (forzado por BUMP_VERSION=1)" : ""}`);
 
     // Modificar sw.js
     if (fs.existsSync(swPath)) {
@@ -205,6 +248,57 @@ function normalizeRole(rawDept){
   if (d.includes("reportes")) return "REPORTES";
   if (d.includes("ama") || d.includes("camar")) return "AMA_LLAVES";
   return "RECEPCION";
+}
+
+// ===== STATE TRANSITION GUARD =====
+// Cierra el hueco de que el server solo validaba "libre" y "mantenimiento".
+// El frontend bloquea la mayoria, pero un cliente externo (curl, DevTools) podia
+// mandar cualquier patch.estado y el server lo aceptaba.
+// Las transiciones a "libre" se validan mas abajo con sus allowed sets especificos
+// (porque dependen de role + source). Esta funcion cubre el resto.
+const ESTADO_TRANSITIONS = {
+  "libre->ocupado":                 { roles: ["RECEPCION", "ADMIN"] },
+  "libre->repaso":                  { roles: ["RECEPCION", "ADMIN"] },
+  "libre->mantenimiento":           { roles: ["RECEPCION", "AMA_LLAVES", "ADMIN"] },
+  "ocupado->lista":                 { roles: ["RECEPCION", "ADMIN"] },
+  "ocupada limpia->lista":          { roles: ["RECEPCION", "ADMIN"] },
+  "lista->mantenimiento":           { roles: ["RECEPCION", "AMA_LLAVES", "ADMIN"] },
+  // Las siguientes SOLO son validas desde el flujo de Inspeccion.html
+  "lista->limpieza":                { roles: ["AMA_LLAVES", "ADMIN"], source: "inspeccion" },
+  "limpieza->inspeccion":           { roles: ["AMA_LLAVES", "ADMIN"], source: "inspeccion" },
+  "inspeccion->libre":              { roles: ["AMA_LLAVES", "ADMIN"], source: "inspeccion" },
+  "inspeccion->ocupada limpia":     { roles: ["AMA_LLAVES", "ADMIN"], source: "inspeccion" },
+};
+
+function checkStateTransition(curEstado, newEstado, role, source) {
+  const cur  = String(curEstado  || "").trim().toLowerCase();
+  const next = String(newEstado || "").trim().toLowerCase();
+  const src  = String(source    || "").trim().toLowerCase();
+
+  // No-op: mismo estado, siempre OK (es un patch de meta, ej prioridad).
+  if (cur === next) return { ok: true };
+
+  // GERENCIA y REPORTES son solo lectura.
+  if (role === "GERENCIA" || role === "REPORTES") {
+    return { ok: false, code: 403, error: "Solo visualizacion, no podes cambiar estados." };
+  }
+
+  // ADMIN pasa por las reglas especificas de "libre" mas abajo;
+  // para el resto de transiciones no listadas, ADMIN tiene super-poderes.
+  if (role !== "ADMIN") {
+    const key = `${cur}->${next}`;
+    const rule = ESTADO_TRANSITIONS[key];
+    if (!rule) {
+      return { ok: false, code: 403, error: `Transicion ${cur} -> ${next} no permitida.` };
+    }
+    if (!rule.roles.includes(role)) {
+      return { ok: false, code: 403, error: `Tu rol (${role}) no puede hacer la transicion ${cur} -> ${next}.` };
+    }
+    if (rule.source && src !== rule.source) {
+      return { ok: false, code: 403, error: `La transicion ${cur} -> ${next} solo se permite desde el flujo de ${rule.source}.` };
+    }
+  }
+  return { ok: true };
 }
 
 // ===== DB POOL =====
@@ -2520,6 +2614,17 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
       }
     }
 
+    // ✅ Validacion centralizada de transiciones de estado (cierra hueco server-side).
+    // NO se aplica a "libre" porque mas abajo tiene su propia logica por rol.
+    if (patch?.estado && String(patch.estado).trim().toLowerCase() !== "libre") {
+      const role = normalizeRole(req.user?.dept || actor?.dept || "");
+      const result = checkStateTransition(cur?.estado, patch.estado, role, source);
+      if (!result.ok) {
+        console.log(`-> [BLOQUEADO] ${result.error} (cur=${cur?.estado} -> new=${patch.estado}, role=${role}, source=${source || "-"})`);
+        return res.status(result.code).json({ ok:false, error: result.error });
+      }
+    }
+
     if (patch?.estado === "libre") {
       const curEstado = String(cur?.estado || "").trim().toLowerCase();
       const role = normalizeRole(req.user?.dept || actor?.dept || "");
@@ -2557,6 +2662,18 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
         }
       } else {
         return res.status(403).json({ ok:false, error:"No tienes permiso para liberar habitaciones." });
+      }
+    }
+
+    // ✅ Validacion server-side de decorada: solo AMA_LLAVES o ADMIN.
+    // (El frontend ya bloquea via canUseDecorada, pero el server no tenia nada.)
+    if ("decorada" in patch) {
+      const decoradaRole = normalizeRole(req.user?.dept || actor?.dept || "");
+      if (decoradaRole !== "AMA_LLAVES" && decoradaRole !== "ADMIN") {
+        return res.status(403).json({
+          ok: false,
+          error: "Solo Ama de llaves o Administrador puede marcar como decorada."
+        });
       }
     }
 
