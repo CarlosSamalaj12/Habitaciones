@@ -32,7 +32,7 @@ function openConfirm(message) {
 function closeConfirm() {
   if (confirmOverlay) confirmOverlay.classList.add("hidden");
 }
-function confirmDialog(message) {
+function confirmDialog(message, okText = "Confirmar", isDanger = false) {
   return new Promise((resolve) => {
     let done = false;
     const finish = (val) => {
@@ -41,6 +41,10 @@ function confirmDialog(message) {
       closeConfirm();
       resolve(val);
     };
+    if (confirmOk) {
+      confirmOk.textContent = okText;
+      confirmOk.className = isDanger ? "btnModal danger" : "btnModal primary";
+    }
     openConfirm(message);
     const onCancel = () => finish(false);
     const onOk = () => finish(true);

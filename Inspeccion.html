@@ -1653,6 +1653,11 @@
       btnStart.textContent = started ? `✔ ${fmtTimeFromMySQL(startAtDT)}` : "Empezar limpieza";
       btnEnd.textContent = ended ? `✔ ${fmtTimeFromMySQL(endAtDT)}` : "Terminar limpieza";
 
+      const txtFecha = $("fecha");
+      const selTipo = $("tipoLimpieza");
+      if (txtFecha) txtFecha.disabled = started;
+      if (selTipo) selTipo.disabled = started;
+
       const btnSelect = $("btnSelectCamareras");
       if (btnSelect) {
         btnSelect.disabled = started;

@@ -62,8 +62,8 @@ const webpush = require("web-push");
       indexContent = indexContent.replace(/app\.js\?v=[a-zA-Z0-9\._-]+/g, `app.js?v=${vStr}`);
       // Reemplazar la referencia de styles.css
       indexContent = indexContent.replace(/styles\.css\?v=[a-zA-Z0-9\._-]+/g, `styles.css?v=${vStr}`);
-      // Reemplazar la referencia de sw.js en la url
-      indexContent = indexContent.replace(/sw\.js\?v=[a-zA-Z0-9\._-]+/g, `sw.js?v=hk-v${vStr}`);
+      // Reemplazar la referencia de sw.js en la url (deshabilitado: swUrl es estático para evitar bucles)
+      // indexContent = indexContent.replace(/sw\.js\?v=[a-zA-Z0-9\._-]+/g, `sw.js?v=hk-v${vStr}`);
       // Reemplazar el texto visible de la versión en el pie de página
       indexContent = indexContent.replace(/v[0-9]+\.[0-9]+\.[0-9]+ \| Created By - Carlos S/g, `v${vStr} | Created By - Carlos S`);
       fs.writeFileSync(indexPath, indexContent, "utf8");
@@ -1799,7 +1799,7 @@ app.get("/api/reportes/historial", requireAuthIfEnabled, async (req,res)=>{
         i.inicio_limpieza, i.fin_limpieza, i.hora_checklist,
         c.nombre AS camarera_nombre,
         t.nombre AS tipo_nombre,
-        i.inspector_nombre, i.es_decorada, i.es_familiar,
+        i.inspector_nombre, i.inspector_dept, i.es_decorada, i.es_familiar,
         i.observaciones
       FROM inspecciones i
       LEFT JOIN camareras c ON c.id = i.camarera_id
@@ -1812,12 +1812,21 @@ app.get("/api/reportes/historial", requireAuthIfEnabled, async (req,res)=>{
     // 3) Construir linea de tiempo combinada
     const timeline = [];
 
+    // Helper para formatear hora con segundos localmente
+    const formatTimeStr = (dateVal) => {
+      if (!dateVal) return "--:--:--";
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return "--:--:--";
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      const ss = String(d.getSeconds()).padStart(2, "0");
+      return `${hh}:${mm}:${ss}`;
+    };
+
     logs.forEach(l => {
-      const ts = String(l.timestamp || "");
-      const time = ts.includes(" ") ? ts.split(" ")[1]?.substring(0, 5) : "--:--";
       timeline.push({
-        hora: time,
-        timestamp: ts,
+        hora: formatTimeStr(l.timestamp),
+        timestamp: l.timestamp,
         tipo: "log",
         evento: l.evento,
         descripcion: l.evento === "room_update"
@@ -1832,11 +1841,9 @@ app.get("/api/reportes/historial", requireAuthIfEnabled, async (req,res)=>{
     // Inspecciones como eventos en la timeline
     inspecciones.forEach(insp => {
       if (insp.inicio_limpieza) {
-        const ts = String(insp.inicio_limpieza || "");
-        const time = ts.includes(" ") ? ts.split(" ")[1]?.substring(0, 5) : "--:--";
         timeline.push({
-          hora: time,
-          timestamp: ts,
+          hora: formatTimeStr(insp.inicio_limpieza),
+          timestamp: insp.inicio_limpieza,
           tipo: "inicio_limpieza",
           evento: "INICIO LIMPIEZA",
           descripcion: `Camarera: ${insp.camarera_nombre || "-"} | Tipo: ${insp.tipo_nombre || "-"}`,
@@ -1846,11 +1853,9 @@ app.get("/api/reportes/historial", requireAuthIfEnabled, async (req,res)=>{
         });
       }
       if (insp.fin_limpieza) {
-        const ts = String(insp.fin_limpieza || "");
-        const time = ts.includes(" ") ? ts.split(" ")[1]?.substring(0, 5) : "--:--";
         timeline.push({
-          hora: time,
-          timestamp: ts,
+          hora: formatTimeStr(insp.fin_limpieza),
+          timestamp: insp.fin_limpieza,
           tipo: "fin_limpieza",
           evento: "FIN LIMPIEZA",
           descripcion: insp.observaciones || "-",
@@ -1860,28 +1865,41 @@ app.get("/api/reportes/historial", requireAuthIfEnabled, async (req,res)=>{
         });
       }
       if (insp.hora_checklist) {
-        const ts = String(insp.hora_checklist || "");
-        const time = ts.includes(" ") ? ts.split(" ")[1]?.substring(0, 5) : "--:--";
         const familiar = Number(insp.es_familiar) ? " (Familiar)" : "";
         const decorada = Number(insp.es_decorada) ? " (Decorada)" : "";
         timeline.push({
-          hora: time,
-          timestamp: ts,
+          hora: formatTimeStr(insp.hora_checklist),
+          timestamp: insp.hora_checklist,
           tipo: "checklist",
           evento: "INSPECCION COMPLETADA",
           descripcion: `Inspector: ${insp.inspector_nombre || "-"}${familiar}${decorada}`,
           actor: insp.inspector_nombre || "-",
-          dept: "CAMARERIA",
+          dept: insp.inspector_dept || "Ama de llaves",
           color: "#2EE59D"
         });
       }
     });
 
-    // Ordenar por timestamp
+    // Ordenar por timestamp y por peso del tipo de evento para cronología perfecta
+    const getWeight = (item) => {
+      if (item.evento === "estado_lista") return 1;
+      if (item.evento === "estado_limpieza") return 5;
+      if (item.tipo === "inicio_limpieza") return 10;
+      if (item.tipo === "fin_limpieza") return 20;
+      if (item.evento === "estado_inspeccion") return 25;
+      if (item.tipo === "checklist") return 30;
+      if (item.evento === "estado_libre" || item.evento === "estado_ocupada limpia") return 35;
+      return 50;
+    };
+
     timeline.sort((a, b) => {
-      if (a.timestamp < b.timestamp) return -1;
-      if (a.timestamp > b.timestamp) return 1;
-      return 0;
+      // Ordenar por milisegundos exactos. Si los timestamps son idénticos, se recurre a la prioridad lógica (getWeight).
+      const timeA = new Date(a.timestamp).getTime() || 0;
+      const timeB = new Date(b.timestamp).getTime() || 0;
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+      return getWeight(a) - getWeight(b);
     });
 
     // Info de la habitacion
@@ -2319,6 +2337,12 @@ async function fetchOneRoom(habitacion_id){
 async function logRoomEvent({ before, after, patch, actor, source }) {
   try {
     if (!before && !after) return;
+    
+    // Evitar registrar entradas si el estado de la habitación no cambió (evita duplicados/ruido)
+    if (before && after && before.estado === after.estado) {
+      return;
+    }
+
     const ref = after || before || {};
     const patchJson = JSON.stringify(patch || {});
     const actorId = actor?.id ?? null;
@@ -2491,8 +2515,8 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
     }
 
     if (patch?.estado === "mantenimiento") {
-      if (cur?.estado === "ocupado" || cur?.estado === "ocupada limpia") {
-        return res.status(400).json({ ok:false, error:"No se puede poner mantenimiento si está OCUPADO" });
+      if (cur?.estado !== "libre") {
+        return res.status(400).json({ ok:false, error:"Solo se puede poner en mantenimiento si la habitación está LIBRE." });
       }
     }
 

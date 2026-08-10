@@ -1064,10 +1064,201 @@ body.layout-mobile .brandText #summaryProgressAll{
   }
 }
 
+.stickyHeaderGroup{
+  position: sticky;
+  top: 0;
+  z-index: 110;
+  background: rgba(10,14,28,.45);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  padding: 10px 18px 12px;
+  margin: -10px -18px 16px;
+}
+
+/* Search row */
+.searchRow{
+  position: relative;
+  z-index: 2;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 4px 0 6px;
+}
+.searchRow .searchWrap{
+  flex: 1;
+  position: relative;
+  border-radius: 14px;
+  background: rgba(10,14,28,.4);
+  transition: box-shadow .25s ease, border-color .25s ease, transform .25s ease;
+  display: flex;
+  align-items: center;
+}
+.searchRow .searchWrap:hover{
+  box-shadow: 0 8px 22px rgba(0,0,0,.4), 0 0 0 1px rgba(124,58,237,.22);
+}
+.searchRow .searchWrap:focus-within{
+  box-shadow:
+    0 8px 22px rgba(0,0,0,.4),
+    0 0 0 2px rgba(124,58,237,.55),
+    0 0 24px rgba(124,58,237,.18);
+  transform: translateY(-1px);
+}
+.searchRow .searchInput{
+  width: 100%;
+  font-size: 16px;
+  padding: 9px 38px 9px 34px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: linear-gradient(180deg, rgba(124,58,237,.06), rgba(255,255,255,.02));
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: .01em;
+  transition: border-color .2s ease, background .2s ease;
+}
+.searchRow .searchInput::placeholder{
+  color: rgba(234,240,255,.45);
+  font-weight: 500;
+}
+.searchRow .searchWrap::before{
+  content:"🔍";
+  position:absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  pointer-events: none;
+  opacity: .75;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.searchRow .searchWrap:focus-within::before{
+  opacity: 1;
+  transform: translateY(-50%) scale(1.1);
+}
+.searchRow .searchWrap::after{
+  content: "✕";
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%) scale(.7);
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  color: rgba(234,240,255,.6);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease, background .18s ease;
+}
+.searchRow .searchWrap.has-value::after{
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+  pointer-events: auto;
+}
+.searchRow .searchWrap:focus-within::after,
+.searchRow .searchWrap.has-value:hover::after{ background: rgba(239,68,68,.35); color: #fff; }
+.searchRow .searchWrap.has-value:active::after{ background: rgba(239,68,68,.55); }
+.searchRow .searchClearBtn{
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%) scale(.7);
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  color: rgba(234,240,255,.7);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+  transition: opacity .18s ease, transform .18s ease, background .18s ease, color .18s ease;
+}
+.searchRow .searchWrap.has-value .searchClearBtn{
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+  pointer-events: auto;
+}
+.searchRow .searchWrap.has-value .searchClearBtn:hover{
+  background: rgba(239,68,68,.35);
+  color: #fff;
+}
+.searchRow .searchWrap.has-value .searchClearBtn:active{
+  background: rgba(239,68,68,.55);
+}
+
+/* Room index strip: sticky justo debajo del buscador */
+.roomIndex{
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  padding: 2px 0 6px;
+  margin-bottom: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+  position: relative;
+  top: auto;
+  z-index: 1;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: transform .25s ease;
+  will-change: transform;
+}
+.roomIndex.roomIndexHidden{
+  transform: translateY(-100%);
+}
+.roomIndex::-webkit-scrollbar{ display: none; }
+.roomIndexBtn{
+  flex: 0 0 auto;
+  min-width: 28px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(10,14,28,.4);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  scroll-snap-align: start;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.roomIndexBtn:active{
+  background: rgba(124,58,237,.3);
+  color: #fff;
+  border-color: rgba(124,58,237,.5);
+}
+.roomIndexBtn.ocupado{ color: rgb(255,120,120); border-color: rgba(239,68,68,.3); }
+.roomIndexBtn.limpieza{ color: rgb(220,185,142); border-color: rgba(200,165,122,.3); }
+.roomIndexBtn.lista{ color: rgb(250,204,21); border-color: rgba(251,191,36,.3); }
+.roomIndexBtn.libre{ color: rgb(80,220,140); border-color: rgba(34,197,94,.3); }
+.roomIndexBtn.inspeccion{ color: rgb(249,115,22); border-color: rgba(249,115,22,.3); }
+.roomIndexBtn.mantenimiento{ color: rgb(160,120,255); border-color: rgba(124,58,237,.3); }
+
 /* Room cards: compact on mobile */
 @media (max-width: 767px){
   .main{
     padding: 8px 12px 16px;
+  }
+  .stickyHeaderGroup{
+    padding: 8px 12px 10px;
+    margin: -8px -12px 12px;
   }
   .headRow{
     margin-bottom: 6px;
@@ -1239,181 +1430,6 @@ body.layout-mobile .brandText #summaryProgressAll{
       0 0 0 5px rgba(var(--accent), .20),
       0 0 30px rgba(var(--accent), .30);
   }
-
-  /* Search row: sticky justo arriba del roomIndex */
-  .searchRow{
-    position: sticky;
-    top: 0;
-    z-index: 6;
-    background: linear-gradient(180deg, var(--bg0) 75%, transparent 100%);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    padding: 4px 0 6px;
-  }
-  .searchRow .searchWrap{
-    flex: 1;
-    position: relative;
-    box-shadow: 0 6px 18px rgba(0,0,0,.35), 0 0 0 1px rgba(124,58,237,.12);
-    border-radius: 14px;
-    transition: box-shadow .2s ease, transform .2s ease;
-  }
-  .searchRow .searchWrap:hover{
-    box-shadow: 0 8px 22px rgba(0,0,0,.4), 0 0 0 1px rgba(124,58,237,.22);
-  }
-  .searchRow .searchWrap:focus-within{
-    box-shadow:
-      0 8px 22px rgba(0,0,0,.4),
-      0 0 0 2px rgba(124,58,237,.55),
-      0 0 24px rgba(124,58,237,.18);
-    transform: translateY(-1px);
-  }
-  .searchRow .searchInput{
-    width: 100%;
-    /* font-size >=16px evita que iOS auto-zoomee al hacer focus */
-    font-size: 16px;
-    padding: 9px 38px 9px 34px;
-    border-radius: 14px;
-    border: 1px solid rgba(255,255,255,.10);
-    background: linear-gradient(180deg, rgba(124,58,237,.06), rgba(255,255,255,.02));
-    color: var(--text);
-    font-weight: 600;
-    letter-spacing: .01em;
-    transition: border-color .2s ease, background .2s ease;
-  }
-  .searchRow .searchInput::placeholder{
-    color: rgba(234,240,255,.45);
-    font-weight: 500;
-  }
-  .searchRow .searchWrap::before{
-    content:"🔍";
-    position:absolute;
-    left: 11px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 14px;
-    pointer-events: none;
-    opacity: .75;
-    transition: opacity .2s ease, transform .2s ease;
-  }
-  .searchRow .searchWrap:focus-within::before{
-    opacity: 1;
-    transform: translateY(-50%) scale(1.1);
-  }
-  .searchRow .searchWrap::after{
-    content: "✕";
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%) scale(.7);
-    width: 22px;
-    height: 22px;
-    display: grid;
-    place-items: center;
-    border-radius: 999px;
-    background: rgba(255,255,255,.08);
-    color: rgba(234,240,255,.6);
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .18s ease, transform .18s ease, background .18s ease;
-  }
-  .searchRow .searchWrap.has-value::after{
-    opacity: 1;
-    transform: translateY(-50%) scale(1);
-    pointer-events: auto;
-  }
-  .searchRow .searchWrap:focus-within::after,
-  .searchRow .searchWrap.has-value:hover::after{ background: rgba(239,68,68,.35); color: #fff; }
-  .searchRow .searchWrap.has-value:active::after{ background: rgba(239,68,68,.55); }
-  .searchRow .searchClearBtn{
-    position: absolute;
-    right: 6px;
-    top: 50%;
-    transform: translateY(-50%) scale(.7);
-    width: 24px;
-    height: 24px;
-    display: grid;
-    place-items: center;
-    border: 0;
-    border-radius: 999px;
-    background: rgba(255,255,255,.08);
-    color: rgba(234,240,255,.7);
-    font-size: 11px;
-    font-weight: 800;
-    cursor: pointer;
-    opacity: 0;
-    pointer-events: none;
-    z-index: 2;
-    transition: opacity .18s ease, transform .18s ease, background .18s ease, color .18s ease;
-  }
-  .searchRow .searchWrap.has-value .searchClearBtn{
-    opacity: 1;
-    transform: translateY(-50%) scale(1);
-    pointer-events: auto;
-  }
-  .searchRow .searchWrap.has-value .searchClearBtn:hover{
-    background: rgba(239,68,68,.35);
-    color: #fff;
-  }
-  .searchRow .searchWrap.has-value .searchClearBtn:active{
-    background: rgba(239,68,68,.55);
-  }
-
-  /* Room index strip: sticky justo debajo del buscador */
-  .roomIndex{
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 4px;
-    padding: 2px 0 6px;
-    margin-bottom: 4px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    scroll-snap-type: x mandatory;
-    position: sticky;
-    top: 44px;
-    z-index: 5;
-    background: linear-gradient(180deg, var(--bg0) 70%, transparent 100%);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    transition: transform .25s ease;
-    will-change: transform;
-  }
-  .roomIndex.roomIndexHidden{
-    transform: translateY(-100%);
-  }
-  .roomIndex::-webkit-scrollbar{ display: none; }
-  .roomIndexBtn{
-    flex: 0 0 auto;
-    min-width: 28px;
-    height: 24px;
-    border-radius: 6px;
-    border: 1px solid rgba(255,255,255,.1);
-    background: rgba(10,14,28,.4);
-    color: var(--muted);
-    font-size: 10px;
-    font-weight: 700;
-    cursor: pointer;
-    display: grid;
-    place-items: center;
-    padding: 0 4px;
-    scroll-snap-align: start;
-    transition: background .12s, color .12s, border-color .12s;
-  }
-  .roomIndexBtn:active{
-    background: rgba(124,58,237,.3);
-    color: #fff;
-    border-color: rgba(124,58,237,.5);
-  }
-  .roomIndexBtn.ocupado{ color: rgb(255,120,120); border-color: rgba(239,68,68,.3); }
-  .roomIndexBtn.limpieza{ color: rgb(220,185,142); border-color: rgba(200,165,122,.3); }
-  .roomIndexBtn.lista{ color: rgb(250,204,21); border-color: rgba(251,191,36,.3); }
-  .roomIndexBtn.libre{ color: rgb(80,220,140); border-color: rgba(34,197,94,.3); }
-  .roomIndexBtn.inspeccion{ color: rgb(249,115,22); border-color: rgba(249,115,22,.3); }
-  .roomIndexBtn.mantenimiento{ color: rgb(160,120,255); border-color: rgba(124,58,237,.3); }
 
   /* Search bar full width on mobile */
   .searchWrap{
@@ -1963,13 +1979,14 @@ input:checked + .slider:before{
 }
 
 .menuDropdown{
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  position: fixed;
+  top: 70px;
+  right: 18px;
   width: min(340px, calc(100vw - 24px));
-  max-height: calc(100vh - 110px);
+  max-height: calc(100dvh - 90px);
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   background: rgba(10,14,28,.97);
   border: 1px solid rgba(139,92,246,.25);
   border-radius: 20px;
@@ -2179,7 +2196,8 @@ input:checked + .slider:before{
     right: 10px;
     left: auto;
     width: min(320px, calc(100vw - 20px));
-    max-height: calc(100vh - 80px);
+    max-height: calc(100dvh - 100px);
+    -webkit-overflow-scrolling: touch;
     transform-origin: top right;
   }
 }

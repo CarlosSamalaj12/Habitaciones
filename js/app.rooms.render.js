@@ -312,7 +312,7 @@ function renderRooms() {
       }
       if (role2 === "AMA_LLAVES") {
         if (current.estado === "repaso") {
-          const ok = await confirmDialog(`Seguro de liberar la habitacion ${current.etiqueta}?`);
+          const ok = await confirmDialog(`¿Seguro de liberar la habitación ${current.etiqueta}?`, "Sí, liberar", true);
           if (!ok) return;
           if (!requireOnline()) return;
           bLimp.disabled = true;
@@ -359,13 +359,13 @@ function renderRooms() {
         return;
       }
 
-      if (room.estado === "ocupado" || room.estado === "ocupada limpia") {
-        toast("err", "No permitido", "No podes poner MANTENIMIENTO si esta OCUPADO.");
+      if (room.estado !== "libre") {
+        toast("err", "No permitido", "Solo podés poner MANTENIMIENTO si la habitación está LIBRE.");
         return;
       }
       if (!requireOnline()) return;
 
-      const confirmado = await confirmDialog(`¿Estás seguro de poner la habitacion ${room.etiqueta} en MANTENIMIENTO?`);
+      const confirmado = await confirmDialog(`¿Estás seguro de poner la habitación ${room.etiqueta} en MANTENIMIENTO?`, "Sí, poner en mantenimiento", false);
       if (!confirmado) return;
 
       bMant.disabled = true;
@@ -456,7 +456,7 @@ function renderRooms() {
         return;
       }
 
-      const ok = await confirmDialog(`Seguro de liberar la habitacion ${current.etiqueta}?`);
+      const ok = await confirmDialog(`¿Seguro de liberar la habitación ${current.etiqueta}?`, "Sí, liberar", true);
       if (!ok) return;
       if (!requireOnline()) return;
 

@@ -1,4 +1,4 @@
-﻿/* =========================
+/* =========================
    CONFIG
 ========================= */
 window.APP_BASE = window.location.pathname
@@ -999,7 +999,7 @@ function openConfirm(message) {
 function closeConfirm() {
   if (confirmOverlay) confirmOverlay.classList.add("hidden");
 }
-function confirmDialog(message) {
+function confirmDialog(message, okText = "Confirmar", isDanger = false) {
   return new Promise((resolve) => {
     let done = false;
     const finish = (val) => {
@@ -1008,6 +1008,10 @@ function confirmDialog(message) {
       closeConfirm();
       resolve(val);
     };
+    if (confirmOk) {
+      confirmOk.textContent = okText;
+      confirmOk.className = isDanger ? "btnModal danger" : "btnModal primary";
+    }
     openConfirm(message);
     const onCancel = () => finish(false);
     const onOk = () => finish(true);
@@ -1475,7 +1479,7 @@ function renderRooms() {
       }
       if (role2 === "AMA_LLAVES") {
         if (current.estado === "repaso") {
-          const ok = await confirmDialog(`Seguro de liberar la habitacion ${current.etiqueta}?`);
+          const ok = await confirmDialog(`¿Seguro de liberar la habitación ${current.etiqueta}?`, "Sí, liberar", true);
           if (!ok) return;
           if (!requireOnline()) return;
           bLimp.disabled = true;
@@ -1522,13 +1526,13 @@ function renderRooms() {
         return;
       }
 
-      if (room.estado === "ocupado" || room.estado === "ocupada limpia") {
-        toast("err", "No permitido", "No podes poner MANTENIMIENTO si esta OCUPADO.");
+      if (room.estado !== "libre") {
+        toast("err", "No permitido", "Solo podés poner MANTENIMIENTO si la habitación está LIBRE.");
         return;
       }
       if (!requireOnline()) return;
 
-      const confirmado = await confirmDialog(`¿Estás seguro de poner la habitacion ${room.etiqueta} en MANTENIMIENTO?`);
+      const confirmado = await confirmDialog(`¿Estás seguro de poner la habitación ${room.etiqueta} en MANTENIMIENTO?`, "Sí, poner en mantenimiento", false);
       if (!confirmado) return;
 
       bMant.disabled = true;
@@ -1619,7 +1623,7 @@ function renderRooms() {
         return;
       }
 
-      const ok = await confirmDialog(`Seguro de liberar la habitacion ${current.etiqueta}?`);
+      const ok = await confirmDialog(`¿Seguro de liberar la habitación ${current.etiqueta}?`, "Sí, liberar", true);
       if (!ok) return;
       if (!requireOnline()) return;
 
