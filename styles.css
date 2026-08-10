@@ -1032,6 +1032,7 @@ body.layout-mobile .brandText #summaryProgressAll{
     position: relative;
     top: auto;
     flex: none;
+    z-index: 250;
   }
   .modulesBar{
     position: sticky;
@@ -2017,7 +2018,7 @@ input:checked + .slider:before{
     0 0 60px rgba(124,58,237,.12);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  z-index: 40;
+  z-index: 200;
   animation: menuIn .25s cubic-bezier(.22,1,.36,1);
 }
 @keyframes menuIn{

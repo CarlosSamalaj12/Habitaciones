@@ -17,7 +17,7 @@ window.TIME_OFFSET_MS = 0;
 /* =========================
    VERSION CONTROL
    ========================= */
-window.APP_VERSION = "1.3.18";
+window.APP_VERSION = "1.3.19";
 window.__swReg = null;
 window.__updateChecked = false;
 window.LS_SW_UPDATE_DISMISSED = "hk_sw_update_dismissed_v1";
