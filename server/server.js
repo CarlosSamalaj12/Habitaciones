@@ -1925,7 +1925,7 @@ app.get("/api/reportes/historial", requireAuthIfEnabled, async (req,res)=>{
         evento: l.evento,
         descripcion: l.evento === "room_update"
           ? `Cambio de estado: ${l.estado_prev || "?"} → ${l.estado_new || "?"}`
-          : l.evento,
+          : (String(l.evento).startsWith("estado_") ? "" : l.evento),
         actor: l.actor_name || "Sistema",
         dept: l.actor_dept || "",
         color: colorDeEstado(l.estado_new)
@@ -1941,20 +1941,21 @@ app.get("/api/reportes/historial", requireAuthIfEnabled, async (req,res)=>{
           tipo: "inicio_limpieza",
           evento: "INICIO LIMPIEZA",
           descripcion: `Camarera: ${insp.camarera_nombre || "-"} | Tipo: ${insp.tipo_nombre || "-"}`,
-          actor: insp.camarera_nombre || "-",
-          dept: "CAMARERIA",
+          actor: insp.inspector_nombre || "-",
+          dept: insp.inspector_dept || "Ama de llaves",
           color: "#C8A57A"
         });
       }
       if (insp.fin_limpieza) {
+        const finDesc = `Camarera: ${insp.camarera_nombre || "-"}` + (insp.observaciones ? ` | Obs: ${insp.observaciones}` : "");
         timeline.push({
           hora: formatTimeStr(insp.fin_limpieza),
           timestamp: insp.fin_limpieza,
           tipo: "fin_limpieza",
           evento: "FIN LIMPIEZA",
-          descripcion: insp.observaciones || "-",
-          actor: insp.camarera_nombre || "-",
-          dept: "CAMARERIA",
+          descripcion: finDesc,
+          actor: insp.inspector_nombre || "-",
+          dept: insp.inspector_dept || "Ama de llaves",
           color: "#38BDF8"
         });
       }

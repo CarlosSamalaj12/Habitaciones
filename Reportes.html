@@ -2111,12 +2111,16 @@
           title = ev.evento;
         }
 
+        const descHTML = ev.descripcion && ev.descripcion.trim()
+          ? `<div class="eventDesc">${escHtml(ev.descripcion)}</div>`
+          : "";
+
         html += `
           <div class="timelineEvent">
             <div class="eventDot" style="background:${dotColor};box-shadow:0 0 6px ${dotColor}"></div>
             <div class="eventTime">${escHtml(ev.hora || "--:--")}</div>
             <div class="eventTitle" style="color:${dotColor}">${escHtml(title)}</div>
-            <div class="eventDesc">${escHtml(ev.descripcion || "")}</div>
+            ${descHTML}
             <div class="eventActor">${escHtml(ev.actor || "")}${ev.dept ? " - " + escHtml(ev.dept) : ""}</div>
           </div>
         `;
