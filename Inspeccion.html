@@ -2107,6 +2107,10 @@
                 ensure(it.id).estado === "NO_CUMPLE" ? "NO_CUMPLE" : "NO_APLICA"
       }));
 
+      const nextEstado = (String(tipoSel || "").trim().toLowerCase() === "estadia")
+        ? "ocupada limpia"
+        : "libre";
+
       const payload = {
         modulo_id: modulo,
         modulo_nombre: CTX_MOD_NAME,
@@ -2122,12 +2126,13 @@
         observaciones: obsGeneral || null,
         es_decorada: 0,
         es_familiar: useFamiliarArea ? 1 : 0,
+        next_estado: nextEstado, // Pasamos el siguiente estado para procesamiento atómico
         detalles
       };
 
-      setGuardarStatus("📤 Paso 1/2: Guardando checklist...");
+      setGuardarStatus("📤 Guardando inspección y actualizando habitación...");
       try {
-        toast("Guardando", "Guardando checklist en la base de datos...", true, 1800);
+        toast("Guardando", "Procesando inspección en el servidor...", true, 2000);
 
         const resp = await fetch(`${API_BASE}/api/inspecciones/guardar`, {
           method: "POST",
@@ -2136,29 +2141,10 @@
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok || !data?.ok) {
-          throw new Error(data?.error || "No se pudo guardar la inspeccion");
+          throw new Error(data?.error || "Error al guardar en el servidor");
         }
 
-        toast("Listo OK", `Inspeccion #${data.id} guardada.`, true, 2600);
-
-        // Liberar Habitacion en BD
-        setGuardarStatus("✅ Paso 1/2: Checklist guardado. Liberando habitación...");
-        try {
-          const nextEstado = (String(tipoSel || "").trim().toLowerCase() === "estadia")
-            ? "ocupada limpia"
-            : "libre";
-          await updateRoomDB(CTX.modulo, CTX.habitacion, {
-            estado: nextEstado,
-            decorada: 0,
-            prioridad_limpieza: null,
-            source: "inspeccion"
-          });
-        } catch (e) {
-          setGuardarStatus("Se guardo la inspeccion, pero no se pudo liberar la habitacion.", "err");
-          toast("Aviso", "Inspeccion guardada, pero no se pudo liberar la habitacion en BD.", false, 9000);
-          console.error("Error liberando en BD:", e);
-          return;
-        }
+        toast("Listo OK", `Inspección #${data.id} guardada y habitación liberada.`, true, 2600);
         clearPendingInspectionSubmit();
 
         // indicador local de "limpiada"

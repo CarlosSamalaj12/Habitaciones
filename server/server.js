@@ -1215,11 +1215,15 @@ app.post("/api/tipos-limpieza/delete", requireAuthIfEnabled, async (req,res)=>{
 
 // ===== INSPECCIONES (LOCAL) =====
 app.post("/api/inspecciones/guardar", async (req,res)=>{
+  const conn = await pool.getConnection();
   try{
     const data = req.body;
     if(!data?.modulo_id || !data?.habitacion_etiqueta || !data?.fecha){
+      conn.release();
       return res.status(400).json({ ok:false, error:"Faltan datos requeridos" });
     }
+
+    await conn.beginTransaction();
 
     const inicio = toMySQLDatetime(data.inicio_limpieza);
     const fin = toMySQLDatetime(data.fin_limpieza);
@@ -1235,7 +1239,7 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
     const primaryCamareraId = camareraIds[0] || null;
 
     // Verificar si ya existe una inspeccion identica (misma hab, fecha, horas, inspector)
-    const [existing] = await pool.query(`
+    const [existing] = await conn.query(`
       SELECT id FROM inspecciones
       WHERE modulo_id=? AND habitacion_etiqueta=? AND fecha=?
         AND ((? IS NULL AND inicio_limpieza IS NULL) OR inicio_limpieza=?)
@@ -1249,8 +1253,12 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
       data.inspector_nombre || ''
     ]);
 
+    let inspeccion_id = null;
+    let isDedup = false;
+
     if(existing.length){
-      const inspeccion_id = existing[0].id;
+      inspeccion_id = existing[0].id;
+      isDedup = true;
       // Actualizar cabecera con los nuevos valores (importante para tipo_limpieza_id, etc.)
       const updFields = [];
       const updParams = [];
@@ -1261,103 +1269,185 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
       if (data.observaciones !== undefined) { updFields.push("observaciones=?"); updParams.push(String(data.observaciones || '').trim()); }
       if (updFields.length) {
         updParams.push(inspeccion_id);
-        await pool.query(`UPDATE inspecciones SET ${updFields.join(", ")} WHERE id=?`, updParams);
+        await conn.query(`UPDATE inspecciones SET ${updFields.join(", ")} WHERE id=?`, updParams);
       }
       // Reemplazar detalles (por si cambiaron estados)
       if(Array.isArray(data.detalles) && data.detalles.length){
-        await pool.query("DELETE FROM inspeccion_detalles WHERE inspeccion_id=?", [inspeccion_id]);
+        await conn.query("DELETE FROM inspeccion_detalles WHERE inspeccion_id=?", [inspeccion_id]);
         const validDetails = data.detalles
           .filter(d => d.item_id)
           .map(d => [inspeccion_id, d.item_id, ['CUMPLE','NO_CUMPLE','NO_APLICA'].includes(d.estado) ? d.estado : 'NO_APLICA']);
         if (validDetails.length) {
           const placeholders = validDetails.map(() => '(?,?,?)').join(',');
-          await pool.query(`INSERT INTO inspeccion_detalles (inspeccion_id, item_id, estado) VALUES ${placeholders}`, validDetails.flat());
+          await conn.query(`INSERT INTO inspeccion_detalles (inspeccion_id, item_id, estado) VALUES ${placeholders}`, validDetails.flat());
         }
       }
       // Actualizar camareras siempre (DELETE + INSERT)
-      await pool.query("DELETE FROM inspecciones_camareras WHERE inspeccion_id=?", [inspeccion_id]);
+      await conn.query("DELETE FROM inspecciones_camareras WHERE inspeccion_id=?", [inspeccion_id]);
       if (camareraIds.length) {
         const camPlaceholders = camareraIds.map(() => '(?,?)').join(',');
-        await pool.query(`INSERT INTO inspecciones_camareras (inspeccion_id, camarera_id) VALUES ${camPlaceholders}`, camareraIds.flatMap(id => [inspeccion_id, id]));
+        await conn.query(`INSERT INTO inspecciones_camareras (inspeccion_id, camarera_id) VALUES ${camPlaceholders}`, camareraIds.flatMap(id => [inspeccion_id, id]));
       }
-      return res.json({ ok:true, id: inspeccion_id, dedup: true });
-    }
-
-    // Capturar hora_listo_limpieza del estado actual de la habitacion (valor congelado en el momento)
-    let horaListo = null;
-    try {
-      const [roomRows] = await pool.query(
-        "SELECT id FROM habitaciones WHERE modulo_id=? AND etiqueta=? LIMIT 1",
-        [data.modulo_id, data.habitacion_etiqueta]
-      );
-      if (roomRows.length) {
-        const [estRows] = await pool.query(
-          "SELECT hora_listo_limpieza FROM estados_habitacion WHERE habitacion_id=?",
-          [roomRows[0].id]
+    } else {
+      // Capturar hora_listo_limpieza del estado actual de la habitacion (valor congelado en el momento)
+      let horaListo = null;
+      try {
+        const [roomRows] = await conn.query(
+          "SELECT id FROM habitaciones WHERE modulo_id=? AND etiqueta=? LIMIT 1",
+          [data.modulo_id, data.habitacion_etiqueta]
         );
-        if (estRows.length && estRows[0].hora_listo_limpieza) {
-          horaListo = estRows[0].hora_listo_limpieza;
+        if (roomRows.length) {
+          const [estRows] = await conn.query(
+            "SELECT hora_listo_limpieza FROM estados_habitacion WHERE habitacion_id=?",
+            [roomRows[0].id]
+          );
+          if (estRows.length && estRows[0].hora_listo_limpieza) {
+            horaListo = estRows[0].hora_listo_limpieza;
+          }
+        }
+      } catch (e) {
+        console.warn("No se pudo capturar hora_listo_limpieza:", e.message);
+      }
+
+      // Resolver modulo_nombre si no se proporciono
+      let moduloNombre = data.modulo_nombre;
+      if (!moduloNombre) {
+        try {
+          const [modRow] = await conn.query("SELECT descripcion FROM modulos WHERE id=?", [data.modulo_id]);
+          if (modRow.length) moduloNombre = modRow[0].descripcion;
+        } catch (e) {
+          console.warn("No se pudo resolver modulo_nombre:", e.message);
         }
       }
-    } catch (e) {
-      console.warn("No se pudo capturar hora_listo_limpieza:", e.message);
-    }
 
-    // Resolver modulo_nombre si no se proporciono
-    let moduloNombre = data.modulo_nombre;
-    if (!moduloNombre) {
-      try {
-        const [modRow] = await pool.query("SELECT descripcion FROM modulos WHERE id=?", [data.modulo_id]);
-        if (modRow.length) moduloNombre = modRow[0].descripcion;
-      } catch (e) {
-        console.warn("No se pudo resolver modulo_nombre:", e.message);
+      const [header] = await conn.query(`
+        INSERT INTO inspecciones
+          (modulo_id, modulo_nombre, habitacion_etiqueta, fecha, camarera_id, tipo_limpieza_id,
+           inspector_nombre, inspector_dept, inicio_limpieza, fin_limpieza, hora_checklist,
+           hora_listo_limpieza, observaciones, es_decorada, es_familiar)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `, [
+        data.modulo_id,
+        moduloNombre || '',
+        data.habitacion_etiqueta,
+        data.fecha,
+        primaryCamareraId,
+        data.tipo_limpieza_id || null,
+        data.inspector_nombre || '',
+        data.inspector_dept || '',
+        inicio, fin, horaChk,
+        horaListo,
+        data.observaciones || null,
+        data.es_decorada ? 1 : 0,
+        data.es_familiar ? 1 : 0
+      ]);
+
+      inspeccion_id = header.insertId;
+
+      // Guardar relacion multiple de camareras
+      if (camareraIds.length) {
+        const camPlaceholders = camareraIds.map(() => '(?,?)').join(',');
+        await conn.query(`INSERT INTO inspecciones_camareras (inspeccion_id, camarera_id) VALUES ${camPlaceholders}`, camareraIds.flatMap(id => [inspeccion_id, id]));
+      }
+
+      if(Array.isArray(data.detalles)){
+        const validDetails = data.detalles
+          .filter(d => d.item_id)
+          .map(d => [inspeccion_id, d.item_id, ['CUMPLE','NO_CUMPLE','NO_APLICA'].includes(d.estado) ? d.estado : 'NO_APLICA']);
+        if (validDetails.length) {
+          const placeholders = validDetails.map(() => '(?,?,?)').join(',');
+          await conn.query(`INSERT INTO inspeccion_detalles (inspeccion_id, item_id, estado) VALUES ${placeholders}`, validDetails.flat());
+        }
       }
     }
 
-    const [header] = await pool.query(`
-      INSERT INTO inspecciones
-        (modulo_id, modulo_nombre, habitacion_etiqueta, fecha, camarera_id, tipo_limpieza_id,
-         inspector_nombre, inspector_dept, inicio_limpieza, fin_limpieza, hora_checklist,
-         hora_listo_limpieza, observaciones, es_decorada, es_familiar)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    `, [
-      data.modulo_id,
-      moduloNombre || '',
-      data.habitacion_etiqueta,
-      data.fecha,
-      primaryCamareraId,
-      data.tipo_limpieza_id || null,
-      data.inspector_nombre || '',
-      data.inspector_dept || '',
-      inicio, fin, horaChk,
-      horaListo,
-      data.observaciones || null,
-      data.es_decorada ? 1 : 0,
-      data.es_familiar ? 1 : 0
-    ]);
-
-    const inspeccion_id = header.insertId;
-
-    // Guardar relacion multiple de camareras
-    if (camareraIds.length) {
-      const camPlaceholders = camareraIds.map(() => '(?,?)').join(',');
-      await pool.query(`INSERT INTO inspecciones_camareras (inspeccion_id, camarera_id) VALUES ${camPlaceholders}`, camareraIds.flatMap(id => [inspeccion_id, id]));
-    }
-
-    if(Array.isArray(data.detalles)){
-      const validDetails = data.detalles
-        .filter(d => d.item_id)
-        .map(d => [inspeccion_id, d.item_id, ['CUMPLE','NO_CUMPLE','NO_APLICA'].includes(d.estado) ? d.estado : 'NO_APLICA']);
-      if (validDetails.length) {
-        const placeholders = validDetails.map(() => '(?,?,?)').join(',');
-        await pool.query(`INSERT INTO inspeccion_detalles (inspeccion_id, item_id, estado) VALUES ${placeholders}`, validDetails.flat());
+    // ✅ ACTUALIZACIÓN ATÓMICA DE LA HABITACIÓN (Liberar habitación en la misma transacción)
+    let nextEstado = data.next_estado;
+    if (!nextEstado) {
+      if (data.tipo_limpieza_id) {
+        const [tRows] = await conn.query("SELECT descripcion FROM tipos_limpieza WHERE id = ?", [data.tipo_limpieza_id]);
+        if (tRows.length && String(tRows[0].descripcion).toLowerCase().includes("estadia")) {
+          nextEstado = "ocupada limpia";
+        } else {
+          nextEstado = "libre";
+        }
+      } else {
+        nextEstado = "libre";
       }
     }
 
-    res.json({ ok:true, id: inspeccion_id });
+    const roomId = await getRoomId(data.modulo_id, data.habitacion_etiqueta, conn);
+    let cur = null;
+    let updatedRoom = null;
+
+    if (roomId) {
+      cur = await fetchOneRoom(roomId, conn);
+      
+      // Validar si la transición a 'libre' / 'ocupada limpia' es válida antes de aplicarla
+      const role = normalizeRole(data.inspector_dept || "");
+      const fromInspeccion = true;
+      const curEstado = String(cur?.estado || "").trim().toLowerCase();
+
+      // Validación idéntica a la de /api/room/update para evitar saltarse reglas
+      if (nextEstado === "libre" && curEstado !== "libre") {
+        if (curEstado === "inspeccion") {
+          if (role !== "ADMIN" && role !== "AMA_LLAVES") {
+            throw new Error("Solo el Administrador o Ama de llaves puede liberar desde inspección.");
+          }
+        }
+        if (curEstado === "limpieza" && role !== "ADMIN" && role !== "AMA_LLAVES") {
+          throw new Error("Solo Administrador o Ama de llaves puede liberar desde limpieza.");
+        }
+        if (role === "AMA_LLAVES") {
+          const estadosPermitidos = ["mantenimiento", "inspeccion", "repaso", "limpieza"];
+          if (!estadosPermitidos.includes(curEstado)) {
+            throw new Error("Ama de llaves solo puede liberar habitaciones en MANTENIMIENTO, INSPECCIÓN, REPASO o LIMPIEZA.");
+          }
+        }
+      }
+
+      const patch = {
+        estado: nextEstado,
+        decorada: 0,
+        prioridad_limpieza: null,
+        source: "inspeccion"
+      };
+      const normalized = normalizePatch(patch);
+      await upsertEstadoByRoomId(roomId, normalized, conn);
+      updatedRoom = await fetchOneRoom(roomId, conn);
+
+      const actor = {
+        id: null,
+        name: data.inspector_nombre || "Sistema",
+        dept: data.inspector_dept || "Ama de llaves"
+      };
+      await logRoomEvent({ before: cur, after: updatedRoom, patch, actor, source: "inspeccion" }, conn);
+    }
+
+    await conn.commit();
+    conn.release();
+
+    // ✅ EMITIR EVENTOS DE SOCKET Y PUSH DESPUÉS DEL COMMIT EXITOSO
+    if (updatedRoom) {
+      io.emit("room_update", updatedRoom);
+      
+      const oldEstado = cur?.estado || "";
+      const newEstado = updatedRoom?.estado || "";
+      if (oldEstado === "inspeccion" && newEstado === "libre") {
+        sendPushToAll(
+          data.modulo_id + " - " + data.habitacion_etiqueta,
+          "INSPECCION COMPLETADA - Habitacion liberada",
+          "./index.html"
+        ).catch(() => {});
+      }
+    }
+
+    res.json({ ok:true, id: inspeccion_id, dedup: isDedup });
   }catch(e){
-    console.error("Error guardando inspeccion:", e);
-    res.status(500).json({ ok:false, error: "Error interno del servidor" });
+    await conn.rollback();
+    conn.release();
+    console.error("Error guardando inspeccion transaccional:", e);
+    res.status(500).json({ ok:false, error: e.message || "Error interno del servidor" });
   }
 });
 
@@ -2390,16 +2480,18 @@ app.get("/api/rooms", requireAuthIfEnabled, async (req,res)=>{
 });
 
 // ===== UPDATE =====
-async function getRoomId(modulo_id, etiqueta){
-  const [rows] = await pool.query(
+async function getRoomId(modulo_id, etiqueta, conn){
+  const executor = conn || pool;
+  const [rows] = await executor.query(
     "SELECT id FROM habitaciones WHERE modulo_id=? AND etiqueta=? LIMIT 1",
     [modulo_id, etiqueta]
   );
   return rows[0]?.id || null;
 }
 
-async function fetchOneRoom(habitacion_id){
-  const [rows] = await pool.query(`
+async function fetchOneRoom(habitacion_id, conn){
+  const executor = conn || pool;
+  const [rows] = await executor.query(`
     SELECT
       h.id AS habitacion_id,
       h.etiqueta,
@@ -2429,7 +2521,8 @@ async function fetchOneRoom(habitacion_id){
   return rows[0] || null;
 }
 
-async function logRoomEvent({ before, after, patch, actor, source }) {
+async function logRoomEvent({ before, after, patch, actor, source }, conn) {
+  const executor = conn || pool;
   try {
     if (!before && !after) return;
     
@@ -2448,7 +2541,7 @@ async function logRoomEvent({ before, after, patch, actor, source }) {
     let evento = "room_update";
     if (patch?.estado) evento = `estado_${String(patch.estado).trim().toLowerCase()}`;
 
-    await pool.query(`
+    await executor.query(`
       INSERT INTO estados_habitacion_log
         (habitacion_id, modulo_id, etiqueta, actor_id, actor_name, actor_dept, source, evento, estado_prev, estado_new, patch_json)
       VALUES
@@ -2512,7 +2605,8 @@ function normalizePatch(patch){
   return out;
 }
 
-async function upsertEstadoByRoomId(habitacion_id, patch){
+async function upsertEstadoByRoomId(habitacion_id, patch, conn){
+  const executor = conn || pool;
   const p = normalizePatch(patch);
 
   // Si las columnas no están presentes en el patch original, ponemos 1 (skip). Si están, ponemos 0.
@@ -2521,7 +2615,7 @@ async function upsertEstadoByRoomId(habitacion_id, patch){
   const skipInspector = (patch && "inspector_asignado" in patch) ? 0 : 1;
   const skipPrioridad = (patch && "prioridad_limpieza" in patch) ? 0 : 1;
 
-  await pool.query(`
+  await executor.query(`
     INSERT INTO estados_habitacion
       (habitacion_id, estado, adultos, ninos, observaciones, desde, inicio_limpieza, fin_limpieza, inicio_repaso, repaso, camarera_asignada, tipo_limpieza, decorada, inspector_asignado, prioridad_limpieza, hora_listo_limpieza)
     VALUES
@@ -2631,38 +2725,43 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
       const role = normalizeRole(req.user?.dept || actor?.dept || "");
       const fromInspeccion = String(source || "").trim().toLowerCase() === "inspeccion";
 
-      // INSPECCION: ADMIN o AMA_LLAVES pueden liberar (o desde el flujo de inspeccion)
-      if (curEstado === "inspeccion") {
-        if (role !== "ADMIN" && role !== "AMA_LLAVES" && !fromInspeccion) {
-          return res.status(403).json({ ok:false, error:"Solo el Administrador o Ama de llaves puede liberar desde inspección." });
-        }
-      }
-
-      if (curEstado === "limpieza" && role !== "ADMIN" && !(role === "AMA_LLAVES" && fromInspeccion)) {
-        return res.status(403).json({ ok:false, error:"Solo Administrador puede liberar si está en LIMPIEZA." });
-      }
-
-      if (role === "AMA_LLAVES") {
-        // ✅ AMA DE LLAVES puede liberar desde: mantenimiento, inspeccion, y tambien limpieza (si viene del flujo de inspeccion)
-        const estadosPermitidos = ["mantenimiento", "inspeccion"];
-        if (fromInspeccion) {
-          estadosPermitidos.push("limpieza");
-        }
-        if (!estadosPermitidos.includes(curEstado)) {
-          return res.status(403).json({ ok:false, error:"Ama de llaves solo puede liberar habitaciones en MANTENIMIENTO, INSPECCIÓN o LIMPIEZA." });
-        }
-      } else if (role === "RECEPCION") {
-        const allowed = new Set(["ocupado", "ocupada limpia", "mantenimiento", "lista"]);
-        if (!allowed.has(curEstado)) {
-          return res.status(403).json({ ok:false, error:"Recepción solo puede liberar si está OCUPADA, en MANTENIMIENTO o LISTA." });
-        }
-      } else if (role === "ADMIN") {
-        const allowed = new Set(["ocupado", "ocupada limpia", "mantenimiento", "lista", "limpieza", "inspeccion"]);
-        if (!allowed.has(curEstado)) {
-          return res.status(403).json({ ok:false, error:"Administrador solo puede liberar estados permitidos." });
-        }
+      // ✅ Si ya está libre, permitir cualquier actualización sin cambiar el estado.
+      if (curEstado === "libre") {
+        // OK (Evita fallos por envío doble o reintentos)
       } else {
-        return res.status(403).json({ ok:false, error:"No tienes permiso para liberar habitaciones." });
+        // INSPECCION: ADMIN o AMA_LLAVES pueden liberar (o desde el flujo de inspeccion)
+        if (curEstado === "inspeccion") {
+          if (role !== "ADMIN" && role !== "AMA_LLAVES" && !fromInspeccion) {
+            return res.status(403).json({ ok:false, error:"Solo el Administrador o Ama de llaves puede liberar desde inspección." });
+          }
+        }
+
+        if (curEstado === "limpieza" && role !== "ADMIN" && !(role === "AMA_LLAVES" && fromInspeccion)) {
+          return res.status(403).json({ ok:false, error:"Solo Administrador puede liberar si está en LIMPIEZA." });
+        }
+
+        if (role === "AMA_LLAVES") {
+          // ✅ AMA DE LLAVES puede liberar desde: mantenimiento, inspeccion, repaso, y tambien limpieza (si viene del flujo de inspeccion)
+          const estadosPermitidos = ["mantenimiento", "inspeccion", "repaso"];
+          if (fromInspeccion) {
+            estadosPermitidos.push("limpieza");
+          }
+          if (!estadosPermitidos.includes(curEstado)) {
+            return res.status(403).json({ ok:false, error:"Ama de llaves solo puede liberar habitaciones en MANTENIMIENTO, INSPECCIÓN, REPASO o LIMPIEZA." });
+          }
+        } else if (role === "RECEPCION") {
+          const allowed = new Set(["ocupado", "ocupada limpia", "mantenimiento", "lista", "repaso"]);
+          if (!allowed.has(curEstado)) {
+            return res.status(403).json({ ok:false, error:"Recepción solo puede liberar si está OCUPADA, en MANTENIMIENTO, REPASO o LISTA." });
+          }
+        } else if (role === "ADMIN") {
+          const allowed = new Set(["ocupado", "ocupada limpia", "mantenimiento", "lista", "limpieza", "inspeccion", "repaso"]);
+          if (!allowed.has(curEstado)) {
+            return res.status(403).json({ ok:false, error:"Administrador solo puede liberar estados permitidos." });
+          }
+        } else {
+          return res.status(403).json({ ok:false, error:"No tienes permiso para liberar habitaciones." });
+        }
       }
     }
 
