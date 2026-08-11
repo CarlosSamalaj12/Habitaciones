@@ -1365,8 +1365,8 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
     let nextEstado = data.next_estado;
     if (!nextEstado) {
       if (data.tipo_limpieza_id) {
-        const [tRows] = await conn.query("SELECT descripcion FROM tipos_limpieza WHERE id = ?", [data.tipo_limpieza_id]);
-        if (tRows.length && String(tRows[0].descripcion).toLowerCase().includes("estadia")) {
+        const [tRows] = await conn.query("SELECT nombre FROM tipos_limpieza WHERE id = ?", [data.tipo_limpieza_id]);
+        if (tRows.length && String(tRows[0].nombre).toLowerCase().includes("estadia")) {
           nextEstado = "ocupada limpia";
         } else {
           nextEstado = "libre";
