@@ -135,6 +135,88 @@ webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 const app = express();
 app.get("/api/whoami", (req, res) => res.json({ ok: true, file: __filename }));
 
+app.get("/api/admin/fix-room-214", async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // 1. Actualizar la última inspección registrada por Aracely Julajuj en la habitación 214 a tipo 'Estadía' (ID 1)
+    await conn.query(`
+      UPDATE inspecciones 
+      SET tipo_limpieza_id = 1 
+      WHERE id = (
+        SELECT id FROM (
+          SELECT id FROM inspecciones 
+          WHERE modulo_id = '2' 
+            AND habitacion_etiqueta = '214' 
+            AND inspector_nombre = 'Aracely Julajuj'
+          ORDER BY id DESC LIMIT 1
+        ) tmp
+      )
+    `);
+
+    // 2. Cambiar el estado a 'ocupada limpia' y restaurar el conteo de huéspedes
+    await conn.query(`
+      UPDATE estados_habitacion 
+      SET 
+        estado = 'ocupada limpia',
+        adultos = COALESCE(
+          (SELECT adultos FROM (
+            SELECT adultos FROM estados_habitacion_log 
+            WHERE habitacion_id = 32 AND evento = 'estado_ocupado' 
+            ORDER BY id DESC LIMIT 1
+          ) tmp), 2
+        ),
+        ninos = COALESCE(
+          (SELECT ninos FROM (
+            SELECT ninos FROM estados_habitacion_log 
+            WHERE habitacion_id = 32 AND evento = 'estado_ocupado' 
+            ORDER BY id DESC LIMIT 1
+          ) tmp), 0
+        )
+      WHERE habitacion_id = 32
+    `);
+
+    // 3. Insertar el log de cambio de estado
+    await conn.query(`
+      INSERT INTO estados_habitacion_log 
+        (habitacion_id, modulo_id, etiqueta, actor_name, actor_dept, source, evento, estado_prev, estado_new, patch_json)
+      VALUES (
+        32, 
+        2, 
+        '214', 
+        'Aracely Julajuj', 
+        'Ama de llaves', 
+        'inspeccion', 
+        'estado_ocupada limpia', 
+        'libre', 
+        'ocupada limpia', 
+        '{"estado":"ocupada limpia"}'
+      )
+    `);
+
+    await conn.commit();
+    conn.release();
+
+    // Emitir por sockets para refrescar las pantallas de todos en vivo
+    try {
+      const updated = await fetchOneRoom(32);
+      if (updated) {
+        io.emit("room_update", updated);
+      }
+    } catch (e) {
+      console.warn("No se pudo emitir por sockets:", e.message);
+    }
+
+    res.json({ ok: true, message: "Habitacion 214 cambiada exitosamente a Estadia (Ocupada limpia) en produccion y emitido por sockets." });
+  } catch (err) {
+    await conn.rollback();
+    conn.release();
+    console.error("Error en fix-room-214:", err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.use(express.json({ limit: "2mb" }));
 
 const server = http.createServer(app);
