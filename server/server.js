@@ -1982,6 +1982,7 @@ app.get("/api/reportes/historial", requireAuthIfEnabled, async (req,res)=>{
         i.id, i.fecha,
         i.inicio_limpieza, i.fin_limpieza, i.hora_checklist,
         c.nombre AS camarera_nombre,
+        (SELECT GROUP_CONCAT(cam.nombre ORDER BY cam.id) FROM inspecciones_camareras ic2 JOIN camareras cam ON cam.id = ic2.camarera_id WHERE ic2.inspeccion_id = i.id) AS camareras_nombres,
         t.nombre AS tipo_nombre,
         i.inspector_nombre, i.inspector_dept, i.es_decorada, i.es_familiar,
         i.observaciones
@@ -2030,14 +2031,14 @@ app.get("/api/reportes/historial", requireAuthIfEnabled, async (req,res)=>{
           timestamp: insp.inicio_limpieza,
           tipo: "inicio_limpieza",
           evento: "INICIO LIMPIEZA",
-          descripcion: `Camarera: ${insp.camarera_nombre || "-"} | Tipo: ${insp.tipo_nombre || "-"}`,
+          descripcion: `Camarera: ${insp.camareras_nombres || insp.camarera_nombre || "-"} | Tipo: ${insp.tipo_nombre || "-"}`,
           actor: insp.inspector_nombre || "-",
           dept: insp.inspector_dept || "Ama de llaves",
           color: "#C8A57A"
         });
       }
       if (insp.fin_limpieza) {
-        const finDesc = `Camarera: ${insp.camarera_nombre || "-"}` + (insp.observaciones ? ` | Obs: ${insp.observaciones}` : "");
+        const finDesc = `Camarera: ${insp.camareras_nombres || insp.camarera_nombre || "-"}` + (insp.observaciones ? ` | Obs: ${insp.observaciones}` : "");
         timeline.push({
           hora: formatTimeStr(insp.fin_limpieza),
           timestamp: insp.fin_limpieza,
