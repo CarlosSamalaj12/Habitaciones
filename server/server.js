@@ -2198,13 +2198,21 @@ app.post("/api/inspecciones/buscar", requireAuthIfEnabled, async (req,res)=>{
 
 // POST /api/inspecciones/actualizar - Actualizar cabecera de inspeccion
 app.post("/api/inspecciones/actualizar", requireAuthIfEnabled, async (req,res)=>{
+  const conn = await pool.getConnection();
   try{
     const id = Number(req.body?.id);
-    if (!id) return res.status(400).json({ ok:false, error:"ID requerido" });
+    if (!id) {
+      conn.release();
+      return res.status(400).json({ ok:false, error:"ID requerido" });
+    }
 
-    // Verificar que existe
-    const [exist] = await pool.query("SELECT id FROM inspecciones WHERE id=?", [id]);
-    if (!exist.length) return res.status(404).json({ ok:false, error:"Inspeccion no encontrada" });
+    // Verificar que existe y obtener datos actuales antes del cambio
+    const [exist] = await conn.query("SELECT modulo_id, habitacion_etiqueta, fecha, tipo_limpieza_id, inspector_nombre FROM inspecciones WHERE id=?", [id]);
+    if (!exist.length) {
+      conn.release();
+      return res.status(404).json({ ok:false, error:"Inspeccion no encontrada" });
+    }
+    const currentIns = exist[0];
 
     const updates = [];
     const params = [];
@@ -2255,7 +2263,7 @@ app.post("/api/inspecciones/actualizar", requireAuthIfEnabled, async (req,res)=>
       const nuevoModuloId = String(req.body.modulo_id).trim();
       updates.push("modulo_id=?", "modulo_nombre=?");
       params.push(nuevoModuloId);
-      const [modRow] = await pool.query("SELECT descripcion FROM modulos WHERE id=?", [nuevoModuloId]);
+      const [modRow] = await conn.query("SELECT descripcion FROM modulos WHERE id=?", [nuevoModuloId]);
       params.push(modRow.length ? modRow[0].descripcion : nuevoModuloId);
     }
     if (req.body?.habitacion_etiqueta !== undefined) {
@@ -2264,29 +2272,141 @@ app.post("/api/inspecciones/actualizar", requireAuthIfEnabled, async (req,res)=>
     }
 
     if (!updates.length) {
+      conn.release();
       return res.status(400).json({ ok:false, error:"No hay campos para actualizar" });
     }
 
+    await conn.beginTransaction();
+
     params.push(id);
-    await pool.query(`UPDATE inspecciones SET ${updates.join(", ")} WHERE id=?`, params);
+    await conn.query(`UPDATE inspecciones SET ${updates.join(", ")} WHERE id=?`, params);
 
     // Sincronizar inspecciones_camareras si se actualizo camarera_id o camarera_ids
     if (hasCamareraIds) {
-      await pool.query("DELETE FROM inspecciones_camareras WHERE inspeccion_id=?", [id]);
+      await conn.query("DELETE FROM inspecciones_camareras WHERE inspeccion_id=?", [id]);
       if (camareraIds.length) {
         const camPlaceholders = camareraIds.map(() => '(?,?)').join(',');
-        await pool.query(`INSERT INTO inspecciones_camareras (inspeccion_id, camarera_id) VALUES ${camPlaceholders}`, camareraIds.flatMap(cid => [id, cid]));
+        await conn.query(`INSERT INTO inspecciones_camareras (inspeccion_id, camarera_id) VALUES ${camPlaceholders}`, camareraIds.flatMap(cid => [id, cid]));
       }
     } else if (req.body?.camarera_id !== undefined) {
       const newCamareraId = req.body.camarera_id ? Number(req.body.camarera_id) : null;
-      await pool.query("DELETE FROM inspecciones_camareras WHERE inspeccion_id=?", [id]);
+      await conn.query("DELETE FROM inspecciones_camareras WHERE inspeccion_id=?", [id]);
       if (newCamareraId) {
-        await pool.query("INSERT INTO inspecciones_camareras (inspeccion_id, camarera_id) VALUES (?,?)", [id, newCamareraId]);
+        await conn.query("INSERT INTO inspecciones_camareras (inspeccion_id, camarera_id) VALUES (?,?)", [id, newCamareraId]);
+      }
+    }
+
+    // --- LOGICA DE ACTUALIZACIÓN DEL ESTADO DE LA HABITACIÓN ---
+    // Determinamos si es la última inspección registrada para esta habitación (por fecha y fecha de creación)
+    const targetModuloId = req.body.modulo_id !== undefined ? String(req.body.modulo_id).trim() : currentIns.modulo_id;
+    const targetHabEtiqueta = req.body.habitacion_etiqueta !== undefined ? String(req.body.habitacion_etiqueta).trim() : currentIns.habitacion_etiqueta;
+
+    const [latestRows] = await conn.query(
+      "SELECT id FROM inspecciones WHERE modulo_id = ? AND habitacion_etiqueta = ? ORDER BY fecha DESC, created_at DESC LIMIT 1",
+      [targetModuloId, targetHabEtiqueta]
+    );
+
+    const isLatest = latestRows.length && latestRows[0].id === id;
+
+    let roomId = null;
+    try {
+      roomId = await getRoomId(targetModuloId, targetHabEtiqueta, conn);
+    } catch(e) {
+      console.warn("No se pudo obtener roomId:", e.message);
+    }
+
+    if (isLatest && roomId) {
+      // Determinamos el nuevo estado de la habitación en base al tipo de limpieza
+      const targetTipoId = req.body.tipo_limpieza_id !== undefined ? req.body.tipo_limpieza_id : currentIns.tipo_limpieza_id;
+      let newRoomEstado = "libre";
+      let tipoLimpiezaNombre = null;
+
+      if (targetTipoId) {
+        const [tRows] = await conn.query("SELECT nombre FROM tipos_limpieza WHERE id = ?", [targetTipoId]);
+        if (tRows.length) {
+          tipoLimpiezaNombre = tRows[0].nombre;
+          if (String(tipoLimpiezaNombre).toLowerCase().includes("estadia")) {
+            newRoomEstado = "ocupada limpia";
+          }
+        }
+      }
+
+      // Verificamos el estado actual de la habitación en base de datos
+      const [roomRow] = await conn.query("SELECT estado FROM estados_habitacion WHERE habitacion_id = ?", [roomId]);
+      if (roomRow.length && roomRow[0].estado !== newRoomEstado) {
+        const prevEstado = roomRow[0].estado;
+
+        if (newRoomEstado === "ocupada limpia") {
+          // Intentar restaurar el headcount desde el log de última ocupación
+          let adultos = 2;
+          let ninos = 0;
+          const [logRows] = await conn.query(
+            "SELECT patch_json FROM estados_habitacion_log WHERE habitacion_id = ? AND evento = 'estado_ocupado' ORDER BY id DESC LIMIT 1",
+            [roomId]
+          );
+          if (logRows.length) {
+            try {
+              const patchObj = JSON.parse(logRows[0].patch_json || "{}");
+              if (patchObj.adultos !== undefined && patchObj.adultos !== null) adultos = Number(patchObj.adultos);
+              if (patchObj.ninos !== undefined && patchObj.ninos !== null) ninos = Number(patchObj.ninos);
+            } catch (jsonErr) {}
+          }
+
+          await conn.query(
+            "UPDATE estados_habitacion SET estado = ?, adultos = ?, ninos = ?, tipo_limpieza = ? WHERE habitacion_id = ?",
+            [newRoomEstado, adultos, ninos, tipoLimpiezaNombre, roomId]
+          );
+        } else {
+          // Cambiar a libre y resetear headcount a 0
+          await conn.query(
+            "UPDATE estados_habitacion SET estado = ?, adultos = 0, ninos = 0, tipo_limpieza = NULL WHERE habitacion_id = ?",
+            [newRoomEstado, roomId]
+          );
+        }
+
+        // Insertar log en estados_habitacion_log
+        const actorName = req.body.inspector_nombre || currentIns.inspector_nombre || 'Administrador';
+        await conn.query(`
+          INSERT INTO estados_habitacion_log 
+            (habitacion_id, modulo_id, etiqueta, actor_name, actor_dept, source, evento, estado_prev, estado_new, patch_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          roomId,
+          targetModuloId,
+          targetHabEtiqueta,
+          actorName,
+          'Administración',
+          'inspeccion',
+          `estado_${newRoomEstado}`,
+          prevEstado,
+          newRoomEstado,
+          JSON.stringify({ estado: newRoomEstado, source: "inspeccion_actualizar" })
+        ]);
+
+        // Guardar para emitir socket al hacer commit
+        conn._emitRoomUpdateId = roomId;
+      }
+    }
+
+    await conn.commit();
+    conn.release();
+
+    // Emitir socket si hubo cambio de estado de la habitacion
+    if (conn._emitRoomUpdateId) {
+      try {
+        const updated = await fetchOneRoom(conn._emitRoomUpdateId);
+        if (updated && io) {
+          io.emit("room_update", updated);
+        }
+      } catch (e) {
+        console.warn("No se pudo emitir por sockets:", e.message);
       }
     }
 
     res.json({ ok: true });
   }catch(e){
+    await conn.rollback();
+    conn.release();
     console.error("Error actualizando inspeccion:", e);
     res.status(500).json({ ok:false, error: "Error interno del servidor" });
   }
