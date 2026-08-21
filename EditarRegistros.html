@@ -474,7 +474,7 @@
           <td>${escHtml(r.fecha || "-")}</td>
           <td><strong>${escHtml(r.habitacion_etiqueta || "-")}</strong></td>
           <td style="color:var(--muted);font-size:12px">${escHtml(r.modulo_id || "-")}</td>
-          <td>${escHtml(r.camarera_nombre || "-")}</td>
+          <td>${escHtml(r.camareras_nombres || r.camarera_nombre || "-")}</td>
           <td>${escHtml(r.tipo_nombre || "-")}</td>
           <td>${fam}</td>
           <td style="font-size:12px">${escHtml(r.inspector_nombre || "-")}</td>
@@ -545,6 +545,18 @@
         </label>
       `;
 
+      const selectedCamareras = Array.isArray(data.camarera_ids) ? data.camarera_ids.map(Number) : (data.camarera_id ? [Number(data.camarera_id)] : []);
+
+      const camarerasCheckboxesHtml = CAMARERAS.map(c => {
+        const isChecked = selectedCamareras.includes(Number(c.id)) ? 'checked' : '';
+        return `
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 0">
+            <input type="checkbox" name="editCamareras" value="${c.id}" ${isChecked} />
+            <span style="font-size:13px;color:var(--text)">${escHtml(c.nombre)}</span>
+          </label>
+        `;
+      }).join('');
+
       let html = `
         <div class="editGrid">
           <div class="editField">
@@ -567,15 +579,6 @@
             </select>
           </div>
           <div class="editField">
-            <label>Camarera</label>
-            <select id="editCamarera">
-              <option value="">Seleccionar...</option>
-              ${CAMARERAS.map(c =>
-                `<option value="${c.id}" ${Number(c.id) === Number(data.camarera_id) ? 'selected' : ''}>${escHtml(c.nombre)}</option>`
-              ).join('')}
-            </select>
-          </div>
-          <div class="editField">
             <label>Tipo de Limpieza</label>
             <select id="editTipo">
               <option value="">Seleccionar...</option>
@@ -587,6 +590,12 @@
           <div class="editField">
             <label>Inspector</label>
             <input id="editInspector" type="text" value="${escHtml(data.inspector_nombre || '')}" />
+          </div>
+          <div class="editField fullWidth">
+            <label>Camarera(s) (quien limpia)</label>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));gap:8px;padding:12px;background:rgba(0,0,0,.25);border-radius:10px;border:1px solid rgba(255,255,255,.08)">
+              ${camarerasCheckboxesHtml}
+            </div>
           </div>
           <div class="editField fullWidth">
             ${familiarHtml}
@@ -712,7 +721,10 @@
       const fecha = $("editFecha")?.value;
       const modulo_id = $("editModulo")?.value.trim();
       const habitacion = $("editHabitacion")?.value.trim();
-      const camarera_id = $("editCamarera")?.value;
+
+      const checkedBoxes = document.querySelectorAll('input[name="editCamareras"]:checked');
+      const camarera_ids = Array.from(checkedBoxes).map(cb => Number(cb.value));
+
       const tipo_limpieza_id = $("editTipo")?.value;
       const inspector = $("editInspector")?.value.trim();
       const observaciones = $("editObs")?.value.trim();
@@ -723,7 +735,8 @@
       if (fecha) payload.fecha = fecha;
       if (modulo_id) payload.modulo_id = modulo_id;
       if (habitacion) payload.habitacion_etiqueta = habitacion;
-      payload.camarera_id = camarera_id ? Number(camarera_id) : null;
+      payload.camarera_id = camarera_ids[0] || null;
+      payload.camarera_ids = camarera_ids;
       payload.tipo_limpieza_id = tipo_limpieza_id ? Number(tipo_limpieza_id) : null;
       payload.inspector_nombre = inspector || '';
       payload.observaciones = observaciones || '';
@@ -832,15 +845,6 @@
             <input id="editFecha" type="date" />
           </div>
           <div class="editField">
-            <label>Camarera</label>
-            <select id="editCamarera">
-              <option value="">Seleccionar...</option>
-              ${CAMARERAS.map(c =>
-                `<option value="${c.id}">${escHtml(c.nombre)}</option>`
-              ).join('')}
-            </select>
-          </div>
-          <div class="editField">
             <label>Tipo de Limpieza</label>
             <select id="editTipo">
               <option value="">Seleccionar...</option>
@@ -852,6 +856,17 @@
           <div class="editField">
             <label>Inspector</label>
             <input id="editInspector" type="text" placeholder="Nombre del inspector" />
+          </div>
+          <div class="editField fullWidth">
+            <label>Camarera(s) (quien limpia)</label>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));gap:8px;padding:12px;background:rgba(0,0,0,.25);border-radius:10px;border:1px solid rgba(255,255,255,.08)">
+              ${CAMARERAS.map(c => `
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 0">
+                  <input type="checkbox" name="editCamareras" value="${c.id}" />
+                  <span style="font-size:13px;color:var(--text)">${escHtml(c.nombre)}</span>
+                </label>
+              `).join('')}
+            </div>
           </div>
           <div class="editField fullWidth">
             ${familiarHtml}
@@ -896,7 +911,9 @@
       const modulo_id = $("editModulo")?.value;
       const habitacion_etiqueta = $("editHabitacion")?.value.trim();
       const fecha = $("editFecha")?.value;
-      const camarera_id = $("editCamarera")?.value;
+      const checkedBoxes = document.querySelectorAll('input[name="editCamareras"]:checked');
+      const camarera_ids = Array.from(checkedBoxes).map(cb => Number(cb.value));
+
       const tipo_limpieza_id = $("editTipo")?.value;
       const inspector_nombre = $("editInspector")?.value.trim();
       const observaciones = $("editObs")?.value.trim();
@@ -911,7 +928,8 @@
         modulo_id,
         habitacion_etiqueta,
         fecha,
-        camarera_id: camarera_id ? Number(camarera_id) : undefined,
+        camarera_id: camarera_ids[0] || undefined,
+        camarera_ids: camarera_ids.length ? camarera_ids : undefined,
         tipo_limpieza_id: tipo_limpieza_id ? Number(tipo_limpieza_id) : undefined,
         inspector_nombre: inspector_nombre || '',
         observaciones: observaciones || '',

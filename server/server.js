@@ -2213,7 +2213,16 @@ app.post("/api/inspecciones/actualizar", requireAuthIfEnabled, async (req,res)=>
       updates.push("fecha=?");
       params.push(String(req.body.fecha).trim());
     }
-    if (req.body?.camarera_id !== undefined) {
+    let camareraIds = [];
+    let hasCamareraIds = false;
+    if (req.body?.camarera_ids !== undefined) {
+      hasCamareraIds = true;
+      if (Array.isArray(req.body.camarera_ids)) {
+        camareraIds = req.body.camarera_ids.map(Number).filter(id => id);
+      }
+      updates.push("camarera_id=?");
+      params.push(camareraIds[0] || null);
+    } else if (req.body?.camarera_id !== undefined) {
       updates.push("camarera_id=?");
       params.push(req.body.camarera_id ? Number(req.body.camarera_id) : null);
     }
@@ -2261,8 +2270,14 @@ app.post("/api/inspecciones/actualizar", requireAuthIfEnabled, async (req,res)=>
     params.push(id);
     await pool.query(`UPDATE inspecciones SET ${updates.join(", ")} WHERE id=?`, params);
 
-    // Sincronizar inspecciones_camareras si se actualizo camarera_id
-    if (req.body?.camarera_id !== undefined) {
+    // Sincronizar inspecciones_camareras si se actualizo camarera_id o camarera_ids
+    if (hasCamareraIds) {
+      await pool.query("DELETE FROM inspecciones_camareras WHERE inspeccion_id=?", [id]);
+      if (camareraIds.length) {
+        const camPlaceholders = camareraIds.map(() => '(?,?)').join(',');
+        await pool.query(`INSERT INTO inspecciones_camareras (inspeccion_id, camarera_id) VALUES ${camPlaceholders}`, camareraIds.flatMap(cid => [id, cid]));
+      }
+    } else if (req.body?.camarera_id !== undefined) {
       const newCamareraId = req.body.camarera_id ? Number(req.body.camarera_id) : null;
       await pool.query("DELETE FROM inspecciones_camareras WHERE inspeccion_id=?", [id]);
       if (newCamareraId) {
@@ -2339,7 +2354,10 @@ app.get("/api/inspecciones/:id", async (req,res)=>{
       ORDER BY ci.orden
     `, [id]);
 
-    res.json({ ok:true, data: { ...ins[0], detalles } });
+    const [cams] = await pool.query("SELECT camarera_id FROM inspecciones_camareras WHERE inspeccion_id=?", [id]);
+    const camarera_ids = cams.map(row => row.camarera_id);
+
+    res.json({ ok:true, data: { ...ins[0], detalles, camarera_ids } });
   }catch(e){
     res.status(500).json({ ok:false, error: "Error interno del servidor" });
   }
