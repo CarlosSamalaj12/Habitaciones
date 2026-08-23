@@ -1400,6 +1400,9 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
         }
         if (role === "AMA_LLAVES") {
           const estadosPermitidos = ["mantenimiento", "inspeccion", "repaso", "limpieza"];
+          if (Number(data.es_decorada) === 1) {
+            estadosPermitidos.push("ocupado", "ocupada limpia");
+          }
           if (!estadosPermitidos.includes(curEstado)) {
             throw new Error("Ama de llaves solo puede liberar habitaciones en MANTENIMIENTO, INSPECCIÓN, REPASO o LIMPIEZA.");
           }
