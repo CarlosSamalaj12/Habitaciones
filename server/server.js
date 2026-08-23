@@ -2735,6 +2735,8 @@ function normalizePatch(patch){
   if ("decorada" in p) {
     const v = p.decorada;
     out.decorada = (v === true || v === 1 || String(v).trim().toLowerCase() === "si" || String(v).trim() === "1") ? 1 : 0;
+  } else if (p.estado === "libre" || p.estado === "lista") {
+    out.decorada = 0;
   }
   if ("inspector_asignado" in p) out.inspector_asignado = p.inspector_asignado ?? null;
   if ("prioridad_limpieza" in p) out.prioridad_limpieza = p.prioridad_limpieza ?? null;
