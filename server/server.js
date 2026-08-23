@@ -1362,31 +1362,34 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
     }
 
     // ✅ ACTUALIZACIÓN ATÓMICA DE LA HABITACIÓN (Liberar habitación en la misma transacción)
-    let nextEstado = data.next_estado;
-    if (!nextEstado) {
-      if (data.tipo_limpieza_id) {
-        const [tRows] = await conn.query("SELECT nombre FROM tipos_limpieza WHERE id = ?", [data.tipo_limpieza_id]);
-        if (tRows.length && String(tRows[0].nombre).toLowerCase().includes("estadia")) {
-          nextEstado = "ocupada limpia";
-        } else {
-          nextEstado = "libre";
-        }
-      } else {
-        nextEstado = "libre";
-      }
-    }
-
     const roomId = await getRoomId(data.modulo_id, data.habitacion_etiqueta, conn);
     let cur = null;
     let updatedRoom = null;
+    let nextEstado = data.next_estado;
 
     if (roomId) {
       cur = await fetchOneRoom(roomId, conn);
+      const curEstado = String(cur?.estado || "").trim().toLowerCase();
+
+      if (!nextEstado) {
+        // Si es una inspeccion Decorada y la habitacion ya esta ocupada, conservamos su estado ocupado actual
+        if (Number(data.es_decorada) === 1 && (curEstado === "ocupado" || curEstado === "ocupada limpia")) {
+          nextEstado = cur?.estado; // "ocupado" o "ocupada limpia"
+        } else if (data.tipo_limpieza_id) {
+          const [tRows] = await conn.query("SELECT nombre FROM tipos_limpieza WHERE id = ?", [data.tipo_limpieza_id]);
+          if (tRows.length && String(tRows[0].nombre).toLowerCase().includes("estadia")) {
+            nextEstado = "ocupada limpia";
+          } else {
+            nextEstado = "libre";
+          }
+        } else {
+          nextEstado = "libre";
+        }
+      }
       
       // Validar si la transición a 'libre' / 'ocupada limpia' es válida antes de aplicarla
       const role = normalizeRole(data.inspector_dept || "");
       const fromInspeccion = true;
-      const curEstado = String(cur?.estado || "").trim().toLowerCase();
 
       // Validación idéntica a la de /api/room/update para evitar saltarse reglas
       if (nextEstado === "libre" && curEstado !== "libre") {
@@ -1411,7 +1414,7 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
 
       const patch = {
         estado: nextEstado,
-        decorada: 0,
+        decorada: Number(data.es_decorada) === 1 ? 1 : 0,
         prioridad_limpieza: null,
         source: "inspeccion"
       };
