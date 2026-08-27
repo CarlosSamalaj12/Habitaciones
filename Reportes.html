@@ -2926,9 +2926,34 @@
         const rows = Array.isArray(resp?.data) ? resp.data : [];
         const detalle = Array.isArray(detResp?.data) ? detResp.data : [];
 
+        // Deduplicar detalle para evitar duplicados por múltiples camareras en habitaciones compartidas
+        const dedupedDetalle = [];
+        const seen = {};
+        detalle.forEach(r => {
+          // Llave única por inspección (fecha + modulo + etiqueta)
+          const key = r.fecha + "_" + r.modulo_id + "_" + r.habitacion_etiqueta;
+          if (!seen[key]) {
+            seen[key] = {
+              ...r,
+              camareras: [r.camarera_nombre].filter(Boolean)
+            };
+            dedupedDetalle.push(seen[key]);
+          } else {
+            if (r.camarera_nombre && !seen[key].camareras.includes(r.camarera_nombre)) {
+              seen[key].camareras.push(r.camarera_nombre);
+            }
+          }
+        });
+        dedupedDetalle.forEach(d => {
+          d.camarera_nombre = d.camareras.join(", ");
+        });
+
         AMA_LLAVES_DATA = rows;
-        AMA_DETALLE_DATA = detalle;
+        AMA_DETALLE_DATA = dedupedDetalle;
         renderAmaLlavesDashboard(rows);
+        if (typeof renderAmaDetalle === "function") {
+          renderAmaDetalle();
+        }
         $("amaCount").textContent = `${rows.length} amas de llaves`;
 
       } catch (e) {

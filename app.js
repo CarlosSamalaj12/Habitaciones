@@ -17,7 +17,7 @@ window.TIME_OFFSET_MS = 0;
 /* =========================
    VERSION CONTROL
    ========================= */
-window.APP_VERSION = "1.3.27";
+window.APP_VERSION = "1.3.29";
 window.__swReg = null;
 window.__updateChecked = false;
 window.LS_SW_UPDATE_DISMISSED = "hk_sw_update_dismissed_v1";
@@ -485,13 +485,15 @@ function initSocket() {
   }
 
   socket.on("connect", () => {
+    console.log("🔌 [Socket.io] Conectado con éxito");
     stopFallbackSync();
     if (activeModuleId) {
       socket.emit("join", { modulo_id: String(activeModuleId) });
     }
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", (reason) => {
+    console.warn("🔌 [Socket.io] Desconectado del servidor (razón:", reason, ")");
     startFallbackSync();
   });
 
@@ -544,7 +546,8 @@ function initSocket() {
     }
   });
 
-  socket.on("connect_error", () => {
+  socket.on("connect_error", (err) => {
+    console.warn("🔌 [Socket.io] Error de conexión:", err);
     startFallbackSync();
   });
 }
