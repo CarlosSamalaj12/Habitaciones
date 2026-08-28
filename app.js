@@ -17,7 +17,7 @@ window.TIME_OFFSET_MS = 0;
 /* =========================
    VERSION CONTROL
    ========================= */
-window.APP_VERSION = "1.3.30";
+window.APP_VERSION = "1.3.31";
 window.__swReg = null;
 window.__updateChecked = false;
 window.LS_SW_UPDATE_DISMISSED = "hk_sw_update_dismissed_v1";
@@ -499,7 +499,6 @@ function initSocket() {
 
   socket.on("room_update", (data) => {
     if (!data || !data.modulo_id) return;
-    if (String(data.modulo_id) !== String(activeModuleId)) return;
     const updated = normalizeRoom(data);
     const arr = roomsCache.get(String(data.modulo_id));
     if (!arr) return;
@@ -509,7 +508,9 @@ function initSocket() {
     const isDup = isDuplicate(dedupKey, 2000);
     if (isDup) {
       if (idx >= 0) arr[idx] = updated;
-      renderRooms();
+      if (String(data.modulo_id) === String(activeModuleId) || !!roomSearchQuery) {
+        renderRooms();
+      }
       return;
     }
 
@@ -520,29 +521,36 @@ function initSocket() {
       const newPrio = updated.prioridad_limpieza;
       arr[idx] = updated;
       addRecentNotification(data.modulo_id, updated.etiqueta, oldEstado, newEstado, oldPrio, newPrio);
-      renderRooms();
-      updateSummaryCounts();
+      
+      if (String(data.modulo_id) === String(activeModuleId) || !!roomSearchQuery) {
+        renderRooms();
+        updateSummaryCounts();
 
-      // Mostrar Toast visual en tiempo real en la página para cambios de otros usuarios
-      const prioCambio = String(oldPrio || "").toLowerCase() !== String(newPrio || "").toLowerCase();
-      const tienePrio = String(newPrio || "").toLowerCase() === "alta";
+        // Mostrar Toast visual en tiempo real en la página para cambios de otros usuarios
+        const prioCambio = String(oldPrio || "").toLowerCase() !== String(newPrio || "").toLowerCase();
+        const tienePrio = String(newPrio || "").toLowerCase() === "alta";
 
-      if (prioCambio && oldEstado === newEstado) {
-        playNotificationSound();
-        if (tienePrio) {
-          toast("warn", "Prioridad", `Habitación ${updated.etiqueta} marcada como PRIORIDAD ALTA.`);
-        } else {
-          toast("ok", "Prioridad", `Habitación ${updated.etiqueta} sin prioridad.`);
+        if (prioCambio && oldEstado === newEstado) {
+          playNotificationSound();
+          if (tienePrio) {
+            toast("warn", "Prioridad", `Habitación ${updated.etiqueta} marcada como PRIORIDAD ALTA.`);
+          } else {
+            toast("ok", "Prioridad", `Habitación ${updated.etiqueta} sin prioridad.`);
+          }
+        } else if (oldEstado !== newEstado) {
+          playNotificationSound();
+          const label = ESTADO_LABELS[newEstado] || newEstado;
+          toast("ok", "Habitación " + updated.etiqueta, `Estado cambió a ${label}`);
         }
-      } else if (oldEstado !== newEstado) {
-        playNotificationSound();
-        const label = ESTADO_LABELS[newEstado] || newEstado;
-        toast("ok", "Habitación " + updated.etiqueta, `Estado cambió a ${label}`);
+      } else {
+        updateSummaryCounts();
       }
     } else {
       arr.push(updated);
-      renderRooms();
-      updateSummaryCounts();
+      if (String(data.modulo_id) === String(activeModuleId) || !!roomSearchQuery) {
+        renderRooms();
+        updateSummaryCounts();
+      }
     }
   });
 
@@ -1710,8 +1718,11 @@ function updateTimersLive() {
   if (!_cachedTimerEls) {
     _cachedTimerEls = document.querySelectorAll("[data-timer-roomkey]");
     _cachedTimerMap = new Map();
-    const rooms = roomsCache.get(String(activeModuleId)) || [];
-    rooms.forEach(r => _cachedTimerMap.set(roomKey(r.modulo_id, r.etiqueta), r));
+    roomsCache.forEach(arr => {
+      if (Array.isArray(arr)) {
+        arr.forEach(r => _cachedTimerMap.set(roomKey(r.modulo_id, r.etiqueta), r));
+      }
+    });
     // Primera vez: si no hay timers (ningun room en estado timer), queda cacheado
     // y nunca mas tocamos el DOM por segundo.
   }
