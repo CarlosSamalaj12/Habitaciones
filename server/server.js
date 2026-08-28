@@ -246,7 +246,7 @@ function normalizeRole(rawDept){
   if (d === "administrador" || d === "admin") return "ADMIN";
   if (d.includes("gerencia")) return "GERENCIA";
   if (d.includes("reportes")) return "REPORTES";
-  if (d.includes("ama") || d.includes("camar")) return "AMA_LLAVES";
+  if (d.includes("ama") || d.includes("camar") || d.includes("limp") || d.includes("housekeeping")) return "AMA_LLAVES";
   return "RECEPCION";
 }
 
