@@ -17,7 +17,7 @@ window.TIME_OFFSET_MS = 0;
 /* =========================
    VERSION CONTROL
    ========================= */
-window.APP_VERSION = "1.3.33";
+window.APP_VERSION = "1.3.34";
 window.__swReg = null;
 window.__updateChecked = false;
 window.LS_SW_UPDATE_DISMISSED = "hk_sw_update_dismissed_v1";
@@ -229,7 +229,7 @@ function roleOf(sess) {
   if (d === "administrador" || d === "admin") return "ADMIN";
   if (d.includes("gerencia")) return "GERENCIA";
   if (d.includes("reportes")) return "REPORTES";
-  if (d.includes("ama") || d.includes("camar")) return "AMA_LLAVES";
+  if (d.includes("ama") || d.includes("camar") || d.includes("limp") || d.includes("housekeeping")) return "AMA_LLAVES";
   return "RECEPCION";
 }
 function canReception(role) {
@@ -2213,7 +2213,36 @@ async function doMant(room, btn) {
   }
 
   if (!canUseMantenimiento(role)) {
-    toast("err", "Restringido", "Solo Recepcion o Ama de llaves puede poner MANTENIMIENTO.");
+    toast("err", "Restringido", "Solo Recepcion o Ama de llaves puede gestionar MANTENIMIENTO.");
+    return;
+  }
+
+  // Si la habitación YA está en mantenimiento -> QUITAR MANTENIMIENTO (pasar a LIBRE)
+  if (room.estado === "mantenimiento") {
+    const confirmado = await confirmDialog(`¿Estás seguro de quitar la habitación ${room.etiqueta} de MANTENIMIENTO y dejarla LIBRE?`, "Sí, quitar mantenimiento", false);
+    if (!confirmado) return;
+    if (!requireOnline()) return;
+
+    btn.disabled = true;
+    try {
+      await updateRoom(room.modulo_id, room.etiqueta, {
+        estado: "libre",
+        camarera_asignada: null,
+        adultos: 0,
+        ninos: 0,
+        desde: null,
+        inicio_limpieza: null,
+        fin_limpieza: null,
+        prioridad_limpieza: null,
+        observaciones: appendActionObs(room.observaciones || "", "FIN MANTENIMIENTO")
+      });
+
+      toast("ok", "Mantenimiento finalizado", `Habitacion ${room.etiqueta} ahora está LIBRE.`);
+    } catch (err) {
+      toast("err", "Error", err.message || "No se pudo quitar mantenimiento");
+    } finally {
+      btn.disabled = false;
+    }
     return;
   }
 
