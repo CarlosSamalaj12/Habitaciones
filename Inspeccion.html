@@ -2107,8 +2107,8 @@
                 ensure(it.id).estado === "NO_CUMPLE" ? "NO_CUMPLE" : "NO_APLICA"
       }));
 
-      const valLower = String(tipoSel || "").trim().toLowerCase();
-      const nextEstado = (valLower.includes("estadia") || valLower.includes("quiere"))
+      const tipoSelClean = String(tipoSel || "").trim().toLowerCase();
+      const nextEstado = (tipoSelClean.includes("estadia") || tipoSelClean.includes("quiere"))
         ? "ocupada limpia"
         : "libre";
 
