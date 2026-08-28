@@ -1377,8 +1377,13 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
           nextEstado = cur?.estado; // "ocupado" o "ocupada limpia"
         } else if (data.tipo_limpieza_id) {
           const [tRows] = await conn.query("SELECT nombre FROM tipos_limpieza WHERE id = ?", [data.tipo_limpieza_id]);
-          if (tRows.length && String(tRows[0].nombre).toLowerCase().includes("estadia")) {
-            nextEstado = "ocupada limpia";
+          if (tRows.length) {
+            const nameLower = String(tRows[0].nombre).toLowerCase();
+            if (nameLower.includes("estadia") || nameLower.includes("quiere")) {
+              nextEstado = "ocupada limpia";
+            } else {
+              nextEstado = "libre";
+            }
           } else {
             nextEstado = "libre";
           }
@@ -2332,7 +2337,8 @@ app.post("/api/inspecciones/actualizar", requireAuthIfEnabled, async (req,res)=>
         const [tRows] = await conn.query("SELECT nombre FROM tipos_limpieza WHERE id = ?", [targetTipoId]);
         if (tRows.length) {
           tipoLimpiezaNombre = tRows[0].nombre;
-          if (String(tipoLimpiezaNombre).toLowerCase().includes("estadia")) {
+          const nameLower = String(tipoLimpiezaNombre).toLowerCase();
+          if (nameLower.includes("estadia") || nameLower.includes("quiere")) {
             newRoomEstado = "ocupada limpia";
           }
         }
