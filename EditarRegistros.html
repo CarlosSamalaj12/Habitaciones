@@ -235,6 +235,18 @@
       <button id="btnBack" type="button">&larr; Regresar</button>
     </div>
 
+    <!-- Banner origen Reportes si vino por atajo -->
+    <div id="reporteOriginBanner" style="display:none;margin-bottom:14px;padding:12px 16px;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.35);border-radius:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">📍</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#EAF0FF">Editando registro desde el Reporte de Pagos</div>
+          <div style="font-size:11px;color:var(--muted)">Tus filtros y fechas se conservan intactos al regresar.</div>
+        </div>
+      </div>
+      <button type="button" onclick="volverAlReporte()" class="primary" style="padding:7px 14px;font-size:12px;font-weight:700">⬅️ Volver al Reporte</button>
+    </div>
+
     <!-- Buscador -->
     <div class="panel">
       <div class="panelHeader">
@@ -298,6 +310,28 @@
     const $ = (id) => document.getElementById(id);
     const APP_BASE = window.location.pathname.replace(/\/[^/]*$/, "/").replace(/\/+$/, "");
     const API_BASE = `${window.location.origin}${APP_BASE}`;
+
+    // Parámetros de URL para atajo bidireccional con Reportes
+    const urlParams = new URLSearchParams(window.location.search);
+    const FROM_REPORTES = urlParams.get("from") === "reportes";
+    const RETURN_DESDE = urlParams.get("desde") || "";
+    const RETURN_HASTA = urlParams.get("hasta") || "";
+    const RETURN_MODULO = urlParams.get("modulo") || "";
+    const RETURN_CAMARERA = urlParams.get("camarera") || "";
+    const RETURN_SELCAM = urlParams.get("selCam") || "";
+    const RETURN_SOLOOBS = urlParams.get("soloObs") || "0";
+
+    function volverAlReporte() {
+      const p = new URLSearchParams();
+      if (RETURN_DESDE) p.set("desde", RETURN_DESDE);
+      if (RETURN_HASTA) p.set("hasta", RETURN_HASTA);
+      if (RETURN_MODULO) p.set("modulo", RETURN_MODULO);
+      if (RETURN_CAMARERA) p.set("camarera", RETURN_CAMARERA);
+      if (RETURN_SELCAM) p.set("selCam", RETURN_SELCAM);
+      if (RETURN_SOLOOBS === "1") p.set("soloObs", "1");
+      p.set("auto", "1");
+      window.location.href = `./Reportes.html?${p.toString()}`;
+    }
 
     let CAMARERAS = [];
     let MODULOS = [];
@@ -464,11 +498,17 @@
         <th>Tipo</th>
         <th>Fam</th>
         <th>Inspector</th>
+        <th>Observaciones</th>
         <th style="width:80px">Accion</th>
       </tr></thead><tbody>`;
 
       rows.forEach(r => {
         const fam = Number(r.es_familiar) ? '<span class="badge fam">Fam</span>' : '';
+        const obsTrimmed = r.observaciones ? String(r.observaciones).trim() : '';
+        const obsHtml = obsTrimmed
+          ? `<span title="${escHtml(obsTrimmed)}" style="display:inline-flex;align-items:center;gap:4px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#DDD6FE;font-size:11px;background:rgba(124,58,237,.15);padding:2px 6px;border-radius:6px;border:1px solid rgba(124,58,237,.3)">💬 ${escHtml(obsTrimmed)}</span>`
+          : '<span style="color:var(--muted)">-</span>';
+
         html += `<tr class="clickRow" onclick="openEditor(${r.id})" title="Clic para editar">
           <td style="color:var(--muted)">#${r.id}</td>
           <td>${escHtml(r.fecha || "-")}</td>
@@ -478,6 +518,7 @@
           <td>${escHtml(r.tipo_nombre || "-")}</td>
           <td>${fam}</td>
           <td style="font-size:12px">${escHtml(r.inspector_nombre || "-")}</td>
+          <td>${obsHtml}</td>
           <td><button class="primary" onclick="event.stopPropagation();openEditor(${r.id})" style="font-size:11px;padding:6px 12px">✏️ Editar</button></td>
         </tr>`;
       });
@@ -518,7 +559,11 @@
         CURRENT_DETALLES = Array.isArray(data.detalles) ? data.detalles : [];
 
         title.textContent = `Inspeccion #${data.id} - ${data.habitacion_etiqueta || "-"}`;
-        sub.textContent = `${data.camarera_nombre || "-"} | ${data.tipo_nombre || "-"} | ${data.fecha || "-"}`;
+        let subStr = `${data.camarera_nombre || "-"} | ${data.tipo_nombre || "-"} | ${data.fecha || "-"}`;
+        if (FROM_REPORTES) {
+          subStr += ` • <span style="display:inline-block;padding:2px 8px;border-radius:6px;background:rgba(124,58,237,.25);color:#C4B0FF;font-weight:700">Atajo desde Reporte</span>`;
+        }
+        sub.innerHTML = subStr;
 
         renderEditor(data);
       } catch (e) {
@@ -613,10 +658,11 @@
           </div>
         </div>
         <div id="editChecklistArea"></div>
-        <div class="editActions" style="justify-content:space-between">
-          <div>
-            <button class="primary" id="btnGuardarEdit" type="button">💾 Guardar Cambios</button>
-            <button id="btnCancelEdit" type="button" onclick="closeEditor()">Cancelar</button>
+        <div class="editActions" style="justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            ${FROM_REPORTES ? '<button class="success" id="btnGuardarYVolver" type="button" style="font-weight:700">💾 Guardar y Volver al Reporte</button>' : ''}
+            <button class="primary" id="btnGuardarEdit" type="button">💾 ${FROM_REPORTES ? 'Solo Guardar' : 'Guardar Cambios'}</button>
+            <button id="btnCancelEdit" type="button">${FROM_REPORTES ? '⬅️ Volver al Reporte' : 'Cancelar'}</button>
           </div>
           <button class="danger" id="btnEliminar" type="button">🗑 Eliminar</button>
         </div>
@@ -627,7 +673,16 @@
       renderChecklistEditor();
 
       // Event listeners
-      $("btnGuardarEdit").addEventListener("click", guardarCambios);
+      $("btnGuardarEdit").addEventListener("click", () => guardarCambios(false));
+      if (FROM_REPORTES) {
+        const btnGyV = $("btnGuardarYVolver");
+        if (btnGyV) btnGyV.addEventListener("click", () => guardarCambios(true));
+        const btnCancel = $("btnCancelEdit");
+        if (btnCancel) btnCancel.addEventListener("click", volverAlReporte);
+      } else {
+        const btnCancel = $("btnCancelEdit");
+        if (btnCancel) btnCancel.addEventListener("click", closeEditor);
+      }
       $("btnEliminar").addEventListener("click", eliminarRegistro);
       const rectChk = $("editRectificado");
       if (rectChk) {
@@ -713,7 +768,7 @@
     }
 
     // Guardar cambios de cabecera
-    async function guardarCambios() {
+    async function guardarCambios(volverAlReporteDespues = false) {
       const data = CURRENT_INSPECCION;
       if (!data) return;
 
@@ -745,8 +800,10 @@
       payload.motivo_rectificacion = motivo || '';
 
       const btn = $("btnGuardarEdit");
+      const btnGyV = $("btnGuardarYVolver");
       const status = $("editStatus");
-      btn.disabled = true;
+      if (btn) btn.disabled = true;
+      if (btnGyV) btnGyV.disabled = true;
       status.textContent = '⏳ Guardando...';
 
       try {
@@ -754,6 +811,13 @@
         status.textContent = '✅ Guardado exitosamente';
         status.style.color = '#2EE59D';
         toast("Inspeccion #" + data.id + " actualizada.", true, 2500);
+        if (volverAlReporteDespues && FROM_REPORTES) {
+          status.textContent = '✅ Guardado. Regresando al reporte...';
+          setTimeout(() => {
+            volverAlReporte();
+          }, 500);
+          return;
+        }
         setTimeout(() => {
           buscarRegistros();
           closeEditor();
@@ -763,7 +827,8 @@
         status.style.color = '#FF4D6D';
         toast("Error al guardar: " + (e?.message || e), false);
       } finally {
-        btn.disabled = false;
+        if (btn) btn.disabled = false;
+        if (btnGyV) btnGyV.disabled = false;
       }
     }
 
@@ -786,6 +851,11 @@
         status.textContent = '✅ Eliminado correctamente';
         status.style.color = '#2EE59D';
         toast(`Inspeccion #${data.id} eliminada.`, true, 2500);
+        if (FROM_REPORTES) {
+          status.textContent = '✅ Eliminado. Regresando al reporte...';
+          setTimeout(() => volverAlReporte(), 600);
+          return;
+        }
         setTimeout(() => {
           buscarRegistros();
           closeEditor();
@@ -960,8 +1030,24 @@
     }
 
     // ===== NAVEGACION =====
+    if (FROM_REPORTES) {
+      const b = $("btnBack");
+      if (b) {
+        b.innerHTML = "⬅️ Volver al Reporte";
+        b.className = "primary";
+        b.title = "Regresar al Reporte de Pagos restaurando tus filtros";
+        b.style.cssText = "display:inline-flex;align-items:center;gap:6px;font-weight:700;border-color:rgba(124,58,237,.6);background:linear-gradient(135deg, rgba(124,58,237,.85), rgba(139,92,246,.75));color:#fff;";
+      }
+      const banner = $("reporteOriginBanner");
+      if (banner) banner.style.display = "flex";
+    }
+
     $("btnBack").addEventListener("click", () => {
-      window.location.href = "./Admin.html";
+      if (FROM_REPORTES) {
+        volverAlReporte();
+      } else {
+        window.location.href = "./Admin.html";
+      }
     });
 
     // ===== INIT =====
@@ -973,8 +1059,22 @@
           loadModulos(),
           loadTipos()
         ]);
+
+        if (FROM_REPORTES && RETURN_DESDE && $("filtroDesde")) {
+          $("filtroDesde").value = RETURN_DESDE;
+        }
+        if (FROM_REPORTES && RETURN_HASTA && $("filtroHasta")) {
+          $("filtroHasta").value = RETURN_HASTA;
+        }
+
         // Auto-buscar con fechas por defecto
         await buscarRegistros();
+
+        // Si se pasa ?id= en la URL, abrir editor automáticamente
+        const autoId = urlParams.get("id");
+        if (autoId) {
+          openEditor(Number(autoId));
+        }
       } catch (e) {
         toast("Error cargando datos: " + (e?.message || e), false, 5200);
       }

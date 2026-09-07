@@ -99,7 +99,7 @@
 
     /* Tabla */
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { padding: 10px 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.06); }
+    th, td { padding: 9px 7px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.06); }
     th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; position: sticky; top: 0; background: rgba(10,14,28,.95); z-index: 2; }
     tr:hover td { background: rgba(255,255,255,.04); }
     .numCol { text-align: right; font-variant-numeric: tabular-nums; }
@@ -109,6 +109,59 @@
     .badgeNA { background: rgba(255,176,32,.15); color: #FFB020; }
     .familiarBadge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; background: rgba(255,176,32,.15); color: var(--warn); }
     .rectificadoBadge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; background: rgba(255,77,109,.15); color: var(--bad); border: 1px solid rgba(255,77,109,.25); cursor: help; }
+
+    /* Botón indicador compacto de observaciones */
+    .obsIconBtn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: rgba(124, 58, 237, 0.22);
+      border: 1px solid rgba(124, 58, 237, 0.5);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      transition: all .15s ease;
+      vertical-align: middle;
+    }
+    .obsIconBtn:hover {
+      background: rgba(124, 58, 237, 0.55);
+      border-color: #C4B0FF;
+      transform: scale(1.15);
+      box-shadow: 0 0 10px rgba(124, 58, 237, 0.5);
+    }
+    .obsIconBtn:active {
+      transform: scale(.95);
+    }
+    .editRowBtn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: rgba(34, 211, 238, 0.16);
+      border: 1px solid rgba(34, 211, 238, 0.45);
+      color: #67E8F9;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      transition: all .15s ease;
+      vertical-align: middle;
+    }
+    .editRowBtn:hover {
+      background: rgba(34, 211, 238, 0.38);
+      border-color: #22D3EE;
+      transform: scale(1.15);
+      box-shadow: 0 0 10px rgba(34, 211, 238, 0.45);
+    }
+    .editRowBtn:active {
+      transform: scale(.95);
+    }
 
     /* Grupo de camarera con subtotales */
     .groupHeader td {
@@ -134,7 +187,7 @@
     /* Resumen */
     .resumenRow {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
       gap: 10px; margin-bottom: 16px;
     }
     .resumenCard {
@@ -148,6 +201,27 @@
     .resumenCard.pago .value { color: #2EE59D; }
     .resumenCard.ok .value { color: #2EE59D; }
     .resumenCard.no .value { color: #FF4D6D; }
+
+    /* Tarjeta interactiva de observaciones */
+    .resumenCard.obsCard {
+      cursor: pointer;
+      transition: all .15s ease;
+      position: relative;
+    }
+    .resumenCard.obsCard:hover {
+      border-color: rgba(124,58,237,.5);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(124,58,237,.2);
+    }
+    .resumenCard.obsCard.active {
+      border-color: #A78BFA;
+      background: linear-gradient(180deg, rgba(124,58,237,.28), rgba(124,58,237,.12));
+      box-shadow: 0 0 0 2px rgba(124,58,237,.4), 0 8px 25px rgba(124,58,237,.3);
+    }
+    .resumenCard.obsCard.active .label {
+      color: #DDD6FE;
+      font-weight: 700;
+    }
 
     /* Resumen por camarera */
     .camResumenWrap {
@@ -659,6 +733,157 @@
       border: 1px solid rgba(255,255,255,.10);
     }
 
+    /* Modal Observaciones */
+    .detObsBox {
+      background: linear-gradient(135deg, rgba(124,58,237,.15), rgba(88,28,135,.12));
+      border: 1px solid rgba(124,58,237,.35);
+      border-left: 4px solid #A78BFA;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+    .detObsHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #DDD6FE;
+    }
+    .detObsText {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #F3F4F6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(0,0,0,.2);
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.05);
+    }
+    .detObsEmpty {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      margin-bottom: 14px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.03);
+      border: 1px dashed rgba(255,255,255,.1);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .detRectBox {
+      background: rgba(255,77,109,.12);
+      border: 1px solid rgba(255,77,109,.3);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      font-size: 12px;
+      color: #FFA4B2;
+    }
+    .detMetaBox {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 18px;
+      background: rgba(0,0,0,.25);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      font-size: 12px;
+    }
+    .detMetaItem { display: flex; align-items: center; gap: 6px; }
+    .detMetaItem .lbl { color: var(--muted); text-transform: uppercase; font-size: 10px; font-weight: 700; letter-spacing: .05em; }
+    .detMetaItem .val { color: var(--text); font-weight: 600; }
+    .btnEditShortcut {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(124,58,237,.25), rgba(124,58,237,.15));
+      border: 1px solid rgba(124,58,237,.4);
+      color: #DDD6FE;
+      font-size: 11px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all .15s ease;
+      cursor: pointer;
+    }
+    .btnEditShortcut:hover {
+      background: rgba(124,58,237,.4);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    /* Modal rápido de observación */
+    .obsModalOverlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.68);
+      backdrop-filter: blur(8px);
+      display: grid; place-items: center;
+      z-index: 1100;
+      padding: 16px;
+      animation: detFadeIn .12s ease;
+    }
+    .obsModalCard {
+      width: min(500px, 100%);
+      border-radius: 20px;
+      background: rgba(13, 17, 38, 0.98);
+      border: 1px solid rgba(124, 58, 237, 0.35);
+      box-shadow: 0 25px 70px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08);
+      overflow: hidden;
+      animation: detSlideIn .15s ease;
+    }
+    .obsModalHead {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 14px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(124,58,237,.15), transparent);
+    }
+    .obsModalTitle { font-size: 16px; font-weight: 800; color: #EAF0FF; }
+    .obsModalSub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .obsModalClose {
+      width: 32px; height: 32px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06); color: var(--text);
+      cursor: pointer; display: grid; place-items: center;
+      font-size: 14px; font-weight: 700; transition: all .15s;
+    }
+    .obsModalClose:hover { background: rgba(255,255,255,.15); }
+    .obsModalBody { padding: 16px 18px; }
+    .obsModalMeta {
+      display: flex; flex-wrap: wrap; gap: 8px 14px;
+      font-size: 12px; color: var(--muted);
+      margin-bottom: 14px; padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .obsModalMeta b { color: var(--text); }
+    .obsModalText {
+      background: rgba(0,0,0,.3);
+      border: 1px solid rgba(124,58,237,.3);
+      border-left: 4px solid #A78BFA;
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 14px;
+      line-height: 1.55;
+      color: #F3F4F6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .obsModalFoot {
+      display: flex; align-items: center; justify-content: flex-end;
+      gap: 10px; padding: 12px 18px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.2);
+    }
+
     /* Timeline del historial */
     .timelineWrap { position: relative; padding: 10px 0 10px 30px; }
     .timelineWrap::before {
@@ -921,6 +1146,33 @@
     </div>
   </div>
 
+  <!-- Modal rápido de observación -->
+  <div id="obsModal" class="obsModalOverlay" style="display:none" onclick="if(event.target===this)closeObsModal()">
+    <div class="obsModalCard">
+      <div class="obsModalHead">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:22px">💬</span>
+          <div>
+            <div class="obsModalTitle" id="obsModalTitle">Observación de Inspección</div>
+            <div class="obsModalSub" id="obsModalSub">Habitación ...</div>
+          </div>
+        </div>
+        <button class="obsModalClose" onclick="closeObsModal()" type="button">✕</button>
+      </div>
+      <div class="obsModalBody">
+        <div class="obsModalMeta" id="obsModalMeta"></div>
+        <div class="obsModalText" id="obsModalText"></div>
+      </div>
+      <div class="obsModalFoot" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <button class="primary" id="btnEditarDesdeObs" type="button" style="font-size:12px;padding:8px 14px;background:linear-gradient(135deg, rgba(34,211,238,.85), rgba(6,182,212,.75));border-color:rgba(34,211,238,.5);color:#070A12;font-weight:700">✏️ Editar Registro</button>
+        <div style="display:flex;gap:8px">
+          <button class="primary" id="btnVerChecklistDesdeObs" type="button" style="font-size:12px;padding:8px 14px">📋 Ver Checklist Completo</button>
+          <button type="button" onclick="closeObsModal()" style="font-size:12px;padding:8px 14px">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script defer>
     const $ = (id) => document.getElementById(id);
     const APP_BASE = window.location.pathname.replace(/\/[^/]*$/, "/").replace(/\/+$/, "");
@@ -936,6 +1188,7 @@
     let PAGOS_CAMARERA_NOMBRE = "Todas";
     let PAGOS_MODULO_NOMBRE = "Todos";
     let selectedCamarera = '';
+    let filterSoloObservaciones = false;
 
     // Chart global data
     let CHART_DATA = null;
@@ -1157,7 +1410,7 @@
       if (el) el.addEventListener("keydown", e => { if (e.key === "Enter") generarPagos(); });
     });
 
-    async function generarPagos() {
+    async function generarPagos(preserveFilters = false) {
       const desde = $("filtroDesde").value;
       const hasta = $("filtroHasta").value;
       if (!desde || !hasta) { toast("Selecciona fecha desde y hasta.", false); return; }
@@ -1180,7 +1433,10 @@
 
         PAGOS_ROWS = rows;
         PAGOS_RESUMEN = resumen;
-        selectedCamarera = '';
+        if (!preserveFilters) {
+          selectedCamarera = '';
+          filterSoloObservaciones = false;
+        }
         PAGOS_DESDE = desde;
         PAGOS_HASTA = hasta;
         const selCamarera = $("filtroCamarera");
@@ -1193,10 +1449,9 @@
           : "Todos";
 
         $("pagosCount").textContent = `${rows.length} registros`;
-        selectedCamarera = '';
         renderPagosResumen(resumen);
         renderPagosResumenCamareras(resumen, rows);
-        renderPagosTable(rows, resumen, '');
+        renderPagosTable(rows, resumen, selectedCamarera);
       } catch (e) {
         toast("Error: " + (e?.message || e), false, 5200);
         $("pagosPlaceholder").innerHTML = '<div class="empty">Error al generar reporte. Intenta de nuevo.</div>';
@@ -1206,16 +1461,40 @@
       }
     }
 
+    function toggleFiltroObservaciones() {
+      filterSoloObservaciones = !filterSoloObservaciones;
+      renderPagosResumen(PAGOS_RESUMEN);
+      renderPagosTable(PAGOS_ROWS, PAGOS_RESUMEN, selectedCamarera);
+    }
+
     function renderPagosResumen(r) {
       const el = $("pagosResumen");
+      if (!el || !r) return;
       el.style.display = "grid";
+
+      const totalObs = Array.isArray(PAGOS_ROWS)
+        ? PAGOS_ROWS.filter(x => x.observaciones && String(x.observaciones).trim().length > 0).length
+        : 0;
+
       el.innerHTML = `
         <div class="resumenCard pago"><div class="label">Total Pago</div><div class="value">Q${Number(r.total_pago || 0).toFixed(2)}</div></div>
         <div class="resumenCard ok"><div class="label">Cumplen</div><div class="value">${r.total_ok || 0}</div></div>
         <div class="resumenCard no"><div class="label">No Cumplen</div><div class="value">${r.total_no || 0}</div></div>
         <div class="resumenCard"><div class="label">N/A</div><div class="value">${r.total_na || 0}</div></div>
         <div class="resumenCard"><div class="label">Registros</div><div class="value">${r.total_registros || 0}</div></div>
+        <div class="resumenCard obsCard${filterSoloObservaciones ? ' active' : ''}" id="cardFiltroObs" title="Haz clic para alternar filtro: mostrar solo habitaciones con comentarios u observaciones">
+          <div class="label">Con Observación</div>
+          <div class="value" style="color:#C4B0FF">${totalObs}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;font-weight:700">${filterSoloObservaciones ? '✕ Quitar filtro' : '🔍 Filtrar notas'}</div>
+        </div>
       `;
+
+      const card = $("cardFiltroObs");
+      if (card) {
+        card.onclick = () => {
+          toggleFiltroObservaciones();
+        };
+      }
     }
 
     function renderPagosResumenCamareras(resumen, rows) {
@@ -1345,6 +1624,9 @@
           return names === filterCamarera || names.split(",").includes(filterCamarera);
         });
       }
+      if (filterSoloObservaciones) {
+        filteredRows = filteredRows.filter(r => r.observaciones && String(r.observaciones).trim().length > 0);
+      }
 
       // Agrupar por camarera individual (cada fila ya representa una camarera)
       const groups = {};
@@ -1355,7 +1637,16 @@
       });
 
       // Actualizar contador de registros mostrados
-      $("pagosCount").textContent = `${filteredRows.length} registro${filteredRows.length !== 1 ? 's' : ''}${filterCamarera ? ' (filtrado)' : ''}`;
+      const filterTags = [];
+      if (filterCamarera) filterTags.push(`Camarera: ${filterCamarera}`);
+      if (filterSoloObservaciones) filterTags.push('Con observaciones');
+      const tagStr = filterTags.length ? ` (${filterTags.join(' • ')})` : '';
+      $("pagosCount").textContent = `${filteredRows.length} registro${filteredRows.length !== 1 ? 's' : ''}${tagStr}`;
+
+      if (!filteredRows.length) {
+        wrap.innerHTML = '<div class="empty">No hay registros con observaciones para este filtro. <a href="javascript:void(0)" onclick="toggleFiltroObservaciones()" style="color:#A78BFA;font-weight:700">Quitar filtro</a></div>';
+        return;
+      }
 
       // Totales globales
       let globalPago = 0, globalOk = 0, globalNo = 0, globalNa = 0, globalPagoBase = 0;
@@ -1372,6 +1663,7 @@
         <th class="numCol">X</th>
         <th class="numCol">NA</th>
         <th>Puntuacion</th>
+        <th style="width:58px;text-align:center" title="Observaciones y Edición rápida">Obs / ✏️</th>
         <th class="numCol">Pago Base (Q)</th>
         <th class="numCol" title="Si la camarera tiene factura activa: se aplica este % sobre el total de Pago Base. Si NO factura: 0%.">% Aplicado</th>
         <th class="numCol" title="Monto fijo adicional que se suma al total. Q46 si factura, Q36 si no factura (valores configurables en Admin &gt; Config Pago).">Extra (Q)</th>
@@ -1416,7 +1708,7 @@
           ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:rgba(251,191,36,.15);color:#FBBF24;border:1px solid rgba(251,191,36,.3)">🔗 ${sharedCount} compartido${sharedCount !== 1 ? 's' : ''}</span>`
           : '';
         html += `<tr class="groupHeader">
-          <td colspan="15">
+          <td colspan="16">
             <span style="display:inline-flex;align-items:center;gap:8px">
               <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:999px;background:${avatarColor};color:#fff;font-size:12px;font-weight:800">
                 ${camarera.charAt(0).toUpperCase()}
@@ -1444,7 +1736,15 @@
           for (let i = 0; i < Math.min(no, 5); i++) dots += '<span class="scoreDot no"></span>';
           if (dots === "") dots = '<span style="color:var(--muted);font-size:11px">-</span>';
 
-          html += `<tr class="clickRow" data-inspeccion-id="${r.id}" title="Clic para ver detalle del checklist">
+          // Indicador compacto de Observaciones y Atajo a Edición
+          const obsTrimmed = r.observaciones ? String(r.observaciones).trim() : "";
+          const obsBtnHtml = obsTrimmed
+            ? `<button type="button" class="obsIconBtn" title="Ver observación: ${escHtml(obsTrimmed)}" onclick="event.stopPropagation(); openObsModal(${r.id})">💬</button>`
+            : '';
+          const editBtnHtml = `<button type="button" class="editRowBtn" title="Editar inspección #${r.id} (${escHtml(r.habitacion_etiqueta || '')})" onclick="event.stopPropagation(); irAEditar(${r.id})">✏️</button>`;
+          const actionsHtml = `<div style="display:inline-flex;align-items:center;justify-content:center;gap:3px">${obsBtnHtml}${editBtnHtml}</div>`;
+
+          html += `<tr class="clickRow" data-inspeccion-id="${r.id}" title="Clic para ver detalle de la inspección y observaciones">
             <td>${escHtml(r.fecha || "-")}</td>
             <td style="font-size:12px">${getCamarerasDisplay(r)}</td>
             <td><strong>${escHtml(r.habitacion_etiqueta || "-")}</strong></td>
@@ -1461,6 +1761,7 @@
                 <div class="scoreDots">${dots}</div>
               </div>
             </td>
+            <td style="text-align:center;padding:4px 2px">${actionsHtml}</td>
             <td class="numCol">Q${Number(r.pago_base || 0).toFixed(2)}</td>
             <td class="numCol">${(r.aplica_extra && facturaSI) ? (det.pct || 30) + '%' : '-'}</td>
             <td class="numCol">${r.aplica_extra ? (Number(r.camarera_factura) === 1 ? 'Q46' : 'Q36') : '-'}</td>
@@ -1484,6 +1785,7 @@
           <td class="numCol"><span class="badgePago badgeNoCumple">${subNo}</span></td>
           <td class="numCol"><span class="badgePago badgeNA">${subNa}</span></td>
           <td><span style="font-weight:700">${subPct}%</span></td>
+          <td></td>
           <td class="numCol" style="color:var(--muted);font-size:12px">Q${subPagoBase.toFixed(2)}</td>
           <td class="numCol" style="font-weight:700">${pctAplicado > 0 ? pctAplicado + '%' : '<span style="color:var(--muted)">-</span>'}</td>
           <td class="numCol" style="font-weight:700;color:#FFB020">${extraAplicado > 0 ? 'Q' + extraAplicado.toFixed(2) : '<span style="color:var(--muted)">-</span>'}</td>
@@ -1504,6 +1806,7 @@
         <td class="numCol"><span class="badgePago badgeNoCumple">${globalNo}</span></td>
         <td class="numCol"><span class="badgePago badgeNA">${globalNa}</span></td>
         <td><span style="font-weight:800">${globalPct}%</span></td>
+        <td></td>
         <td class="numCol" style="color:var(--muted);font-size:13px">Q${globalPagoBase.toFixed(2)}</td>
         <td class="numCol"><span style="color:var(--muted)">-</span></td>
         <td class="numCol"><span style="color:var(--muted)">-</span></td>
@@ -1769,6 +2072,7 @@
         <th class="center">X</th>
         <th class="center">NA</th>
         <th class="center">Punt %</th>
+        <th>Observaciones</th>
         <th class="center">Pago Base (Q)</th>
         <th class="center">Pago Final (Q)</th>
       </tr></thead><tbody>`;
@@ -1804,7 +2108,7 @@
           return list.length > 1;
         }).length;
         const sharedExcelBadge = sharedCountExcel > 0 ? ` (${sharedCountExcel} compartido${sharedCountExcel !== 1 ? 's' : ''})` : '';
-        html += `<tr class="groupHeader"><td colspan="14" style="color:#5b21b6">${escHtml(camarera)}${sharedExcelBadge} &mdash; ${items.length} registros</td></tr>`;
+        html += `<tr class="groupHeader"><td colspan="15" style="color:#5b21b6">${escHtml(camarera)}${sharedExcelBadge} &mdash; ${items.length} registros</td></tr>`;
 
         // Filas individuales
         items.forEach(r => {
@@ -1831,6 +2135,7 @@
             <td class="center"><span class="badgeNo">${no}</span></td>
             <td class="center"><span class="badgeNa">${na}</span></td>
             <td class="center numCol">${pct}%</td>
+            <td>${escHtml(r.observaciones || "-")}</td>
             <td class="center pagoCol">Q${pagoBase.toFixed(2)}</td>
             <td class="center pagoCol">Q${pagoFinalRow.toFixed(2)}</td>
           </tr>`;
@@ -1849,6 +2154,7 @@
           <td class="center"><span class="badgeNo">${subNo}</span></td>
           <td class="center"><span class="badgeNa">${subNa}</span></td>
           <td class="center">${subPct}%</td>
+          <td></td>
           <td class="center pagoCol">Q${subPagoBase.toFixed(2)}</td>
           <td class="center pagoCol" style="font-weight:800;color:#276749">Q${pagoFinalCam.toFixed(2)}</td>
         </tr>`;
@@ -1870,6 +2176,7 @@
         <td class="center"><span class="badgeNo">${globalNo}</span></td>
         <td class="center"><span class="badgeNa">${globalNa}</span></td>
         <td class="center">${totalPct}%</td>
+        <td></td>
         <td class="center pagoCol">Q${globalPagoBase.toFixed(2)}</td>
         <td class="center pagoCol" style="font-weight:800;color:#276749">Q${globalPagoFinal.toFixed(2)}</td>
       </tr>`;
@@ -1907,6 +2214,79 @@
       if (id) openDetalle(Number(id));
     });
 
+    // ===== MODAL RÁPIDO DE OBSERVACIÓN =====
+    function openObsModal(id) {
+      const r = PAGOS_ROWS.find(x => Number(x.id) === Number(id));
+      if (!r) return;
+
+      const modal = $("obsModal");
+      if (!modal) return;
+
+      $("obsModalTitle").textContent = `Habitación ${r.habitacion_etiqueta || '-'}`;
+      $("obsModalSub").textContent = `${r.modulo_nombre ? r.modulo_nombre + ' • ' : ''}${r.fecha || ''}`;
+
+      let metaHtml = `
+        <span><b>Camarera:</b> ${escHtml(r.camareras_nombres || r.camarera_nombre || '-')}</span>
+        <span><b>Tipo:</b> ${escHtml(r.tipo_nombre || '-')}</span>
+      `;
+      if (r.inspector_nombre) {
+        metaHtml += `<span><b>Inspector:</b> ${escHtml(r.inspector_nombre)}</span>`;
+      }
+      if (r.inicio_limpieza || r.fin_limpieza) {
+        metaHtml += `<span><b>Horario:</b> ${fmtTime(r.inicio_limpieza)} - ${fmtTime(r.fin_limpieza)}</span>`;
+      }
+      $("obsModalMeta").innerHTML = metaHtml;
+
+      let textHtml = escHtml(r.observaciones || "Sin observaciones");
+      if (Number(r.rectificado)) {
+        textHtml += `<div style="margin-top:10px;padding-top:8px;border-top:1px dashed rgba(255,77,109,.4);color:#FF8096;font-size:12px"><strong>⚠️ Rectificado:</strong> ${escHtml(r.motivo_rectificacion || '')}</div>`;
+      }
+      $("obsModalText").innerHTML = textHtml;
+
+      const btnChecklist = $("btnVerChecklistDesdeObs");
+      if (btnChecklist) {
+        btnChecklist.onclick = () => {
+          closeObsModal();
+          openDetalle(r.id);
+        };
+      }
+
+      const btnEditar = $("btnEditarDesdeObs");
+      if (btnEditar) {
+        btnEditar.onclick = () => {
+          closeObsModal();
+          irAEditar(r.id);
+        };
+      }
+
+      modal.style.display = "grid";
+    }
+
+    // ===== ATAJO A EDICIÓN CONSERVANDO FILTROS =====
+    function irAEditar(id) {
+      if (!id) return;
+      const desde = $("filtroDesde")?.value || "";
+      const hasta = $("filtroHasta")?.value || "";
+      const modulo = $("filtroModulo")?.value || "";
+      const camarera = $("filtroCamarera")?.value || "";
+      const params = new URLSearchParams({
+        id: String(id),
+        from: "reportes",
+        desde,
+        hasta,
+        modulo,
+        camarera,
+        selCam: selectedCamarera || "",
+        soloObs: filterSoloObservaciones ? "1" : "0"
+      });
+      window.location.href = `./EditarRegistros.html?${params.toString()}`;
+    }
+
+    function closeObsModal() {
+      const modal = $("obsModal");
+      if (modal) modal.style.display = "none";
+    }
+
     // ===== MODAL DETALLE =====
     function closeDetalle() {
       const modal = $("detModal");
@@ -1914,7 +2294,10 @@
     }
     // Cerrar con Escape
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeDetalle();
+      if (e.key === "Escape") {
+        closeDetalle();
+        closeObsModal();
+      }
     });
 
     async function openDetalle(inspeccionId) {
@@ -1957,7 +2340,62 @@
         const totalItems = detalles.length;
         const pct = totalItems > 0 ? Math.round((totalOk / totalItems) * 100) : 0;
 
-        let html = "";
+        // Meta box superior: Inspector, horario y acceso a edición
+        const horarioStr = (data.inicio_limpieza || data.fin_limpieza)
+          ? `${fmtTime(data.inicio_limpieza)} - ${fmtTime(data.fin_limpieza)}`
+          : "-";
+        let html = `
+          <div class="detMetaBox">
+            <div class="detMetaItem">
+              <span class="lbl">Inspector:</span>
+              <span class="val">${escHtml(data.inspector_nombre || "No registrado")}</span>
+              ${data.inspector_dept ? `<span class="badge" style="background:rgba(124,58,237,.2);color:#C4B0FF">${escHtml(data.inspector_dept)}</span>` : ''}
+            </div>
+            <div class="detMetaItem">
+              <span class="lbl">Horario:</span>
+              <span class="val">${horarioStr}</span>
+            </div>
+            <div class="detMetaItem" style="margin-left:auto">
+              <a href="javascript:void(0)" onclick="irAEditar(${data.id})" class="btnEditShortcut" title="Abrir en editor de registros con retorno al reporte">
+                ✏️ Editar este registro
+              </a>
+            </div>
+          </div>
+        `;
+
+        // Observaciones destacadas
+        const obsText = data.observaciones ? String(data.observaciones).trim() : "";
+        if (obsText) {
+          html += `
+            <div class="detObsBox">
+              <div class="detObsHeader">
+                <span style="display:flex;align-items:center;gap:6px">
+                  <span style="font-size:15px">💬</span>
+                  <span>Comentarios / Observaciones de Inspección:</span>
+                </span>
+                <span style="font-size:11px;opacity:.8;font-weight:600">Registrado en inspección</span>
+              </div>
+              <div class="detObsText">${escHtml(obsText)}</div>
+            </div>
+          `;
+        } else {
+          html += `
+            <div class="detObsEmpty">
+              <span>💬 Sin comentarios u observaciones registradas en esta inspección.</span>
+            </div>
+          `;
+        }
+
+        // Aviso si fue rectificada
+        if (Number(data.rectificado)) {
+          html += `
+            <div class="detRectBox">
+              <strong>⚠️ Registro Rectificado (Pago Q0.00):</strong>
+              <div style="margin-top:2px">${escHtml(data.motivo_rectificacion || "Sin motivo especificado")}</div>
+            </div>
+          `;
+        }
+
         Object.keys(grouped).forEach(cat => {
           const items = grouped[cat];
           html += `<div class="detCatGroup">
@@ -2790,6 +3228,28 @@
           loadAmaLlaves()
         ]);
         populateHistModulos();
+
+        // Si se regresa desde EditarRegistros.html con filtros en URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const pDesde = urlParams.get("desde");
+        const pHasta = urlParams.get("hasta");
+        const pModulo = urlParams.get("modulo");
+        const pCamarera = urlParams.get("camarera");
+        const pSelCam = urlParams.get("selCam");
+        const pSoloObs = urlParams.get("soloObs");
+        const pAuto = urlParams.get("auto");
+
+        let shouldAutoRun = false;
+        if (pDesde && $("filtroDesde")) { $("filtroDesde").value = pDesde; shouldAutoRun = true; }
+        if (pHasta && $("filtroHasta")) { $("filtroHasta").value = pHasta; shouldAutoRun = true; }
+        if (pModulo !== null && pModulo !== undefined && $("filtroModulo")) { $("filtroModulo").value = pModulo; }
+        if (pCamarera !== null && pCamarera !== undefined && $("filtroCamarera")) { $("filtroCamarera").value = pCamarera; }
+        if (pSelCam) { selectedCamarera = pSelCam; }
+        if (pSoloObs === '1') { filterSoloObservaciones = true; }
+
+        if (shouldAutoRun || pAuto === '1') {
+          await generarPagos(true);
+        }
       } catch (e) {
         toast("Error cargando datos", false);
       }
