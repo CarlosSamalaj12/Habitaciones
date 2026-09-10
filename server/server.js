@@ -2761,8 +2761,75 @@ function normalizePatch(patch){
   return out;
 }
 
+// ===== RESOLUCIÓN AUTOMÁTICA DE NOMBRES DE CAMARERA =====
+async function resolveCamareraNameById(id, conn) {
+  const executor = conn || pool;
+  try {
+    const numId = Number(id);
+    if (!numId || isNaN(numId)) return null;
+    const [cams] = await executor.query("SELECT nombre FROM camareras WHERE id=? LIMIT 1", [numId]);
+    if (cams[0]?.nombre) return cams[0].nombre;
+    const [users] = await executor.query("SELECT nombre FROM usuarios WHERE id=? LIMIT 1", [numId]);
+    if (users[0]?.nombre) return users[0].nombre;
+  } catch (e) {
+    console.warn("⚠️ Error resolviendo camarera por ID:", e.message);
+  }
+  return null;
+}
+
+async function resolveCamarerasString(raw, conn) {
+  if (!raw) return raw;
+  const str = String(raw).trim();
+  if (!str) return str;
+
+  const parts = str.split(",").map(p => p.trim()).filter(Boolean);
+  const resolved = [];
+
+  for (const part of parts) {
+    const m = /^camarera\s+(\d+)$/i.exec(part);
+    if (m) {
+      const realName = await resolveCamareraNameById(m[1], conn);
+      resolved.push(realName || part);
+    } else if (/^\d+$/.test(part)) {
+      const realName = await resolveCamareraNameById(part, conn);
+      resolved.push(realName || part);
+    } else {
+      resolved.push(part);
+    }
+  }
+
+  return resolved.join(", ");
+}
+
+async function resolveCamarerasInObs(obs, conn) {
+  if (!obs || typeof obs !== "string") return obs;
+  const regex = /\bCamarera\s+(\d+)\b/gi;
+  const matches = [...obs.matchAll(regex)];
+  if (!matches.length) return obs;
+
+  let result = obs;
+  for (const m of matches) {
+    const fullMatch = m[0];
+    const id = m[1];
+    const realName = await resolveCamareraNameById(id, conn);
+    if (realName) {
+      result = result.replace(fullMatch, realName);
+    }
+  }
+  return result;
+}
+
 async function upsertEstadoByRoomId(habitacion_id, patch, conn){
   const executor = conn || pool;
+
+  // Blindaje: Si camarera_asignada u observaciones vienen con formato provisional ("Camarera 21" o número), resolver nombre real
+  if (patch && patch.camarera_asignada) {
+    patch.camarera_asignada = await resolveCamarerasString(patch.camarera_asignada, executor);
+  }
+  if (patch && patch.observaciones) {
+    patch.observaciones = await resolveCamarerasInObs(patch.observaciones, executor);
+  }
+
   const p = normalizePatch(patch);
 
   // Si las columnas no están presentes en el patch original, ponemos 1 (skip). Si están, ponemos 0.

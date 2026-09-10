@@ -1051,6 +1051,7 @@
       localStorage.removeItem(PENDING_SUBMIT_KEY);
     }
 
+    let isCamarerasLoading = true;
     let CAMARERAS_MAP = {}; // nombre -> id
     let CAMARERAS = []; // array de {id, nombre}
     let CHECKLIST_ITEMS_DB = []; // items from DB
@@ -1066,6 +1067,7 @@
     }
 
     async function loadCamareras(){
+      isCamarerasLoading = true;
       try{
         const r = await fetch(`${API_BASE}/api/camareras`);
         const j = await r.json();
@@ -1088,7 +1090,9 @@
       }catch(e){
         console.warn("Error cargando camareras:", e);
         const sel = document.getElementById("camarera");
-        sel.innerHTML = `<option value="">Error cargando</option>`;
+        if (sel) sel.innerHTML = `<option value="">Error cargando</option>`;
+      }finally{
+        isCamarerasLoading = false;
       }
     }
 
@@ -1105,7 +1109,16 @@
           (String(s.modulo || "").trim() === String(CTX.modulo || "").trim() &&
            normalizeRoom(s.habitacion) === normalizeRoom(CTX.habitacion));
         if (sameRoom && String(s.date || "") === todayYMD()) {
-          if (s.camareraSel) {
+          if (Array.isArray(s.camarerasData) && s.camarerasData.length) {
+            _selectedCamareras = s.camarerasData.map(item => {
+              const numId = Number(item.id);
+              const cam = CAMARERAS.find(c => c.id === numId);
+              const realName = cam?.nombre || (!/^camarera\s+\d+$/i.test(item.nombre || "") && !/^\d+$/.test(item.nombre || "") ? item.nombre : null);
+              return { id: numId, nombre: realName || (cam ? cam.nombre : item.nombre || `Camarera ${item.id}`) };
+            }).filter(c => c.id);
+            renderCamarerasTags();
+            syncHiddenSelectCamareras();
+          } else if (s.camareraSel) {
             const idsArray = s.camareraSel.split(",").filter(c => c);
             _selectedCamareras = idsArray.map(id => {
               const numId = Number(id);
@@ -1514,6 +1527,7 @@
         endAtDT,
         useFamiliarArea,
         camareraSel: getSelectedCamareras().join(","),
+        camarerasData: _selectedCamareras.map(c => ({ id: c.id, nombre: c.nombre })),
         tipoSel: $("tipoLimpieza").value || "",
         obsGeneral: $("obsGeneral").value || ""
       };
@@ -1547,7 +1561,15 @@
             startAtDT = s.startAtDT || null;
             endAtDT = s.endAtDT || null;
             useFamiliarArea = canUseFamiliarArea() && !!s.useFamiliarArea;
-            if (s.camareraSel) {
+            if (Array.isArray(s.camarerasData) && s.camarerasData.length) {
+              _selectedCamareras = s.camarerasData.map(item => {
+                const numId = Number(item.id);
+                const cam = CAMARERAS.find(c => c.id === numId);
+                const realName = cam?.nombre || (!/^camarera\s+\d+$/i.test(item.nombre || "") && !/^\d+$/.test(item.nombre || "") ? item.nombre : null);
+                return { id: numId, nombre: realName || (cam ? cam.nombre : item.nombre || `Camarera ${item.id}`) };
+              }).filter(c => c.id);
+              renderCamarerasTags();
+            } else if (s.camareraSel) {
               // Formato nuevo: "id1,id2,id3" -> convertir a array de objetos
               const idsArray = s.camareraSel.split(",").filter(c => c);
               _selectedCamareras = idsArray.map(id => {
@@ -1613,13 +1635,15 @@
           if (!_selectedCamareras.length && target.camarera_asignada) {
             const parts = String(target.camarera_asignada).split(",").map(p => p.trim()).filter(p => p);
             _selectedCamareras = parts.map(part => {
-              const cId = getCamareraIdFromName(part);
+              // Si viene guardado como "Camarera 21", extraer ID para recuperar su nombre real
+              const m = /^camarera\s+(\d+)$/i.exec(part);
+              const cId = m ? Number(m[1]) : getCamareraIdFromName(part);
               if (cId) {
                 const cam = CAMARERAS.find(c => c.id === cId);
-                return cam ? { id: cId, nombre: cam.nombre } : { id: cId, nombre: part };
+                return cam ? { id: cId, nombre: cam.nombre } : { id: cId, nombre: (m ? cam?.nombre || part : part) };
               }
-              return null;
-            }).filter(c => c);
+              return { id: null, nombre: part };
+            }).filter(c => c && c.nombre);
             syncHiddenSelectCamareras();
             renderCamarerasTags();
           }
@@ -1677,18 +1701,44 @@
         toast("Restringido", "Gerencia solo puede visualizar.", false, 3200);
         return;
       }
+
+      // 1. BLINDAJE: Si todavía está cargando la lista de camareras desde la BD
+      if (isCamarerasLoading) {
+        toast("Cargando camareras", "La lista de camareras se está cargando. Por favor espera unos segundos...", false, 3500);
+        return;
+      }
+
+      // 2. Auto-reconciliar si alguna tiene nombre provisional ("Camarera 21" o número) buscando en CAMARERAS
+      for (const c of _selectedCamareras) {
+        if (!c.nombre || /^camarera\s+\d+$/i.test(c.nombre) || /^\d+$/.test(c.nombre)) {
+          const found = CAMARERAS.find(cam => cam.id === Number(c.id));
+          if (found) c.nombre = found.nombre;
+        }
+      }
+      renderCamarerasTags();
+
       const camarerasSel = getSelectedCamareras();
       const tipoSel = $("tipoLimpieza").value;
 
       if (!camarerasSel.length) {
         toast("Falta Camarera", "Selecciona al menos una camarera (quien limpia).", false, 4200);
-        return highlightAndFocus("camarera");
+        openCamarerasModal();
+        return highlightAndFocus("btnSelectCamareras");
       }
       for (const c of camarerasSel) {
         if (!isCamareraValida(c)) {
-          toast("Camarera invalida", `La camarera "${c}" no esta en la lista permitida.`, false, 5200);
-          return highlightAndFocus("camarera");
+          toast("Camarera invalida", `La camarera con ID "${c}" no esta en la lista permitida.`, false, 5200);
+          openCamarerasModal();
+          return highlightAndFocus("btnSelectCamareras");
         }
+      }
+
+      // 3. BLINDAJE ESTRICTO: Bloquear si alguna camarera seleccionada tiene nombre provisional o no válido
+      const invalidNames = _selectedCamareras.filter(c => !c.nombre || /^camarera\s+\d+$/i.test(c.nombre) || /^\d+$/.test(c.nombre));
+      if (invalidNames.length > 0) {
+        toast("Camarera sin nombre", "No se detectó el nombre real de la camarera. Por favor selecciónala en la lista.", false, 5200);
+        openCamarerasModal();
+        return highlightAndFocus("btnSelectCamareras");
       }
 
       if (!tipoSel) {
@@ -1772,7 +1822,6 @@
       }
     });
 
-    restoreSession();
     updateStartEndUI();
 
     // ===== Checklist (desde DB) =====
@@ -2023,8 +2072,9 @@
       toast("Conexion recuperada", pendingSubmit?.itemId ? "Puedes reintentar liberar la habitacion." : "Ya puedes enviar el checklist.", true, 4200);
     });
     // Cargar datos desde DB
-    // restoreFromDB() se ejecuta DESPUES de loadCamareras para que las opciones del select existan
+    // loadCamareras() primero para tener la lista de nombres reales en memoria antes de restaurar
     loadCamareras().then(() => {
+      restoreSession();
       reapplyCamareraSel();
       restoreFromDB();
     });
