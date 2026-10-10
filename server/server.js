@@ -1532,10 +1532,11 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
     const [camarerasRows] = await pool.query("SELECT id, nombre, factura FROM camareras WHERE activo=1");
     camarerasRows.forEach(c => { camarerasMap[c.id] = c; });
 
-    // Contar habitaciones por camarera por dia
+    // Contar habitaciones validas (no rectificadas) por camarera por dia
     const countPorDia = {};
     inspecciones.forEach(insp => {
       if (!insp.camareras_list) return;
+      if (Number(insp.rectificado) === 1) return; // Las habitaciones rectificadas no cuentan para el bono
       const camarerasIds = String(insp.camareras_list).split(",").map(Number).filter(id => id);
       camarerasIds.forEach(cid => {
         if (!countPorDia[cid]) countPorDia[cid] = {};
@@ -1573,8 +1574,9 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
       camarerasIds.forEach(cid => {
         const cam = camarerasMap[cid];
         if (!cam) return;
+        const isRect = Number(insp.rectificado) === 1;
         const countDia = countPorDia[cid]?.[dia] || 0;
-        const aplicaExtra = countDia > 6;
+        const aplicaExtra = !isRect && (countDia > 6);
         filasExpandidas.push({
           id: insp.id,
           modulo_nombre: insp.modulo_nombre,
@@ -1624,7 +1626,9 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
         grupoPagos[cid].por_dia[dia] = { base: 0, count: 0 };
       }
       grupoPagos[cid].por_dia[dia].base += r.pago_base;
-      grupoPagos[cid].por_dia[dia].count++;
+      if (!Number(r.rectificado)) {
+        grupoPagos[cid].por_dia[dia].count++;
+      }
     });
 
     let totalPagoFinal = 0;
@@ -1727,7 +1731,7 @@ app.get("/api/reportes/rendimiento", requireAuthIfEnabled, async (req,res)=>{
         c.nombre AS camarera_nombre,
         COUNT(DISTINCT i.id) AS total_inspecciones,
         COALESCE(ROUND(AVG(det.pct_cumple), 1), 0) AS promedio_pct,
-        COALESCE(SUM(COALESCE(pe.precio, 0) / NULLIF(cnt_cams.count_camareras, 0)), 0) AS total_pago,
+        COALESCE(SUM(IF(i.rectificado = 1, 0, COALESCE(pe.precio, 0)) / NULLIF(cnt_cams.count_camareras, 0)), 0) AS total_pago,
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza)), 0), 0) AS promedio_minutos,
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.fin_limpieza, i.hora_checklist)), 0), 0) AS promedio_inspeccion_min,
         COUNT(DISTINCT CASE WHEN cnt_cams.count_camareras > 1 THEN i.id END) AS habitaciones_compartidas,
@@ -1858,7 +1862,7 @@ app.get("/api/reportes/rendimiento/daily", requireAuthIfEnabled, async (req,res)
         COUNT(DISTINCT i.id) AS habitaciones,
         COALESCE(ROUND(AVG(det.pct_cumple), 1), 0) AS puntuacion_prom,
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza)), 0), 0) AS tiempo_prom_min,
-        COALESCE(SUM(COALESCE(pe.precio, 0) / NULLIF(cnt_cams.count_camareras, 0)), 0) AS pago_total,
+        COALESCE(SUM(IF(i.rectificado = 1, 0, COALESCE(pe.precio, 0)) / NULLIF(cnt_cams.count_camareras, 0)), 0) AS pago_total,
         COUNT(DISTINCT CASE WHEN cnt_cams.count_camareras > 1 THEN i.id END) AS habitaciones_compartidas,
         COALESCE(ROUND(AVG(CASE WHEN i.hora_listo_limpieza IS NOT NULL AND i.inicio_limpieza IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, i.hora_listo_limpieza, i.inicio_limpieza) END), 0), 0) AS tiempo_asignacion_min,
         COALESCE(SUM(CASE WHEN i.hora_listo_limpieza IS NOT NULL AND i.inicio_limpieza IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, i.hora_listo_limpieza, i.inicio_limpieza) END), 0) AS tiempo_asignacion_sum
