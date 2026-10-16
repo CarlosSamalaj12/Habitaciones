@@ -7,138 +7,187 @@
   <link rel="manifest" href="./app.webmanifest">
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Administracion - Gestion Habitaciones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg0: #070A12; --bg1: #0B1024;
-      --card: rgba(255,255,255,.06);
-      --stroke: rgba(255,255,255,.10);
-      --text: #EAF0FF; --muted: #A9B3D0;
-      --primary: #7C3AED; --primaryLight: rgba(124,58,237,.25);
-      --ok: #2EE59D; --warn: #FFB020; --bad: #FF4D6D;
-      --shadow: 0 18px 60px rgba(0,0,0,.45);
-      --r: 18px; --r2: 14px;
+      /* Tipografia */
+      --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+      /* Neutros y Estructura */
+      --bg0: #EAEEF3; --bg1: #EAEFF5;
+      --card: #FFFFFF;
+      --surface: #F8FAFC;
+      --stroke: #CBD5E1;
+      --border-light: #E2E8F0;
+      --text: #1E293B; --muted: #64748B; --subtle: #94A3B8;
+
+      /* Primarios & Acentos Pastel */
+      --primary: #3730A3; --primaryLight: #E0E7FF;
+      --ok: #166534; --warn: #92400E; --bad: #9D174D;
+      --shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.03);
+      --shadow-hover: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+      --r: 16px; --r2: 12px;
+
+      /* Pastel tokens */
+      --state-ocupado-bg: #FCE7F3; --state-ocupado-text: #9D174D; --state-ocupado-border: #FBCFE8;
+      --state-libre-bg: #DCFCE7; --state-libre-text: #166534; --state-libre-border: #BBF7D0;
+      --state-limpieza-bg: #E0F2FE; --state-limpieza-text: #0369A1; --state-limpieza-border: #BAE6FD;
+      --state-proceso-bg: #FEF3C7; --state-proceso-text: #92400E; --state-proceso-border: #FDE68A;
+      --state-mant-bg: #F3E8FF; --state-mant-text: #6B21A8; --state-mant-border: #E9D5FF;
+      --state-indigo-bg: #E0E7FF; --state-indigo-text: #3730A3; --state-indigo-border: #C7D2FE;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      font-family: var(--font-family);
       color: var(--text);
-      background: radial-gradient(1200px 700px at 15% 10%, rgba(124,58,237,.22), transparent 55%),
-                  radial-gradient(900px 600px at 85% 20%, rgba(34,211,238,.18), transparent 55%),
-                  linear-gradient(180deg, var(--bg0), var(--bg1));
+      background-color: var(--bg0);
       min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
     }
-    .wrap { max-width: 1100px; margin: 22px auto; padding: 0 14px; }
+    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
     .top {
       display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; margin-bottom: 18px; flex-wrap: wrap;
+      gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
     }
     .brand { display: flex; align-items: center; gap: 12px; }
-    .logoImg { width: 48px; height: 48px; border-radius: 12px; object-fit: contain; background: rgba(255,255,255,.06); padding: 4px; border: 1px solid rgba(255,255,255,.12); }
-    h1 { font-size: 20px; margin: 0; letter-spacing: .2px; }
-    .hint { color: var(--muted); font-size: 12px; }
+    .logoImg {
+      width: 44px; height: 44px; border-radius: 12px; object-fit: contain;
+      background: #FFFFFF; padding: 4px; border: 1px solid var(--stroke);
+      box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    }
+    h1 { font-size: 22px; font-weight: 800; margin: 0; color: var(--text); letter-spacing: -0.02em; }
+    .hint { color: var(--muted); font-size: 13px; margin-top: 2px; }
 
     button {
-      border: 1px solid rgba(255,255,255,.16);
-      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
-      color: var(--text); padding: 10px 16px; border-radius: 12px;
+      border: 1px solid var(--stroke);
+      background: #FFFFFF;
+      color: var(--text); padding: 9px 16px; border-radius: 10px;
       cursor: pointer; font-weight: 600; font-size: 13px; line-height: 1.25;
-      transition: all .15s; white-space: nowrap;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      transition: all .15s ease; white-space: nowrap;
+      font-family: var(--font-family);
     }
-    button:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,.3); }
-    button:active { transform: scale(.97); }
+    button:hover { background: var(--surface); border-color: var(--muted); transform: translateY(-1px); }
+    button:active { transform: scale(.98); }
     button:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
     .primary {
-      border-color: rgba(124,58,237,.55);
-      background: linear-gradient(135deg, rgba(124,58,237,.85), rgba(139,92,246,.75));
-      color: #fff;
+      border-color: #3730A3;
+      background: #3730A3;
+      color: #FFFFFF;
     }
-    .primary:hover { border-color: rgba(124,58,237,.8); }
+    .primary:hover {
+      background: #312E81;
+      border-color: #312E81;
+      color: #FFFFFF;
+    }
     .danger {
-      border-color: rgba(255,77,109,.45);
-      background: linear-gradient(135deg, rgba(255,77,109,.85), rgba(255,100,130,.75));
-      color: #fff;
+      border: 1px solid var(--state-ocupado-border);
+      background: var(--state-ocupado-bg);
+      color: var(--state-ocupado-text);
+      font-weight: 700;
     }
+    .danger:hover { background: #FBCFE8; }
     .success {
-      border-color: rgba(46,229,157,.45);
-      background: linear-gradient(135deg, rgba(46,229,157,.85), rgba(72,240,170,.75));
-      color: #0a1a14;
+      border: 1px solid var(--state-libre-border);
+      background: var(--state-libre-bg);
+      color: var(--state-libre-text);
+      font-weight: 700;
     }
+    .success:hover { background: #BBF7D0; }
     .ghost {
-      background: transparent; border-color: transparent;
+      background: transparent; border-color: transparent; box-shadow: none;
     }
-    .ghost:hover { background: rgba(255,255,255,.06); transform: none; }
+    .ghost:hover { background: var(--surface); border-color: var(--border-light); transform: none; }
 
     .panel {
       background: var(--card); border: 1px solid var(--stroke);
       border-radius: var(--r); box-shadow: var(--shadow);
-      backdrop-filter: blur(10px); overflow: hidden;
-      margin-bottom: 18px;
+      overflow: hidden; margin-bottom: 20px;
     }
     .panelHeader {
-      padding: 14px 18px;
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      border-bottom: 1px solid rgba(255,255,255,.08);
+      padding: 14px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border-light);
       display: flex; align-items: center; justify-content: space-between; gap: 12px;
     }
-    .panelHeader h2 { margin: 0; font-size: 16px; font-weight: 700; }
-    .panelHeader .count { color: var(--muted); font-size: 12px; }
-    .panelBody { padding: 16px 18px; }
+    .panelHeader h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--text); }
+    .panelHeader .count { color: var(--muted); font-size: 12px; font-weight: 600; }
+    .panelBody { padding: 18px 20px; }
 
     .tabs {
-      display: flex; gap: 4px; margin-bottom: 18px; background: rgba(0,0,0,.25);
-      padding: 4px; border-radius: 14px; overflow-x: auto;
+      display: flex; gap: 6px; margin-bottom: 20px; background: #FFFFFF;
+      padding: 6px; border-radius: 14px; border: 1px solid var(--stroke);
+      box-shadow: var(--shadow); overflow-x: auto;
     }
     .tab {
-      padding: 8px 16px; border-radius: 10px; border: none;
+      padding: 9px 18px; border-radius: 10px; border: 1px solid transparent;
       background: transparent; color: var(--muted); cursor: pointer;
-      font-size: 13px; font-weight: 600; white-space: nowrap;
+      font-size: 13px; font-weight: 700; white-space: nowrap;
       transition: all .15s;
     }
-    .tab:hover { color: var(--text); background: rgba(255,255,255,.06); }
-    .tab.active { background: var(--primaryLight); color: #B8A0FF; }
+    .tab:hover { color: var(--text); background: var(--surface); }
+    .tab.active {
+      background: var(--state-indigo-bg);
+      color: var(--state-indigo-text);
+      border-color: var(--state-indigo-border);
+    }
 
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.06); }
-    th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
-    tr:hover td { background: rgba(255,255,255,.03); }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border-light); }
+    th { color: var(--muted); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; background: var(--surface); }
+    tr:hover td { background: #F1F5F9; }
     .actions { display: flex; gap: 6px; }
     .actions button { padding: 6px 10px; font-size: 11px; }
 
     .formInline {
       display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;
-      padding: 14px; background: rgba(0,0,0,.2); border-radius: var(--r2);
-      margin-bottom: 14px;
+      padding: 16px; background: var(--surface); border-radius: var(--r2);
+      border: 1px solid var(--border-light); margin-bottom: 16px;
     }
-    .formInline label { display: block; margin: 0 0 4px; color: var(--muted); font-size: 11px; }
+    .formInline label { display: block; margin: 0 0 6px; color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
     .formInline input, .formInline select {
-      padding: 8px 12px; border-radius: 10px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(10,14,28,.55); color: var(--text);
+      padding: 9px 12px; border-radius: 10px;
+      border: 1px solid var(--stroke);
+      background: #FFFFFF; color: var(--text);
       outline: none; font-size: 13px;
+      font-family: var(--font-family);
+      transition: border-color .15s, box-shadow .15s;
     }
-    .formInline input:focus, .formInline select:focus { border-color: var(--primary); }
+    .formInline input:focus, .formInline select:focus {
+      border-color: #6366F1;
+      box-shadow: 0 0 0 3px #E0E7FF;
+    }
     .formGroup { display: flex; flex-direction: column; }
 
     .empty { text-align: center; padding: 30px; color: var(--muted); font-size: 13px; }
     .loading { text-align: center; padding: 40px; color: var(--muted); }
 
-    .toastWrap { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 9999; display: grid; gap: 8px; width: min(560px, calc(100vw - 22px)); }
-    .toast { border-radius: 14px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.12); background: rgba(10,14,28,.92); font-size: 13px; }
-    .toast.ok { border-color: rgba(46,229,157,.45); }
-    .toast.err { border-color: rgba(255,77,109,.45); }
+    .toastWrap { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: grid; gap: 8px; width: min(560px, calc(100vw - 24px)); }
+    .toast { border-radius: 12px; padding: 12px 16px; border: 1px solid var(--stroke); background: #FFFFFF; font-size: 13px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); color: var(--text); }
+    .toast.ok { border-color: #86EFAC; background: #F0FDF4; color: #166534; }
+    .toast.err { border-color: #FCA5A5; background: #FEF2F2; color: #991B1B; }
 
     .priceCell { display: flex; align-items: center; gap: 8px; }
-    .priceCell input { width: 100px; padding: 6px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,.10); background: rgba(10,14,28,.55); color: var(--text); outline: none; font-size: 13px; text-align: right; }
-    .priceCell input:focus { border-color: var(--primary); }
-    .familiarBadge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; background: rgba(255,176,32,.15); color: var(--warn); }
+    .priceCell input {
+      width: 100px; padding: 7px 10px; border-radius: 8px;
+      border: 1px solid var(--stroke); background: #FFFFFF; color: var(--text);
+      outline: none; font-size: 13px; text-align: right;
+      font-family: var(--font-family);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .priceCell input:focus { border-color: #6366F1; box-shadow: 0 0 0 3px #E0E7FF; }
+    .familiarBadge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; background: var(--state-proceso-bg); color: var(--state-proceso-text); border: 1px solid var(--state-proceso-border); }
 
     @media (max-width: 767px) {
-      .formInline { flex-direction: column; align-items: stretch; }
+      .formInline { flex-direction: column; align-items: stretch; gap: 10px; }
       .formGroup { width: 100%; }
       .formInline input, .formInline select { width: 100%; }
       .tabs { overflow-x: auto; }
       th, td { padding: 8px 6px; font-size: 12px; }
+      .panelBody { padding: 14px 14px; }
     }
   </style>
 </head>
@@ -212,7 +261,7 @@
         <span class="count" id="checklistCount">0</span>
       </div>
       <div class="panelBody">
-        <div class="formInline" style="border:1px solid rgba(124,58,237,.3);margin-bottom:16px;padding:12px;background:rgba(124,58,237,.08)">
+        <div class="formInline" style="border:1px solid var(--state-indigo-border);margin-bottom:16px;padding:14px;background:var(--state-indigo-bg);border-radius:var(--r2)">
           <div class="formGroup">
             <label>Nueva Categoria</label>
             <input id="catNombre" type="text" placeholder="Nombre de la categoria" />
@@ -220,7 +269,7 @@
           <button class="primary" id="btnAddCat" type="button" style="font-size:12px">+ Crear Categoria</button>
         </div>
         <div id="categoriasList"></div>
-        <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08)">
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border-light)">
           <div class="formInline">
             <div class="formGroup">
               <label>Nuevo Item</label>
@@ -245,7 +294,7 @@
       </div>
       <div class="panelBody">
         <div class="formInline" style="flex-direction:column;align-items:stretch;gap:14px">
-          <div style="color:var(--muted);font-size:12px;background:rgba(255,176,32,.08);padding:10px 14px;border-radius:12px;border:1px solid rgba(255,176,32,.25)">
+          <div style="color:var(--state-proceso-text);font-size:12px;background:var(--state-proceso-bg);padding:12px 16px;border-radius:12px;border:1px solid var(--state-proceso-border);line-height:1.5">
             <strong>🧮 Formula de pago:</strong><br>
             <strong>Si factura:</strong> (Precio base × (1 + % / 100)) + Extra factura<br>
             <strong>Si NO factura:</strong> Precio base + Extra no factura
@@ -289,9 +338,9 @@
       </div>
       <div class="panelBody">
         <!-- MODULOS -->
-        <div style="border:1px solid rgba(124,58,237,.25);border-radius:12px;padding:14px;margin-bottom:14px;background:rgba(124,58,237,.06)">
-          <h3 style="margin:0 0 10px;font-size:15px">🏢 Modulos</h3>
-          <div class="formInline" style="margin-bottom:12px">
+        <div style="border:1px solid var(--state-indigo-border);border-radius:14px;padding:16px;margin-bottom:16px;background:var(--state-indigo-bg)">
+          <h3 style="margin:0 0 10px;font-size:15px;color:var(--state-indigo-text)">🏢 Modulos</h3>
+          <div class="formInline" style="margin-bottom:12px;background:#FFFFFF;border:1px solid var(--border-light)">
             <div class="formGroup">
               <label>ID del modulo</label>
               <input id="modIdTxt" type="text" placeholder="Ej: M1, PISO1, etc" style="width:120px" />
@@ -306,9 +355,9 @@
         </div>
 
         <!-- HABITACIONES -->
-        <div style="border:1px solid rgba(255,176,32,.25);border-radius:12px;padding:14px;background:rgba(255,176,32,.06)">
-          <h3 style="margin:0 0 10px;font-size:15px">🛏️ Habitaciones</h3>
-          <div class="formInline" style="margin-bottom:12px">
+        <div style="border:1px solid var(--state-proceso-border);border-radius:14px;padding:16px;background:var(--state-proceso-bg)">
+          <h3 style="margin:0 0 10px;font-size:15px;color:var(--state-proceso-text)">🛏️ Habitaciones</h3>
+          <div class="formInline" style="margin-bottom:12px;background:#FFFFFF;border:1px solid var(--border-light)">
             <div class="formGroup">
               <label>Modulo</label>
               <select id="habModuloSel">
@@ -339,7 +388,7 @@
         <span class="count" id="usuariosCount">0</span>
       </div>
       <div class="panelBody">
-        <div class="formInline" style="border:1px solid rgba(124,58,237,.3);background:rgba(124,58,237,.08)">
+        <div class="formInline" style="border:1px solid var(--state-indigo-border);background:var(--state-indigo-bg);border-radius:var(--r2);padding:16px;margin-bottom:16px">
           <div class="formGroup">
             <label>Nombre</label>
             <input id="usrNombre" type="text" placeholder="Nombre completo" />
@@ -364,7 +413,7 @@
           </div>
           <button class="primary" id="btnCrearUsuario" type="button" style="margin-top:auto">+ Crear Usuario</button>
         </div>
-        <div id="usrErr" style="display:none;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,77,109,.35);background:rgba(255,77,109,.10);color:#ffb0b8;font-weight:700;font-size:13px;margin-bottom:12px"></div>
+        <div id="usrErr" style="display:none;padding:10px 14px;border-radius:10px;border:1px solid var(--state-ocupado-border);background:var(--state-ocupado-bg);color:var(--state-ocupado-text);font-weight:700;font-size:13px;margin-bottom:12px"></div>
         <div id="usuariosList" class="loading">Cargando usuarios...</div>
       </div>
     </div>
@@ -376,7 +425,7 @@
         <span class="count">Matriz editable</span>
       </div>
       <div class="panelBody">
-        <div style="padding:12px 14px;border-radius:12px;border:1px solid rgba(124,58,237,.35);background:rgba(124,58,237,.10);margin-bottom:16px;font-size:13px;line-height:1.6">
+        <div style="padding:14px 16px;border-radius:12px;border:1px solid var(--state-indigo-border);background:var(--state-indigo-bg);color:var(--state-indigo-text);margin-bottom:16px;font-size:13px;line-height:1.6">
           <strong>🧮 Precio por Habitacion y Tipo de Limpieza</strong><br>
           Cada <strong>celda</strong> es el precio que se le pagara a la camarera
           por limpiar esa habitacion con ese tipo de limpieza.<br>
@@ -398,9 +447,9 @@
           </div>
         </div>
         <div id="pespList" class="loading">Selecciona un modulo y presiona "Cargar Matriz"</div>
-        <div style="margin-top:12px;padding:10px 14px;border-radius:10px;background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.2);color:var(--warn);font-size:12px;text-align:center">
+        <div style="margin-top:14px;padding:10px 14px;border-radius:10px;background:var(--state-proceso-bg);border:1px solid var(--state-proceso-border);color:var(--state-proceso-text);font-size:12px;text-align:center">
           ⚡ Celda vacia = Q0.00 (sin pago).<br>
-          Los cambios se guardan automaticamente al presionar <kbd style="padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);font-size:11px">Enter</kbd> o al salir del campo.
+          Los cambios se guardan automaticamente al presionar <kbd style="padding:2px 6px;border-radius:4px;background:#FFFFFF;border:1px solid var(--stroke);font-size:11px;color:var(--text);font-weight:700">Enter</kbd> o al salir del campo.
         </div>
       </div>
     </div>
@@ -877,9 +926,9 @@
       }
 
       // Header: fija + columnas por tipo
-      let html = `<div style="overflow-x:auto;border-radius:12px;border:1px solid rgba(255,255,255,.08)">`;
+      let html = `<div style="overflow-x:auto;border-radius:12px;border:1px solid var(--border-light)">`;
       html += `<table style="min-width:600px"><thead><tr>`;
-      html += `<th style="position:sticky;left:0;background:rgba(10,14,28,.95);z-index:1">Habitacion</th>`;
+      html += `<th style="position:sticky;left:0;background:var(--surface);z-index:1">Habitacion</th>`;
       PESP_TIPOS.forEach(t => {
         html += `<th style="text-align:center;white-space:nowrap;padding:8px 6px;font-size:11px">${escHtml(t.nombre)}</th>`;
       });
@@ -889,7 +938,7 @@
         const habId = h.habitacion_id || h.id;
         const etiqueta = h.etiqueta || '-';
         html += `<tr>`;
-        html += `<td style="position:sticky;left:0;background:rgba(10,14,28,.95);z-index:1;font-weight:700;white-space:nowrap">${escHtml(etiqueta)}</td>`;
+        html += `<td style="position:sticky;left:0;background:#FFFFFF;z-index:1;font-weight:700;white-space:nowrap">${escHtml(etiqueta)}</td>`;
 
         PESP_TIPOS.forEach(tipo => {
           const key = habId + '_' + tipo.id;
@@ -912,7 +961,7 @@
           html += `</div>`;
           html += `<div id="${cellId}_status" style="font-size:10px;margin-top:2px;min-height:16px">`;
           if (hasVal) {
-            html += `<span style="color:#2EE59D;font-weight:700">✅ Q${Number(val).toFixed(2)}</span>`;
+            html += `<span style="color:var(--state-libre-text);font-weight:700">✅ Q${Number(val).toFixed(2)}</span>`;
           } else {
             html += `<span style="color:var(--muted)">—</span>`;
           }
@@ -1015,13 +1064,13 @@
           <td>
             <input type="text" id="usrNameInput_${id}" value="${nameVal}"
               data-usr-id="${id}"
-              style="padding:4px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.10);background:rgba(10,14,28,.55);color:var(--text);outline:none;font-size:13px;font-weight:700;width:100%;min-width:120px"
+              style="padding:6px 10px;border-radius:8px;border:1px solid var(--stroke);background:#FFFFFF;color:var(--text);outline:none;font-size:13px;font-weight:600;width:100%;min-width:120px"
               onkeydown="if(event.key==='Enter'){event.preventDefault();saveUsuario(${id})}"
               onblur="saveUsuario(${id})" />
           </td>
           <td>
             <select id="usrDeptSelect_${id}" data-usr-id="${id}"
-              style="padding:4px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.10);background:rgba(10,14,28,.55);color:var(--text);outline:none;font-size:12px;max-width:140px"
+              style="padding:6px 10px;border-radius:8px;border:1px solid var(--stroke);background:#FFFFFF;color:var(--text);outline:none;font-size:12px;max-width:140px"
               onchange="saveUsuario(${id})">
               ${deptOpts}
             </select>
