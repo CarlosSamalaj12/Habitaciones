@@ -17,7 +17,7 @@ window.TIME_OFFSET_MS = 0;
 /* =========================
    VERSION CONTROL
    ========================= */
-window.APP_VERSION = "1.3.40";
+window.APP_VERSION = "1.3.41";
 window.__swReg = null;
 window.__updateChecked = false;
 window.LS_SW_UPDATE_DISMISSED = "hk_sw_update_dismissed_v1";
@@ -286,7 +286,7 @@ function renderActiveUser() {
     updateDecoradaUI();
     return;
   }
-  el.textContent = `Usuario: ${sess.name}${sess.dept ? " - " + sess.dept : ""}`;
+  el.textContent = `Usuario: ${sess.name}${sess.dept ? " | " + sess.dept : ""}`;
   updateAdminUI();
   updateDecoradaUI();
 }
@@ -1809,12 +1809,12 @@ function roomClassByEstado(estado) {
   return ROOM_CLASSES[estado] || ROOM_CLASS_DEFAULT;
 }
 const ICONS = {
-  ocupado: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6" r="4"/><path d="M4 22c0-3.3 2.7-6 6-6h4c3.3 0 6 2.7 6 6z"/></svg>`,
-  limpieza: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><rect x="14" y="3" width="3" height="12" rx="1.5"/><path d="M7 15h11l-2 8H9l-2-8z"/></svg>`,
-  mant: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5l-3.5 3.5 2 2-7 7a1.5 1.5 0 0 0 2.1 2.1l7-7 2 2 3.5-3.5-4.1-4.1z"/></svg>`,
-  repaso: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1 9 9 1-9 1-1 9-1-9-9-1 9-1z"/></svg>`,
-  liberar: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="12" width="16" height="10" rx="2"/><path d="M8 12V7a4 4 0 0 1 8 0h-2a2 2 0 0 0-4 0v5H8z"/><circle cx="12" cy="17" r="1.5"/></svg>`,
-  prio: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l-1 12h2l-1-12z"/><circle cx="12" cy="20" r="2"/></svg>`
+  ocupado: `<svg class="raIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+  limpieza: `<svg class="raIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>`,
+  mant: `<svg class="raIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,
+  repaso: `<svg class="raIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>`,
+  liberar: `<svg class="raIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`,
+  prio: `<svg class="raIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12.01" y1="16" x2="12.01" y2="16"/></svg>`
 };
 
 const STATUS_COUNT_KEY = {
@@ -1954,18 +1954,20 @@ function renderRooms() {
       cleanedDirty = true;
       cleanedAt = null;
     }
+    const roomTypeLabel = Number(room.es_familiar) === 1 ? "Familiar" : (room.precio_especial ? "Especial" : "");
+    const roomTypeHTML = roomTypeLabel ? `<span class="roomType">${roomTypeLabel}</span>` : "";
+
     const cleanTagHTML =
       (room.estado === "libre" && cleanedAt) ? `<div class="cleanTag">LIMPIADA</div>` :
-      (room.estado === "ocupada limpia") ? `<div class="cleanTag occupiedClean">OCUPADA LIMPIA</div>` :
+      (room.estado === "ocupada limpia") ? `<div class="cleanTag occupiedClean">Limpia</div>` :
       (room.estado === "ocupado" && String(room.tipo_limpieza || "").toLowerCase() === "estadia" && room.fin_limpieza)
-        ? `<div class="cleanTag occupiedClean">OCUPADA LIMPIA</div>`
+        ? `<div class="cleanTag occupiedClean">Limpia</div>`
         : "";
     const decoradaTagHTML = Number(room.decorada) === 1
-      ? `<div class="decoradaTag" title="Habitacion decorada"><span class="decoradaEmoji" aria-hidden="true">*</span><span class="decoradaText">DECORADA</span></div>`
+      ? `<div class="decoradaTag" title="Habitacion decorada">Decorada</div>`
       : "";
     const prioHigh = !!room.prioAlta;
     const badgeText = (prioHigh && (room.estado === "libre" || room.estado === "lista")) ? "PRIORIDAD" : badge;
-    const prioTagHTML = "";
 
     const btn = document.createElement("button");
     btn.className = `roomBtn ${cls}${prioHigh ? " prioHigh" : ""}`;
@@ -1976,10 +1978,7 @@ function renderRooms() {
       : "";
 
     let timerHTML = "";
-    const prioIconHTML = prioHigh ? `<div class="prioIcon">&#9889;</div>` : "";
-    // Precomputar las fechas una sola vez por room: antes se parseaba el string
-    // 2x (existencia + msSince). Ahora se pasa un Date directamente y msSince
-    // lo retorna sin re-parsear.
+    const prioIconHTML = prioHigh ? `<span class="prioIcon">&#9889;</span>` : "";
     const desdeDate = parseAnyDate(room.desde);
     const inicioLimpDate = parseAnyDate(room.inicio_limpieza);
     const finLimpDate = parseAnyDate(room.fin_limpieza);
@@ -1987,53 +1986,66 @@ function renderRooms() {
 
     if (room.estado === "lista" && desdeDate) {
       timerHTML = `
-        <div class="timerBadge">
-          <img class="timerIcon" src="./cronografo.png" alt="" />
+        <div class="dataChip timerChip">
+          <img class="timerChipIcon" src="./cronografo.png" alt="" />
           ${prioIconHTML}
-          <div class="timerText" data-timer-roomkey="${k}" data-timer-type="lista">${fmtDur(msSince(desdeDate))}</div>
+          <span class="timerText" data-timer-roomkey="${k}" data-timer-type="lista">${fmtDur(msSince(desdeDate))}</span>
         </div>`;
     }
     if (room.estado === "limpieza" && inicioLimpDate) {
       timerHTML = `
-        <div class="timerBadge">
-          <img class="timerIcon" src="./cronografo.png" alt="" />
+        <div class="dataChip timerChip">
+          <img class="timerChipIcon" src="./cronografo.png" alt="" />
           ${prioIconHTML}
-          <div class="timerText" data-timer-roomkey="${k}" data-timer-type="limpieza">${fmtDur(msSince(inicioLimpDate))}</div>
+          <span class="timerText" data-timer-roomkey="${k}" data-timer-type="limpieza">${fmtDur(msSince(inicioLimpDate))}</span>
         </div>`;
     }
     if (room.estado === "inspeccion" && finLimpDate) {
       timerHTML = `
-        <div class="timerBadge">
-          <img class="timerIcon" src="./cronografo.png" alt="" />
+        <div class="dataChip timerChip">
+          <img class="timerChipIcon" src="./cronografo.png" alt="" />
           ${prioIconHTML}
-          <div class="timerText" data-timer-roomkey="${k}" data-timer-type="inspeccion">${fmtDur(msSince(finLimpDate))}</div>
+          <span class="timerText" data-timer-roomkey="${k}" data-timer-type="inspeccion">${fmtDur(msSince(finLimpDate))}</span>
         </div>`;
     }
     if (room.estado === "repaso" && inicioRepasoDate) {
       timerHTML = `
-        <div class="timerBadge">
-          <img class="timerIcon" src="./cronografo.png" alt="" />
+        <div class="dataChip timerChip">
+          <img class="timerChipIcon" src="./cronografo.png" alt="" />
           ${prioIconHTML}
-          <div class="timerText" data-timer-roomkey="${k}" data-timer-type="repaso">${fmtDur(msSince(inicioRepasoDate))}</div>
+          <span class="timerText" data-timer-roomkey="${k}" data-timer-type="repaso">${fmtDur(msSince(inicioRepasoDate))}</span>
         </div>`;
     }
 
-    const prioTopHTML = "";
     const showOccupied = room.estado === "ocupado" || room.estado === "ocupada limpia" || room.estado === "lista";
-    const precioStr = "";
+    const occHTML = (showOccupied && (room.adultos > 0 || room.ninos > 0))
+      ? `<div class="dataChip occChip" title="Adultos / Niños"><span class="chipIcon">&#128101;</span> ${room.adultos || 0} / ${room.ninos || 0}</div>`
+      : "";
+
     btn.dataset.roomKey = k;
     roomBtnMap.set(k, btn);
     btn.innerHTML = `
-      ${timerHTML}
-      ${prioTopHTML}
-      <div class="badge">${badgeText}</div>
-      ${cleanTagHTML}
-      ${decoradaTagHTML}
-      <div class="roomNum">${room.etiqueta}</div>
-      <div class="roomState">${roomModuleName}</div>
-      <div class="roomOcc">${(showOccupied) && (room.adultos > 0 || room.ninos > 0) ? `&#128101; ${room.adultos || 0} / ${room.ninos || 0}` : ""}</div>
-      ${precioStr}
-      ${obsChips}
+      <div class="roomCardHeader">
+        <div class="roomTitleGroup">
+          <span class="roomNum">${room.etiqueta}</span>
+          ${roomTypeHTML}
+        </div>
+        <div class="roomStatusBadge"><span class="statusDot"></span>${badgeText}</div>
+      </div>
+
+      <div class="roomSubHeader">
+        <div class="roomModuleName">${roomModuleName}</div>
+        <div class="roomTagsGroup">
+          ${cleanTagHTML}
+          ${decoradaTagHTML}
+        </div>
+      </div>
+
+      <div class="roomChipsRow">
+        ${timerHTML}
+        ${occHTML}
+        ${obsChips}
+      </div>
 
       <div class="roomDetails">
         <div class="detailBlock">
@@ -2047,12 +2059,12 @@ function renderRooms() {
       </div>
 
       <div class="roomActions">
-        <button class="raBtn ocupado" data-action="ocupado" data-room-key="${k}" data-mobile-label="OCUP" aria-label="Ocupado">${ICONS.ocupado}</button>
-        <button class="raBtn limpieza" data-action="limpieza" data-room-key="${k}" data-mobile-label="LIMP" aria-label="Lista / Iniciar limpieza">${ICONS.limpieza}</button>
-        <button class="raBtn mant" data-action="mant" data-room-key="${k}" data-mobile-label="MANT" aria-label="Mantenimiento">${ICONS.mant}</button>
-        <button class="raBtn liberar" data-action="liberar" data-room-key="${k}" data-mobile-label="LIBRE" aria-label="Liberar habitacion">${ICONS.liberar}</button>
-        <button class="raBtn prio" data-action="prio" data-room-key="${k}" data-mobile-label="PRIO" aria-label="Prioridad limpieza">${ICONS.prio}</button>
-        <button class="raBtn repaso" data-action="repaso" data-room-key="${k}" data-mobile-label="REP" aria-label="Repaso">${ICONS.repaso}</button>
+        <button class="raBtn ocupado" data-action="ocupado" data-room-key="${k}" data-mobile-label="OCUP" aria-label="Ocupado" title="Ocupar">${ICONS.ocupado}</button>
+        <button class="raBtn limpieza" data-action="limpieza" data-room-key="${k}" data-mobile-label="LIMP" aria-label="Lista / Iniciar limpieza" title="Limpieza">${ICONS.limpieza}</button>
+        <button class="raBtn mant" data-action="mant" data-room-key="${k}" data-mobile-label="MANT" aria-label="Mantenimiento" title="Mantenimiento">${ICONS.mant}</button>
+        <button class="raBtn liberar" data-action="liberar" data-room-key="${k}" data-mobile-label="LIBRE" aria-label="Liberar habitacion" title="Liberar">${ICONS.liberar}</button>
+        <button class="raBtn prio" data-action="prio" data-room-key="${k}" data-mobile-label="PRIO" aria-label="Prioridad limpieza" title="Prioridad">${ICONS.prio}</button>
+        <button class="raBtn repaso" data-action="repaso" data-room-key="${k}" data-mobile-label="REP" aria-label="Repaso" title="Repaso">${ICONS.repaso}</button>
       </div>
     `;
 

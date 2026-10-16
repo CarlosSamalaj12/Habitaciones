@@ -8,7 +8,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Gestion Habitaciones</title>
 
-  <link rel="stylesheet" href="./styles.css?v=1.3.40" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css?v=1.3.41" />
 </head>
 <body>
 
@@ -46,7 +49,7 @@
       </div>
 
       <div class="loginFooter">
-        <div class="creatorNote">v1.3.40 | Created By - Carlos S - Cel: 502-56325547</div>
+        <div class="creatorNote">v1.3.41 | Created By - Carlos S - Cel: 502-56325547</div>
         <div style="color:rgba(234,240,255,.70); font-size:12px;">Hotel Jardines Del Lago</div>
       </div>
     </div>
@@ -54,44 +57,40 @@
   <!-- TOP -->
   <div class="top">
     <div class="brand">
+      <div class="brandIconCircle">
+        <svg class="brandIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
+          <circle cx="7" cy="17" r="2"/>
+          <path d="M9 17h6"/>
+          <circle cx="17" cy="17" r="2"/>
+        </svg>
+      </div>
       <div class="brandText">
         <div class="titleRow">
-          <div class="t1">Gestion de Habitaciones</div>
-          <div class="t2" id="activeUserLabel">Usuario: -</div>
+          <div class="t1">Gestión de Habitaciones</div>
+          <span class="liveBadge"><span class="liveDot"></span> En vivo</span>
         </div>
-        <div class="t2">Recepcion / Camareria - Control de limpieza</div>
-        <div class="summaryBar" id="summaryBar">
-          <div class="summaryPill sucias"><span data-short="OCUP.">Ocupadas Sucias</span><b id="sumSucias">0</b></div>
-          <div class="summaryPill limpieza"><span data-short="LIMP.">En limpieza</span><b id="sumLimpieza">0</b></div>
-          <div class="summaryPill lista"><span data-short="LISTA">Lista para limpiar</span><b id="sumLista">0</b></div>
-          <div class="summaryPill limpiadas"><span data-short="LIMPDS">Limpiadas</span><b id="sumLimpiadas">0</b></div>
-          <div class="summaryPill limpias"><span data-short="LIBRE">Libres</span><b id="sumLimpias">0</b></div>
-          <div class="summaryPill mantenimiento"><span data-short="MANT.">Mantenimiento</span><b id="sumMant">0</b></div>
-          <div class="summaryPill prioridad"><span data-short="PRIO.">Prioridad</span><b id="sumPrio">0</b></div>
-          <div class="summaryPill inspeccion"><span data-short="INSP.">Inspeccion</span><b id="sumInspeccion">0</b></div>
-          <div class="summaryPill repaso"><span data-short="REP.">Repaso</span><b id="sumRepaso">0</b></div>
-          <div class="logoBox" id="logoBox">
-            <img class="logoImg" src="./Oficial_JDL_blanco.png" alt="Logo" />
-            <img class="logoImg" src="./cronografo.png" alt="Logo" />
-          </div>
-        </div>
-
-        <div class="summaryProgress" id="summaryProgressAll">
-          <div class="summaryProgTop">
-            <span>Cantidad de Habitaciones Sucias</span>
-            <b id="sumProgTextAll">0%</b>
-          </div>
-          <div class="summaryProgTrack">
-            <div class="summaryProgFill" id="sumProgFillAll"></div>
-          </div>
-        </div>
+        <div class="t2">Recepción / Camarería — Control de limpieza</div>
       </div>
     </div>
 
     <div class="rightTop">
-      <button id="btnMenu" class="btnGhost menuBtn" type="button" title="Menu">
+      <div class="userPill" id="headerUserPill">
+        <span class="userStatusDot"></span>
+        <span id="activeUserLabel">Usuario: -</span>
+      </div>
+
+      <button id="btnMenu" class="menuBtn" type="button" title="Menu">
         <span class="menuIcon">☰</span>
       </button>
+
+      <!-- Botones directos con estilo pastel pill -->
+      <button id="btnReportes" class="btnPillNav reportes hidden" type="button">REPORTES</button>
+      <button id="btnEditarReg" class="btnPillNav editar hidden" type="button">EDITAR</button>
+      <button id="btnAdmin" class="btnPillNav admin hidden" type="button">ADMIN</button>
+      <button id="btnLock" class="btnGhost hidden" type="button">BLOQUEAR</button>
+
+      <!-- Menu Dropdown -->
       <div id="menuDropdown" class="menuDropdown hidden">
         <div class="menuDropdownContent">
           <div class="menuUserSection" id="menuUserSection">
@@ -103,25 +102,73 @@
           </div>
           <div class="menuDivider"></div>
           <div class="menuSection">
-            <div class="menuSectionTitle">📋 Modulos</div>
+            <div class="menuSectionTitle">📋 Módulos</div>
             <div id="menuModules" class="menuModules"></div>
           </div>
           <div class="menuDivider"></div>
           <div class="menuSection">
             <div class="menuSectionTitle">🔧 Acciones</div>
-            <button id="menuBtnLock" class="menuActionBtn" type="button">🔒 Bloquear sesion</button>
+            <button id="menuBtnLock" class="menuActionBtn" type="button">🔒 Bloquear sesión</button>
             <button id="menuBtnReportes" class="menuActionBtn hidden" type="button">📊 Reportes</button>
             <button id="menuBtnEditarReg" class="menuActionBtn hidden" type="button">📝 Editar Registros</button>
             <button id="menuBtnAdmin" class="menuActionBtn hidden" type="button">⚙️ Admin</button>
           </div>
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- Botones originales ocultos (compatibilidad JS) -->
-      <button id="btnLock" class="btnGhost hidden" type="button">BLOQUEAR</button>
-      <button id="btnReportes" class="btnGhost hidden" type="button">REPORTES</button>
-      <button id="btnEditarReg" class="btnGhost hidden" type="button">EDITAR</button>
-      <button id="btnAdmin" class="btnGhost hidden" type="button">ADMIN</button>
+  <!-- KPI SUMMARY & PROGRESS -->
+  <div class="kpiContainer">
+    <div class="summaryBar" id="summaryBar">
+      <div class="summaryPill sucias">
+        <div class="summaryPillHead"><span class="kpiDot"></span><span data-short="OCUP.">Ocupadas Sucias</span></div>
+        <b id="sumSucias">0</b>
+      </div>
+      <div class="summaryPill limpieza">
+        <div class="summaryPillHead"><span class="kpiDot"></span><span data-short="LIMP.">En limpieza</span></div>
+        <b id="sumLimpieza">0</b>
+      </div>
+      <div class="summaryPill lista">
+        <div class="summaryPillHead"><span class="kpiDot"></span><span data-short="LISTA">Lista p/ limpiar</span></div>
+        <b id="sumLista">0</b>
+      </div>
+      <div class="summaryPill limpiadas">
+        <div class="summaryPillHead"><span class="kpiDot"></span><span data-short="LIMPDS">Limpiadas</span></div>
+        <b id="sumLimpiadas">0</b>
+      </div>
+      <div class="summaryPill limpias">
+        <div class="summaryPillHead"><span class="kpiDot"></span><span data-short="LIBRE">Libres</span></div>
+        <b id="sumLimpias">0</b>
+      </div>
+      <div class="summaryPill mantenimiento">
+        <div class="summaryPillHead"><span class="kpiDot"></span><span data-short="MANT.">Mantenimiento</span></div>
+        <b id="sumMant">0</b>
+      </div>
+      <div class="summaryPill prioridad">
+        <div class="summaryPillHead"><span class="kpiDot"></span><span data-short="PRIO.">Prioridad</span></div>
+        <b id="sumPrio">0</b>
+      </div>
+      <div class="summaryPill inspeccion">
+        <div class="summaryPillHead"><span class="kpiDot"></span><span data-short="INSP.">Inspección</span></div>
+        <b id="sumInspeccion">0</b>
+      </div>
+      <div class="summaryPill repaso">
+        <div class="summaryPillHead"><span class="kpiDot"></span><span data-short="REP.">Repaso</span></div>
+        <b id="sumRepaso">0</b>
+      </div>
+      <div class="logoBox" id="logoBox">
+        <div class="logoPillBtn" title="Jardines del Lago">JL</div>
+        <div class="logoPillBtn" title="Cronógrafo">⏱️</div>
+      </div>
+    </div>
+
+    <div class="summaryProgress" id="summaryProgressAll">
+      <span class="progTitle"><span class="progDot"></span> Cantidad de Habitaciones Sucias</span>
+      <div class="summaryProgTrack">
+        <div class="summaryProgFill" id="sumProgFillAll"></div>
+      </div>
+      <b id="sumProgTextAll">0%</b>
     </div>
   </div>
 
@@ -133,32 +180,31 @@
   <!-- MAIN -->
   <div class="main">
     <div class="stickyHeaderGroup">
-      <div class="headRow">
-        <div class="headLeft">
-        </div>
-        <div class="headActions">
-          <button id="btnInstall" class="btnGhost hidden" type="button" title="Instalar app" style="font-size:11px;padding:6px 10px">📲 Instalar</button>
-          <button id="btnNotifBell" class="notifBell" type="button" title="Notificaciones recientes">
-            <span class="bellIcon">🔔</span>
-            <span class="bellDot" id="bellDot" style="display:none"></span>
-          </button>
-          <button id="btnDecorada" class="btnDecoradaHead hidden" type="button">Decorada</button>
-          <div class="selected" id="selectedInfo">Modulo: <b id="selModule">-</b></div>
-        </div>
-      </div>
-
-      <div class="searchRow">
+      <div class="searchAndIndexRow">
         <div class="searchWrap">
-          <input id="roomSearch" class="searchInput" type="text" placeholder="Buscar habitaciones" autocomplete="off" />
-          <button id="roomSearchClear" class="searchClearBtn" type="button" aria-label="Limpiar busqueda" title="Limpiar">✕</button>
+          <svg class="searchIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+          </svg>
+          <input id="roomSearch" class="searchInput" type="text" placeholder="Buscar habitaciones..." autocomplete="off" />
+          <button id="roomSearchClear" class="searchClearBtn" type="button" aria-label="Limpiar búsqueda" title="Limpiar">✕</button>
         </div>
+        <div id="roomIndex" class="roomIndex"></div>
       </div>
 
-      <div id="roomIndex" class="roomIndex"></div>
+      <!-- Acciones de cabecera secundarias (compatibilidad JS) -->
+      <div class="headActions" style="display:none">
+        <button id="btnInstall" class="btnGhost hidden" type="button" title="Instalar app">📲 Instalar</button>
+        <button id="btnNotifBell" class="notifBell" type="button" title="Notificaciones recientes">
+          <span class="bellIcon">🔔</span>
+          <span class="bellDot" id="bellDot" style="display:none"></span>
+        </button>
+        <button id="btnDecorada" class="btnDecoradaHead hidden" type="button">Decorada</button>
+        <div class="selected" id="selectedInfo">Modulo: <b id="selModule">-</b></div>
+      </div>
     </div>
 
     <div id="roomsGrid" class="roomsGrid"></div>
-      <div class="creatorNote creatorNotePage">v1.3.40 | Created By - Carlos S - Cel: 502-56325547</div>
+    <div class="creatorNote creatorNotePage">v1.3.41 | Created By - Carlos S - Cel: 502-56325547</div>
   </div>
 
   <!-- Modal ocupacion -->
@@ -253,7 +299,7 @@
   </div>
 
   <script src="./socket.io/socket.io.js"></script>
-  <script src="./app.js?v=1.3.40"></script>
+  <script src="./app.js?v=1.3.41"></script>
   <script>
     if ('serviceWorker' in navigator) {
       // Limpiar registros antiguos con query string (?v=) para evitar conflictos y bucles infinitos
