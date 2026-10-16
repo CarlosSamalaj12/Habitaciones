@@ -513,16 +513,9 @@ button {
 .summaryPill.repaso .kpiDot { background: var(--state-indigo-text); }
 .summaryPill.repaso span, .summaryPill.repaso b { color: var(--state-indigo-text); }
 
-/* Quick Logo / Clock Box al final de la barra */
+/* Quick Logo / Clock Box al final de la barra (Oculto según solicitud) */
 .logoBox {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-neutral);
-  border-radius: var(--radius-md);
-  padding: 8px 12px;
+  display: none !important;
 }
 
 .logoPillBtn {
@@ -809,8 +802,9 @@ button {
 .roomBtn {
   background: var(--bg-card);
   border: 1px solid var(--border-neutral);
+  border-top: 4px solid var(--border-neutral);
   border-radius: var(--radius-lg);
-  padding: 16px;
+  padding: 14px 16px 16px;
   display: flex;
   flex-direction: column;
   text-align: left;
@@ -822,7 +816,6 @@ button {
 .roomBtn:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-card-hover);
-  border-color: #94A3B8;
 }
 
 .roomBtn.selected {
@@ -1035,48 +1028,104 @@ button {
   height: 18px;
 }
 
-/* Resaltado temático al pasar el mouse por cada botón */
+/* Colores Distintivos por Botón de Acción (Normal y Hover) */
+/* 1. Botón Ocupado: Rosa Pastel */
+.raBtn.ocupado {
+  background: #FDF2F8;
+  border-color: #FBCFE8;
+  color: #9D174D;
+}
 .raBtn.ocupado:hover:not(:disabled) {
-  background: var(--state-ocupado-bg);
-  border-color: var(--state-ocupado-border);
-  color: var(--state-ocupado-text);
+  background: #FCE7F3;
+  border-color: #F472B6;
+  color: #831843;
+  box-shadow: 0 3px 8px rgba(157, 23, 77, 0.22);
+  transform: translateY(-1px);
 }
 
+/* 2. Botón Limpieza: Cielo Pastel */
+.raBtn.limpieza {
+  background: #F0F9FF;
+  border-color: #BAE6FD;
+  color: #0284C7;
+}
 .raBtn.limpieza:hover:not(:disabled) {
-  background: var(--state-cielo-bg);
-  border-color: var(--state-cielo-border);
-  color: var(--state-cielo-text);
+  background: #E0F2FE;
+  border-color: #38BDF8;
+  color: #0369A1;
+  box-shadow: 0 3px 8px rgba(2, 132, 199, 0.22);
+  transform: translateY(-1px);
 }
 
+/* 3. Botón Mantenimiento: Lavanda Pastel */
+.raBtn.mant {
+  background: #FAF5FF;
+  border-color: #E9D5FF;
+  color: #7E22CE;
+}
 .raBtn.mant:hover:not(:disabled) {
-  background: var(--state-mant-bg);
-  border-color: var(--state-mant-border);
-  color: var(--state-mant-text);
+  background: #F3E8FF;
+  border-color: #C084FC;
+  color: #6B21A8;
+  box-shadow: 0 3px 8px rgba(126, 34, 206, 0.22);
+  transform: translateY(-1px);
 }
 
+/* 4. Botón Liberar: Menta / Verde Pastel */
+.raBtn.liberar {
+  background: #F0FDF4;
+  border-color: #BBF7D0;
+  color: #166534;
+}
 .raBtn.liberar:hover:not(:disabled) {
-  background: var(--state-libre-bg);
-  border-color: var(--state-libre-border);
-  color: var(--state-libre-text);
+  background: #DCFCE7;
+  border-color: #4ADE80;
+  color: #14532D;
+  box-shadow: 0 3px 8px rgba(22, 101, 52, 0.22);
+  transform: translateY(-1px);
 }
 
+/* 5. Botón Prioridad: Ámbar / Amarillo Pastel */
 .raBtn.prio {
-  background: var(--bg-surface);
+  background: #FFFBEB;
+  border-color: #FDE68A;
+  color: #92400E;
 }
 .raBtn.prio:hover:not(:disabled) {
-  background: var(--state-proceso-bg);
-  border-color: var(--state-proceso-border);
-  color: var(--state-proceso-text);
+  background: #FEF3C7;
+  border-color: #FBBF24;
+  color: #78350F;
+  box-shadow: 0 3px 8px rgba(146, 64, 14, 0.22);
+  transform: translateY(-1px);
 }
 
+/* 6. Botón Repaso: Índigo Pastel */
+.raBtn.repaso {
+  background: #EEF2FF;
+  border-color: #C7D2FE;
+  color: #3730A3;
+}
 .raBtn.repaso:hover:not(:disabled) {
-  background: var(--state-indigo-bg);
-  border-color: var(--state-indigo-border);
-  color: var(--state-indigo-text);
+  background: #E0E7FF;
+  border-color: #818CF8;
+  color: #312E81;
+  box-shadow: 0 3px 8px rgba(55, 48, 163, 0.22);
+  transform: translateY(-1px);
 }
 
-/* Estilos de Estado para Tarjetas y Badges */
+/* ==========================================================================
+   ESTILOS DE CONTORNO Y ESTADO POR HABITACIÓN (Como en la Referencia)
+   ========================================================================== */
 /* Estado: OCUPADO */
+.roomBtn.ocupado {
+  border-color: #FBCFE8;
+  border-top-color: #BE185D;
+}
+.roomBtn.ocupado:hover {
+  border-color: #F472B6;
+  border-top-color: #9D174D;
+  box-shadow: 0 8px 24px rgba(190, 24, 93, 0.16);
+}
 .roomBtn.ocupado .roomStatusBadge {
   background: var(--state-ocupado-bg);
   color: var(--state-ocupado-text);
@@ -1085,6 +1134,15 @@ button {
 .roomBtn.ocupado .statusDot { background: var(--state-ocupado-text); }
 
 /* Estado: LIBRE */
+.roomBtn.libre {
+  border-color: #BBF7D0;
+  border-top-color: #16A34A;
+}
+.roomBtn.libre:hover {
+  border-color: #4ADE80;
+  border-top-color: #15803D;
+  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.16);
+}
 .roomBtn.libre .roomStatusBadge {
   background: var(--state-libre-bg);
   color: var(--state-libre-text);
@@ -1093,6 +1151,15 @@ button {
 .roomBtn.libre .statusDot { background: var(--state-libre-text); }
 
 /* Estado: EN LIMPIEZA */
+.roomBtn.limpieza {
+  border-color: #BAE6FD;
+  border-top-color: #0284C7;
+}
+.roomBtn.limpieza:hover {
+  border-color: #38BDF8;
+  border-top-color: #0369A1;
+  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.16);
+}
 .roomBtn.limpieza .roomStatusBadge {
   background: var(--state-proceso-bg);
   color: var(--state-proceso-text);
@@ -1101,6 +1168,15 @@ button {
 .roomBtn.limpieza .statusDot { background: var(--state-proceso-text); }
 
 /* Estado: LISTA */
+.roomBtn.lista {
+  border-color: #BAE6FD;
+  border-top-color: #0EA5E9;
+}
+.roomBtn.lista:hover {
+  border-color: #38BDF8;
+  border-top-color: #0284C7;
+  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.16);
+}
 .roomBtn.lista .roomStatusBadge {
   background: var(--state-cielo-bg);
   color: var(--state-cielo-text);
@@ -1108,7 +1184,33 @@ button {
 }
 .roomBtn.lista .statusDot { background: var(--state-cielo-text); }
 
+/* Estado: INSPECCION */
+.roomBtn.inspeccion {
+  border-color: #FDE68A;
+  border-top-color: #D97706;
+}
+.roomBtn.inspeccion:hover {
+  border-color: #FBBF24;
+  border-top-color: #B45309;
+  box-shadow: 0 8px 24px rgba(217, 119, 6, 0.16);
+}
+.roomBtn.inspeccion .roomStatusBadge {
+  background: var(--state-proceso-bg);
+  color: var(--state-proceso-text);
+  border: 1px solid var(--state-proceso-border);
+}
+.roomBtn.inspeccion .statusDot { background: var(--state-proceso-text); }
+
 /* Estado: MANTENIMIENTO */
+.roomBtn.mantenimiento {
+  border-color: #E9D5FF;
+  border-top-color: #9333EA;
+}
+.roomBtn.mantenimiento:hover {
+  border-color: #C084FC;
+  border-top-color: #7E22CE;
+  box-shadow: 0 8px 24px rgba(147, 51, 234, 0.16);
+}
 .roomBtn.mantenimiento .roomStatusBadge {
   background: var(--state-mant-bg);
   color: var(--state-mant-text);
@@ -1117,6 +1219,15 @@ button {
 .roomBtn.mantenimiento .statusDot { background: var(--state-mant-text); }
 
 /* Estado: REPASO */
+.roomBtn.repaso {
+  border-color: #C7D2FE;
+  border-top-color: #4F46E5;
+}
+.roomBtn.repaso:hover {
+  border-color: #818CF8;
+  border-top-color: #3730A3;
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.16);
+}
 .roomBtn.repaso .roomStatusBadge {
   background: var(--state-indigo-bg);
   color: var(--state-indigo-text);
