@@ -7,32 +7,8 @@
   <link rel="manifest" href="./app.webmanifest">
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Formulario Decorada</title>
-  <style>
-    :root{--bg0:#070A12;--bg1:#0B1024;--card:rgba(255,255,255,.06);--stroke:rgba(255,255,255,.10);--text:#EAF0FF;--muted:#A9B3D0;--ok:#2EE59D;--warn:#FFB020;--bad:#FF4D6D;--shadow:0 18px 60px rgba(0,0,0,.45);--r:18px;--r2:14px}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:"Segoe UI",Tahoma,Verdana,sans-serif;color:var(--text);background:radial-gradient(1200px 700px at 15% 10%,rgba(124,58,237,.22),transparent 55%),radial-gradient(900px 600px at 85% 20%,rgba(34,211,238,.18),transparent 55%),linear-gradient(180deg,var(--bg0),var(--bg1));min-height:100vh}
-    .wrap{max-width:900px;margin:24px auto;padding:0 14px}
-    .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-    .brand{display:flex;align-items:center;gap:10px}
-    .logo{width:48px;height:48px;border-radius:12px;object-fit:contain;background:rgba(255,255,255,.06);padding:4px;border:1px solid rgba(255,255,255,.12)}
-    h1{font-size:19px;margin:0}
-    .hint{font-size:12px;color:var(--muted)}
-    .panel{background:var(--card);border:1px solid var(--stroke);border-radius:var(--r);box-shadow:var(--shadow);backdrop-filter:blur(10px);overflow:hidden}
-    .content{padding:14px}
-    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-    label{display:block;margin:0 0 6px;color:var(--muted);font-size:12.5px}
-    input,select{width:100%;padding:12px;border-radius:var(--r2);border:1px solid rgba(255,255,255,.10);background:rgba(10,14,28,.55);color:var(--text);outline:none;font-size:14px}
-    .boxNote{margin-top:12px;padding:12px;border-radius:14px;border:1px solid rgba(255,176,32,.45);background:rgba(255,176,32,.12);color:#ffe4b5;font-size:13px}
-    .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
-    button{border:1px solid rgba(255,255,255,.16);background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.06));color:var(--text);padding:10px 14px;border-radius:14px;cursor:pointer;font-weight:700;font-size:14px;line-height:1.25;letter-spacing:.2px}
-    .primary{border:1px solid rgba(255,176,32,.55);background:linear-gradient(135deg,rgba(255,176,32,.92),rgba(255,214,102,.90));color:#1f1700}
-    .loading{text-align:center;padding:40px 14px;color:var(--muted);font-size:14px}
-    .toastWrap{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;display:grid;gap:8px;width:min(560px,calc(100vw - 22px))}
-    .toast{border-radius:14px;padding:10px 12px;border:1px solid rgba(255,255,255,.12);background:rgba(10,14,28,.92);font-size:13px}
-    .toast.ok{border-color:rgba(46,229,157,.45)}
-    .toast.err{border-color:rgba(255,77,109,.45)}
-    @media(max-width:760px){.grid{grid-template-columns:1fr}}
-  </style>
+  <link rel="stylesheet" href="./css/main.css?v=1.3.41" />
+  <link rel="stylesheet" href="./css/pages/decorada.css?v=1.3.41" />
 </head>
 <body>
   <div id="toasts" class="toastWrap"></div>

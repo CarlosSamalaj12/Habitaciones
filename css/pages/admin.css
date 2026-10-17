@@ -1,0 +1,24 @@
+/* =============================================
+   PAGINA: ADMINISTRACION (Admin.html)
+   ============================================= */
+.priceCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.priceCell input {
+  width: 100px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(10, 14, 28, 0.55);
+  color: var(--text);
+  outline: none;
+  font-size: 13px;
+  text-align: right;
+}
+
+.priceCell input:focus {
+  border-color: var(--primary);
+}

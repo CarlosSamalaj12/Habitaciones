@@ -11,7 +11,13 @@ const ASSETS = [
   "./EditarRegistros.html",
   "./Reportes.html",
   "./Decorada.html",
-  "./Inspeccion.html"
+  "./Inspeccion.html",
+  "./css/main.css",
+  "./css/pages/admin.css",
+  "./css/pages/decorada.css",
+  "./css/pages/editar-registros.css",
+  "./css/pages/reportes.css",
+  "./css/pages/inspeccion.css"
 ];
 
 // Pagina offline generada inline

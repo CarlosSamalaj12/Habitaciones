@@ -29,7 +29,13 @@ function autoIncrementVersion() {
       "../../EditarRegistros.html",
       "../../Reportes.html",
       "../../Inspeccion.html",
-      "../../Decorada.html"
+      "../../Decorada.html",
+      "../../css/main.css",
+      "../../css/pages/admin.css",
+      "../../css/pages/decorada.css",
+      "../../css/pages/editar-registros.css",
+      "../../css/pages/reportes.css",
+      "../../css/pages/inspeccion.css"
     ];
 
     const currentHash = crypto.createHash("sha256");

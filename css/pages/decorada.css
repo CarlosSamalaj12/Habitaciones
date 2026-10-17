@@ -1,0 +1,33 @@
+/* =============================================
+   PAGINA: DECORADA (Decorada.html)
+   ============================================= */
+.content {
+  padding: 14px;
+}
+
+.boxNote {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 176, 32, 0.45);
+  background: rgba(255, 176, 32, 0.12);
+  color: #ffe4b5;
+  font-size: 13px;
+}
+
+.btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 760px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

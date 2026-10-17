@@ -1,0 +1,213 @@
+/* =============================================
+   PAGINA: EDITAR REGISTROS (EditarRegistros.html)
+   ============================================= */
+.clickRow {
+  cursor: pointer;
+}
+
+.clickRow:hover td {
+  background: rgba(124, 58, 237, 0.12) !important;
+}
+
+.editOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+  padding: 18px;
+  animation: fadeIn 0.15s ease;
+}
+
+.editCard {
+  width: min(800px, 100%);
+  max-height: 92vh;
+  overflow-y: auto;
+  border-radius: 22px;
+  background: rgba(12, 16, 34, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+  animation: slideIn 0.18s ease;
+}
+
+.editHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  position: sticky;
+  top: 0;
+  background: rgba(12, 16, 34, 0.98);
+  z-index: 2;
+}
+
+.editTitle {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.editSub {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.editClose {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(124, 58, 237, 0.2));
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.editBody {
+  padding: 14px 18px;
+}
+
+.editGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.editField label {
+  display: block;
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.editField input, .editField select, .editField textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(10, 14, 28, 0.55);
+  color: var(--text);
+  outline: none;
+  font-size: 13px;
+}
+
+.editField input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  outline: none;
+  cursor: pointer;
+}
+
+.editField input:focus, .editField select:focus, .editField textarea:focus {
+  border-color: var(--primary);
+}
+
+.editField textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+.checklistEdit {
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.checklistEdit h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #C4B0FF;
+}
+
+.checklistItemRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin: 2px 0;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.checklistItemRow:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.checklistItemName {
+  font-weight: 600;
+}
+
+.checklistItemBadge {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  transition: all 0.12s;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checklistItemBadge.ok {
+  background: rgba(46, 229, 157, 0.15);
+  color: #2EE59D;
+  border: 1px solid rgba(46, 229, 157, 0.3);
+}
+
+.checklistItemBadge.no {
+  background: rgba(255, 77, 109, 0.15);
+  color: #FF4D6D;
+  border: 1px solid rgba(255, 77, 109, 0.3);
+}
+
+.checklistItemBadge.na {
+  background: rgba(255, 176, 32, 0.15);
+  color: #FFB020;
+  border: 1px solid rgba(255, 176, 32, 0.3);
+}
+
+.checklistItemBadge:hover { transform: scale(1.05); }
+.checklistItemBadge:active { transform: scale(0.95); }
+
+.editActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.editStatus {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+  min-height: 18px;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 767px) {
+  .editGrid {
+    grid-template-columns: 1fr;
+  }
+}

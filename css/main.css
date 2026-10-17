@@ -1,0 +1,74 @@
+/* ==========================================================================
+   MAIN.CSS - HOJA DE ESTILOS UNIFICADA (HOTEL JARDINES DEL LAGO)
+   Arquitectura Modular: Base + Layout + Components + Utilities
+   ========================================================================== */
+
+@import "./base/variables.css";
+@import "./base/reset.css";
+@import "./layout/header.css";
+@import "./layout/grid.css";
+@import "./components/buttons.css";
+@import "./components/cards.css";
+@import "./components/forms.css";
+@import "./components/modals.css";
+@import "./components/toasts.css";
+
+/* =============================================
+   TABLAS Y LISTADOS COMUNES
+   ============================================= */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th, td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  position: sticky;
+  top: 0;
+  background: rgba(10, 14, 28, 0.95);
+  z-index: 2;
+}
+
+tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.numCol {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+}
+
+.actions button {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.empty {
+  text-align: center;
+  padding: 30px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--muted);
+  font-size: 14px;
+}

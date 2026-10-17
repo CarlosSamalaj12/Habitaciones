@@ -1,0 +1,25 @@
+/* =============================================
+   VARIABLES GLOBALES (THEME SYSTEM)
+   ============================================= */
+:root {
+  --bg0: #070A12;
+  --bg1: #0B1024;
+  --card: rgba(255, 255, 255, 0.06);
+  --stroke: rgba(255, 255, 255, 0.10);
+  --text: #EAF0FF;
+  --muted: #A9B3D0;
+
+  --primary: #7C3AED;
+  --primaryLight: rgba(124, 58, 237, 0.25);
+  --accent: #7C3AED;
+  --accent2: #22D3EE;
+
+  --ok: #2EE59D;
+  --warn: #FFB020;
+  --bad: #FF4D6D;
+  --none: #9AA6C6;
+
+  --shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+  --r: 18px;
+  --r2: 14px;
+}

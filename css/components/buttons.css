@@ -1,0 +1,110 @@
+/* =============================================
+   COMPONENTES: BOTONES Y BADGES
+   ============================================= */
+button {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.06));
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.25;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.primary {
+  border-color: rgba(124, 58, 237, 0.55);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.85), rgba(139, 92, 246, 0.75));
+  color: #fff;
+}
+
+.primary:hover {
+  border-color: rgba(124, 58, 237, 0.8);
+}
+
+.success {
+  border-color: rgba(46, 229, 157, 0.45);
+  background: linear-gradient(135deg, rgba(46, 229, 157, 0.85), rgba(72, 240, 170, 0.75));
+  color: #0a1a14;
+}
+
+.danger {
+  border-color: rgba(255, 77, 109, 0.45);
+  background: linear-gradient(135deg, rgba(255, 77, 109, 0.85), rgba(255, 100, 130, 0.75));
+  color: #fff;
+}
+
+.ghost {
+  background: transparent;
+  border-color: transparent;
+}
+
+.ghost:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: none;
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.badge.ok, .badgeCumple {
+  background: rgba(46, 229, 157, 0.15);
+  color: #2EE59D;
+}
+
+.badge.no, .badgeNoCumple {
+  background: rgba(255, 77, 109, 0.15);
+  color: #FF4D6D;
+}
+
+.badge.na, .badgeNA {
+  background: rgba(255, 176, 32, 0.15);
+  color: #FFB020;
+}
+
+.badge.fam, .familiarBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255, 176, 32, 0.15);
+  color: var(--warn);
+}
+
+.rectificadoBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255, 77, 109, 0.15);
+  color: var(--bad);
+  border: 1px solid rgba(255, 77, 109, 0.25);
+  cursor: help;
+}
