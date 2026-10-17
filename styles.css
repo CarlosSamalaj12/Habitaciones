@@ -927,12 +927,13 @@ button {
   align-items: center;
   gap: 5px;
   padding: 5px 10px;
-  background: var(--bg-surface);
+  background: #FFFFFF;
   border: 1px solid var(--border-neutral);
   border-radius: var(--radius-sm);
   font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 /* Chip de Temporizador Activo */
@@ -954,10 +955,11 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: var(--bg-surface);
+  background: #FFFFFF;
   border: 1px solid var(--border-neutral);
   border-radius: var(--radius-sm);
   padding: 2px 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .obsChip {
@@ -1114,14 +1116,16 @@ button {
 }
 
 /* ==========================================================================
-   ESTILOS DE CONTORNO Y ESTADO POR HABITACIÓN (Como en la Referencia)
+   ESTILOS DE CONTORNO Y FONDO SUTIL POR ESTADO (Visualización Óptima)
    ========================================================================== */
 /* Estado: OCUPADO */
 .roomBtn.ocupado {
+  background: linear-gradient(180deg, #FDF2F8 0%, #FFF7FA 100%);
   border-color: #FBCFE8;
   border-top-color: #BE185D;
 }
 .roomBtn.ocupado:hover {
+  background: linear-gradient(180deg, #FCE7F3 0%, #FFF0F6 100%);
   border-color: #F472B6;
   border-top-color: #9D174D;
   box-shadow: 0 8px 24px rgba(190, 24, 93, 0.16);
@@ -1135,10 +1139,12 @@ button {
 
 /* Estado: LIBRE */
 .roomBtn.libre {
+  background: linear-gradient(180deg, #F0FDF4 0%, #F5FDF7 100%);
   border-color: #BBF7D0;
   border-top-color: #16A34A;
 }
 .roomBtn.libre:hover {
+  background: linear-gradient(180deg, #DCFCE7 0%, #EDFCF2 100%);
   border-color: #4ADE80;
   border-top-color: #15803D;
   box-shadow: 0 8px 24px rgba(22, 163, 74, 0.16);
@@ -1152,10 +1158,12 @@ button {
 
 /* Estado: EN LIMPIEZA */
 .roomBtn.limpieza {
+  background: linear-gradient(180deg, #F0F9FF 0%, #F6FBFF 100%);
   border-color: #BAE6FD;
   border-top-color: #0284C7;
 }
 .roomBtn.limpieza:hover {
+  background: linear-gradient(180deg, #E0F2FE 0%, #EDF7FE 100%);
   border-color: #38BDF8;
   border-top-color: #0369A1;
   box-shadow: 0 8px 24px rgba(2, 132, 199, 0.16);
@@ -1169,10 +1177,12 @@ button {
 
 /* Estado: LISTA */
 .roomBtn.lista {
+  background: linear-gradient(180deg, #F0F9FF 0%, #F6FBFF 100%);
   border-color: #BAE6FD;
   border-top-color: #0EA5E9;
 }
 .roomBtn.lista:hover {
+  background: linear-gradient(180deg, #E0F2FE 0%, #EDF7FE 100%);
   border-color: #38BDF8;
   border-top-color: #0284C7;
   box-shadow: 0 8px 24px rgba(14, 165, 233, 0.16);
@@ -1186,10 +1196,12 @@ button {
 
 /* Estado: INSPECCION */
 .roomBtn.inspeccion {
+  background: linear-gradient(180deg, #FFFBEB 0%, #FFFDF5 100%);
   border-color: #FDE68A;
   border-top-color: #D97706;
 }
 .roomBtn.inspeccion:hover {
+  background: linear-gradient(180deg, #FEF3C7 0%, #FFF9EB 100%);
   border-color: #FBBF24;
   border-top-color: #B45309;
   box-shadow: 0 8px 24px rgba(217, 119, 6, 0.16);
@@ -1203,10 +1215,12 @@ button {
 
 /* Estado: MANTENIMIENTO */
 .roomBtn.mantenimiento {
+  background: linear-gradient(180deg, #FAF5FF 0%, #FCF8FF 100%);
   border-color: #E9D5FF;
   border-top-color: #9333EA;
 }
 .roomBtn.mantenimiento:hover {
+  background: linear-gradient(180deg, #F3E8FF 0%, #F9F2FF 100%);
   border-color: #C084FC;
   border-top-color: #7E22CE;
   box-shadow: 0 8px 24px rgba(147, 51, 234, 0.16);
@@ -1220,10 +1234,12 @@ button {
 
 /* Estado: REPASO */
 .roomBtn.repaso {
+  background: linear-gradient(180deg, #EEF2FF 0%, #F6F8FF 100%);
   border-color: #C7D2FE;
   border-top-color: #4F46E5;
 }
 .roomBtn.repaso:hover {
+  background: linear-gradient(180deg, #E0E7FF 0%, #EDF1FF 100%);
   border-color: #818CF8;
   border-top-color: #3730A3;
   box-shadow: 0 8px 24px rgba(79, 70, 229, 0.16);
