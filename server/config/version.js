@@ -35,7 +35,22 @@ function autoIncrementVersion() {
       "../../css/pages/decorada.css",
       "../../css/pages/editar-registros.css",
       "../../css/pages/reportes.css",
-      "../../css/pages/inspeccion.css"
+      "../../css/pages/inspeccion.css",
+      "../../src/js/main.js",
+      "../../src/js/state/store.js",
+      "../../src/js/utils/date.js",
+      "../../src/js/utils/helpers.js",
+      "../../src/js/utils/normalize.js",
+      "../../src/js/api/client.js",
+      "../../src/js/socket/socket.js",
+      "../../src/js/notifications/toast.js",
+      "../../src/js/notifications/sound.js",
+      "../../src/js/notifications/push.js",
+      "../../src/js/components/modals.js",
+      "../../src/js/components/login.js",
+      "../../src/js/components/modules.js",
+      "../../src/js/components/timers.js",
+      "../../src/js/components/rooms.js"
     ];
 
     const currentHash = crypto.createHash("sha256");
