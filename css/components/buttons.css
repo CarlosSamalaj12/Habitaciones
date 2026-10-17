@@ -100,7 +100,7 @@ button:disabled {
 .rectificadoBadge {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 9999px;
   font-size: 10px;
   font-weight: 700;
   background: rgba(255, 77, 109, 0.15);
@@ -108,3 +108,82 @@ button:disabled {
   border: 1px solid rgba(255, 77, 109, 0.25);
   cursor: help;
 }
+
+/* =============================================
+   MINIMALIST OUTLINE SVG ICONS & PILL BUTTONS
+   ============================================= */
+.miniIcon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.btn-pill, button.btn-pill, a.btn-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(16, 20, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  padding: 8px 16px;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+
+.btn-pill:hover, button.btn-pill:hover, a.btn-pill:hover {
+  background: rgba(28, 34, 60, 0.85);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+.btn-pill:active, button.btn-pill:active {
+  transform: translateY(0);
+}
+
+.btn-pill.primary {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.85), rgba(139, 92, 246, 0.75));
+  border-color: rgba(124, 58, 237, 0.6);
+  color: #fff;
+}
+
+.btn-pill.success {
+  background: linear-gradient(135deg, rgba(46, 229, 157, 0.85), rgba(72, 240, 170, 0.75));
+  border-color: rgba(46, 229, 157, 0.6);
+  color: #0a1a14;
+}
+
+.btn-pill.danger {
+  background: linear-gradient(135deg, rgba(255, 77, 109, 0.85), rgba(255, 100, 130, 0.75));
+  border-color: rgba(255, 77, 109, 0.6);
+  color: #fff;
+}
+
+.btn-pill-icon {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 20, 38, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-pill-icon:hover {
+  background: rgba(28, 34, 60, 0.85);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px) scale(1.05);
+}
+

@@ -11,6 +11,7 @@ import {
   canUseLiberar, canUseDecorada, canViewReports
 } from "./utils/auth.js";
 import { toast } from "./utils/toast.js";
+import { renderIcon, ICON_COLORS, ICON_PATHS, ICON_DEFAULT_COLORS } from "./components/icons.js";
 
 // Global exports for backwards compatibility across classic scripts and inline handlers
 if (typeof window !== "undefined") {
@@ -22,6 +23,10 @@ if (typeof window !== "undefined") {
   window.apiGetData = apiGetData;
   window.apiPOST = apiPOST;
   window.toast = toast;
+  window.renderIcon = renderIcon;
+  window.ICON_COLORS = ICON_COLORS;
+  window.ICON_PATHS = ICON_PATHS;
+  window.ICON_DEFAULT_COLORS = ICON_DEFAULT_COLORS;
   window.getAuthToken = getAuthToken;
   window.getSession = getSession;
   window.setSession = setSession;
@@ -51,5 +56,6 @@ export {
   APP_BASE, API_BASE, apiGET, apiGetData, apiPOST, nowServerMs, syncServerTime,
   getAuthToken, getSession, setSession, clearSession, getActor, actorDisplay,
   roleOf, isReadOnlyRole, isAdmin, canReception, canUseMantenimiento,
-  canUseLiberar, canUseDecorada, canViewReports, toast
+  canUseLiberar, canUseDecorada, canViewReports, toast,
+  renderIcon, ICON_COLORS, ICON_PATHS, ICON_DEFAULT_COLORS
 };

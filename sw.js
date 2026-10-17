@@ -1,4 +1,4 @@
-const CACHE_NAME = "hk-cache-v1.3.43";
+const CACHE_NAME = "hk-cache-v1.3.44";
 const ASSETS = [
   "./",
   "./index.html",
@@ -33,6 +33,7 @@ const ASSETS = [
   "./src/js/components/modules.js",
   "./src/js/components/timers.js",
   "./src/js/components/rooms.js",
+  "./src/js/components/icons.js",
   "./src/js/common.js",
   "./src/js/utils/api.js",
   "./src/js/utils/auth.js",

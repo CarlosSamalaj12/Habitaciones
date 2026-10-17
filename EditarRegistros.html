@@ -21,25 +21,25 @@
           <div class="hint">Buscar y corregir inspecciones registradas</div>
         </div>
       </div>
-      <button id="btnBack" type="button">&larr; Regresar</button>
+      <button id="btnBack" class="btn-pill" type="button"><svg class="miniIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Regresar</button>
     </div>
 
     <!-- Banner origen Reportes si vino por atajo -->
     <div id="reporteOriginBanner" style="display:none;margin-bottom:14px;padding:12px 16px;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.35);border-radius:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
       <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:20px">📍</span>
+        <svg class="miniIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C084FC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
         <div>
           <div style="font-size:13px;font-weight:700;color:#EAF0FF">Editando registro desde el Reporte de Pagos</div>
           <div style="font-size:11px;color:var(--muted)">Tus filtros y fechas se conservan intactos al regresar.</div>
         </div>
       </div>
-      <button type="button" onclick="volverAlReporte()" class="primary" style="padding:7px 14px;font-size:12px;font-weight:700">⬅️ Volver al Reporte</button>
+      <button type="button" onclick="volverAlReporte()" class="primary btn-pill" style="padding:7px 14px;font-size:12px;font-weight:700"><svg class="miniIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Volver al Reporte</button>
     </div>
 
     <!-- Buscador -->
     <div class="panel">
       <div class="panelHeader">
-        <h2>🔍 Buscar Inspecciones</h2>
+        <h2 style="display:flex;align-items:center;gap:6px"><svg class="miniIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Buscar Inspecciones</h2>
         <span class="count" id="resultCount"></span>
       </div>
       <div class="panelBody">
@@ -87,7 +87,7 @@
           <div class="editTitle" id="editTitle">Editando Inspeccion</div>
           <div class="editSub" id="editSub">Cargando...</div>
         </div>
-        <button class="editClose" onclick="closeEditor()" type="button">X</button>
+        <button class="editClose" onclick="closeEditor()" type="button"><svg class="miniIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="editBody" id="editBody">
         <div class="loading">Cargando...</div>
@@ -96,7 +96,7 @@
   </div>
 
   <script type="module">
-    import { $, escHtml, apiGET, apiPOST, toast } from "./src/js/common.js";
+    import { $, escHtml, apiGET, apiPOST, toast, renderIcon } from "./src/js/common.js";
 
     // Parámetros de URL para atajo bidireccional con Reportes
     const urlParams = new URLSearchParams(window.location.search);
@@ -263,7 +263,7 @@
         const fam = Number(r.es_familiar) ? '<span class="badge fam">Fam</span>' : '';
         const obsTrimmed = r.observaciones ? String(r.observaciones).trim() : '';
         const obsHtml = obsTrimmed
-          ? `<span title="${escHtml(obsTrimmed)}" style="display:inline-flex;align-items:center;gap:4px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#DDD6FE;font-size:11px;background:rgba(124,58,237,.15);padding:2px 6px;border-radius:6px;border:1px solid rgba(124,58,237,.3)">💬 ${escHtml(obsTrimmed)}</span>`
+          ? `<span title="${escHtml(obsTrimmed)}" style="display:inline-flex;align-items:center;gap:4px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#DDD6FE;font-size:11px;background:rgba(124,58,237,.15);padding:2px 6px;border-radius:6px;border:1px solid rgba(124,58,237,.3)">${renderIcon("chat", { size: 12, color: "#DDD6FE" })} ${escHtml(obsTrimmed)}</span>`
           : '<span style="color:var(--muted)">-</span>';
 
         html += `<tr class="clickRow" onclick="openEditor(${r.id})" title="Clic para editar">
@@ -276,7 +276,7 @@
           <td>${fam}</td>
           <td style="font-size:12px">${escHtml(r.inspector_nombre || "-")}</td>
           <td>${obsHtml}</td>
-          <td><button class="primary" onclick="event.stopPropagation();openEditor(${r.id})" style="font-size:11px;padding:6px 12px">✏️ Editar</button></td>
+          <td><button class="primary btn-pill" onclick="event.stopPropagation();openEditor(${r.id})" style="font-size:11px;padding:5px 12px"><svg class="miniIcon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Editar</button></td>
         </tr>`;
       });
 
@@ -417,11 +417,11 @@
         <div id="editChecklistArea"></div>
         <div class="editActions" style="justify-content:space-between;flex-wrap:wrap;gap:10px">
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            ${FROM_REPORTES ? '<button class="success" id="btnGuardarYVolver" type="button" style="font-weight:700">💾 Guardar y Volver al Reporte</button>' : ''}
-            <button class="primary" id="btnGuardarEdit" type="button">💾 ${FROM_REPORTES ? 'Solo Guardar' : 'Guardar Cambios'}</button>
-            <button id="btnCancelEdit" type="button">${FROM_REPORTES ? '⬅️ Volver al Reporte' : 'Cancelar'}</button>
+            ${FROM_REPORTES ? '<button class="success btn-pill" id="btnGuardarYVolver" type="button" style="font-weight:700"><svg class="miniIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0a1a14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Guardar y Volver al Reporte</button>' : ''}
+            <button class="primary btn-pill" id="btnGuardarEdit" type="button"><svg class="miniIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> ${FROM_REPORTES ? 'Solo Guardar' : 'Guardar Cambios'}</button>
+            <button id="btnCancelEdit" class="btn-pill" type="button">${FROM_REPORTES ? '<svg class="miniIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Volver al Reporte' : 'Cancelar'}</button>
           </div>
-          <button class="danger" id="btnEliminar" type="button">🗑 Eliminar</button>
+          <button class="danger btn-pill" id="btnEliminar" type="button"><svg class="miniIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> Eliminar</button>
         </div>
         <div class="editStatus" id="editStatus"></div>
       `;
@@ -475,7 +475,7 @@
         grouped[cat].push(d);
       });
 
-      let html = '<div class="checklistEdit"><h3>📋 Checklist</h3><p style="font-size:11px;color:var(--muted);margin:-6px 0 10px">Clic en el badge para cambiar: OK → NO → NA → OK...</p>';
+      let html = '<div class="checklistEdit"><h3 style="display:flex;align-items:center;gap:6px"><svg class="miniIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Checklist</h3><p style="font-size:11px;color:var(--muted);margin:-6px 0 10px">Clic en el badge para cambiar: OK → NO → NA → OK...</p>';
       Object.keys(grouped).forEach(cat => {
         const items = grouped[cat];
         html += `<div style="margin-bottom:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.06)">
@@ -561,15 +561,15 @@
       const status = $("editStatus");
       if (btn) btn.disabled = true;
       if (btnGyV) btnGyV.disabled = true;
-      status.textContent = '⏳ Guardando...';
+      status.innerHTML = `<span style='display:inline-flex;align-items:center;gap:4px'>${renderIcon('clock', { size: 14, color: '#94A3B8' })} Guardando...</span>`;
 
       try {
         await apiPOST("/api/inspecciones/actualizar", payload);
-        status.textContent = '✅ Guardado exitosamente';
+        status.innerHTML = `<span style='display:inline-flex;align-items:center;gap:4px'>${renderIcon('check', { size: 14, color: '#2EE59D' })} Guardado exitosamente</span>`;
         status.style.color = '#2EE59D';
         toast("Inspeccion #" + data.id + " actualizada.", true, 2500);
         if (volverAlReporteDespues && FROM_REPORTES) {
-          status.textContent = '✅ Guardado. Regresando al reporte...';
+          status.innerHTML = `<span style='display:inline-flex;align-items:center;gap:4px'>${renderIcon('check', { size: 14, color: '#2EE59D' })} Guardado. Regresando al reporte...</span>`;
           setTimeout(() => {
             volverAlReporte();
           }, 500);
@@ -580,7 +580,7 @@
           closeEditor();
         }, 800);
       } catch (e) {
-        status.textContent = '❌ Error: ' + (e?.message || 'Error');
+        status.innerHTML = `<span style='display:inline-flex;align-items:center;gap:4px'>${renderIcon('close', { size: 14, color: '#FF4D6D' })} Error: ${escHtml(e?.message || 'Error')}</span>`;
         status.style.color = '#FF4D6D';
         toast("Error al guardar: " + (e?.message || e), false);
       } finally {
@@ -601,15 +601,15 @@
       const btn = $("btnEliminar");
       const status = $("editStatus");
       btn.disabled = true;
-      status.textContent = '⏳ Eliminando...';
+      status.innerHTML = `<span style='display:inline-flex;align-items:center;gap:4px'>${renderIcon('clock', { size: 14, color: '#94A3B8' })} Eliminando...</span>`;
 
       try {
         await apiPOST("/api/inspecciones/eliminar", { id: data.id });
-        status.textContent = '✅ Eliminado correctamente';
+        status.innerHTML = `<span style='display:inline-flex;align-items:center;gap:4px'>${renderIcon('check', { size: 14, color: '#2EE59D' })} Eliminado correctamente</span>`;
         status.style.color = '#2EE59D';
         toast(`Inspeccion #${data.id} eliminada.`, true, 2500);
         if (FROM_REPORTES) {
-          status.textContent = '✅ Eliminado. Regresando al reporte...';
+          status.innerHTML = `<span style='display:inline-flex;align-items:center;gap:4px'>${renderIcon('check', { size: 14, color: '#2EE59D' })} Eliminado. Regresando al reporte...</span>`;
           setTimeout(() => volverAlReporte(), 600);
           return;
         }
@@ -618,7 +618,7 @@
           closeEditor();
         }, 800);
       } catch (e) {
-        status.textContent = '❌ Error: ' + (e?.message || 'Error');
+        status.innerHTML = `<span style='display:inline-flex;align-items:center;gap:4px;color:#FF4D6D'>${renderIcon('close', { size: 14, color: '#FF4D6D' })} Error: ${escHtml(e?.message || 'Error')}</span>`;
         status.style.color = '#FF4D6D';
         toast("Error al eliminar: " + (e?.message || e), false);
       } finally {
@@ -704,7 +704,7 @@
           </div>
         </div>
         <div class="editActions">
-          <button class="success" id="btnGuardarNuevo" type="button">💾 Guardar Nuevo Registro</button>
+          <button class="success btn-pill" id="btnGuardarNuevo" type="button"><svg class="miniIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0a1a14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Guardar Nuevo Registro</button>
           <button id="btnCancelEdit" type="button" onclick="closeEditor()">Cancelar</button>
         </div>
         <div class="editStatus" id="editStatus"></div>
@@ -770,7 +770,7 @@
 
       try {
         await apiPOST("/api/inspecciones/guardar", payload);
-        status.textContent = '✅ Registro creado exitosamente';
+        status.innerHTML = `<span style='display:inline-flex;align-items:center;gap:4px'>${renderIcon('check', { size: 14, color: '#2EE59D' })} Registro creado exitosamente</span>`;
         status.style.color = '#2EE59D';
         toast("Nuevo registro creado.", true, 2500);
         setTimeout(() => {
@@ -778,7 +778,7 @@
           closeEditor();
         }, 800);
       } catch (e) {
-        status.textContent = '❌ Error: ' + (e?.message || 'Error');
+        status.innerHTML = `<span style='display:inline-flex;align-items:center;gap:4px;color:#FF4D6D'>${renderIcon('close', { size: 14, color: '#FF4D6D' })} Error: ${escHtml(e?.message || 'Error')}</span>`;
         status.style.color = '#FF4D6D';
         toast("Error al crear: " + (e?.message || e), false);
       } finally {

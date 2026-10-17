@@ -8,21 +8,22 @@ import { toast } from "./toast.js";
 import { playNotificationSound } from "./sound.js";
 import { urlBase64ToUint8Array, isDuplicate, $ } from "../utils/helpers.js";
 import { ESTADO_LABELS } from "../utils/normalize.js";
+import { renderIcon } from "../components/icons.js";
 
 let notifPermission = typeof window !== "undefined" && "Notification" in window ? Notification.permission : "denied";
 let pushSubscription = null;
 
 const NOTIF_ICON_MAP = {
-  "ocupado": "🔴",
-  "ocupada limpia": "🔴",
-  "lista": "🟡",
-  "limpieza": "🔵",
-  "inspeccion": "🟢",
-  "libre": "🟢",
-  "mantenimiento": "🟣",
-  "repaso": "🟤",
-  "prioridad_alta": "⚡",
-  "prioridad_normal": "🔔"
+  "ocupado": renderIcon("user", { size: 16, color: "#F87171" }),
+  "ocupada limpia": renderIcon("user", { size: 16, color: "#F87171" }),
+  "lista": renderIcon("alert", { size: 16, color: "#FBBF24" }),
+  "limpieza": renderIcon("broom", { size: 16, color: "#38BDF8" }),
+  "inspeccion": renderIcon("check", { size: 16, color: "#34D399" }),
+  "libre": renderIcon("key", { size: 16, color: "#34D399" }),
+  "mantenimiento": renderIcon("settings", { size: 16, color: "#C084FC" }),
+  "repaso": renderIcon("refresh", { size: 16, color: "#FB923C" }),
+  "prioridad_alta": renderIcon("zap", { size: 16, color: "#FBBF24" }),
+  "prioridad_normal": renderIcon("bell", { size: 16, color: "#94A3B8" })
 };
 
 export function unsubscribeFromPush() {
@@ -169,7 +170,7 @@ export function notifItemHTML(n) {
       <div class="notifItemChange">${changeDir}</div>
       <div class="notifItemTime">${n.time}</div>
     </div>
-    <button class="notifItemClose" data-notif-close="${n.id}" title="Descartar">X</button>
+    <button class="notifItemClose" data-notif-close="${n.id}" title="Descartar">${renderIcon("close", { size: 12, color: "#94A3B8" })}</button>
   </div>`;
 }
 

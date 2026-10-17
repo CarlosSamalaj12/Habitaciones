@@ -3,14 +3,21 @@
    ========================================================================== */
 
 import { $ } from "../utils/helpers.js";
+import { renderIcon } from "../components/icons.js";
 
 export function toast(type, title, msg) {
   const stack = $("toastStack");
   if (!stack) return;
   const item = document.createElement("div");
   item.className = `toastItem ${type}`;
+  const iconHtml = type === "ok"
+    ? renderIcon("check", { size: 18, color: "#34D399" })
+    : type === "warn"
+      ? renderIcon("alert", { size: 18, color: "#FBBF24" })
+      : renderIcon("close", { size: 18, color: "#F87171" });
+
   item.innerHTML = `
-    <div class="toastIcon">${type === "ok" ? "OK" : type === "warn" ? "!" : "X"}</div>
+    <div class="toastIcon">${iconHtml}</div>
     <div>
       <div class="toastTitle">${title}</div>
       <div class="toastMsg">${msg}</div>

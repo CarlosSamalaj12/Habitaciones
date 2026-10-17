@@ -18,6 +18,7 @@ import { showLogin } from "./login.js";
 import { invalidateTimerCache, updateTimersLive } from "./timers.js";
 import { apiPOST, loadRooms, requireOnline } from "../api/client.js";
 import { isDuplicate, $ } from "../utils/helpers.js";
+import { renderIcon } from "./icons.js";
 
 const ROOM_CLASSES = {
   ocupado: { cls: "ocupado", badge: "OCUPADO" },
@@ -35,12 +36,12 @@ export function roomClassByEstado(estado) {
 }
 
 const ICONS = {
-  ocupado: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6" r="4"/><path d="M4 22c0-3.3 2.7-6 6-6h4c3.3 0 6 2.7 6 6z"/></svg>`,
-  limpieza: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><rect x="14" y="3" width="3" height="12" rx="1.5"/><path d="M7 15h11l-2 8H9l-2-8z"/></svg>`,
-  mant: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5l-3.5 3.5 2 2-7 7a1.5 1.5 0 0 0 2.1 2.1l7-7 2 2 3.5-3.5-4.1-4.1z"/></svg>`,
-  repaso: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l1 9 9 1-9 1-1 9-1-9-9-1 9-1z"/></svg>`,
-  liberar: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="12" width="16" height="10" rx="2"/><path d="M8 12V7a4 4 0 0 1 8 0h-2a2 2 0 0 0-4 0v5H8z"/><circle cx="12" cy="17" r="1.5"/></svg>`,
-  prio: `<svg class="raIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l-1 12h2l-1-12z"/><circle cx="12" cy="20" r="2"/></svg>`
+  ocupado: renderIcon("user", { size: 18, color: "#F87171" }),
+  limpieza: renderIcon("broom", { size: 18, color: "#38BDF8" }),
+  mant: renderIcon("settings", { size: 18, color: "#C084FC" }),
+  liberar: renderIcon("key", { size: 18, color: "#34D399" }),
+  prio: renderIcon("alert", { size: 18, color: "#FBBF24" }),
+  repaso: renderIcon("refresh", { size: 18, color: "#FB923C" })
 };
 
 const STATUS_COUNT_KEY = {
@@ -206,7 +207,7 @@ export function renderRooms() {
       : "";
 
     let timerHTML = "";
-    const prioIconHTML = prioHigh ? `<div class="prioIcon">&#9889;</div>` : "";
+    const prioIconHTML = prioHigh ? `<div class="prioIcon">${renderIcon("zap", { size: 14, color: "#FBBF24" })}</div>` : "";
     const desdeDate = parseAnyDate(room.desde);
     const inicioLimpDate = parseAnyDate(room.inicio_limpieza);
     const finLimpDate = parseAnyDate(room.fin_limpieza);
@@ -255,7 +256,7 @@ export function renderRooms() {
       ${decoradaTagHTML}
       <div class="roomNum">${room.etiqueta}</div>
       <div class="roomState">${roomModuleName}</div>
-      <div class="roomOcc">${(showOccupied) && (room.adultos > 0 || room.ninos > 0) ? `&#128101; ${room.adultos || 0} / ${room.ninos || 0}` : ""}</div>
+      <div class="roomOcc">${(showOccupied) && (room.adultos > 0 || room.ninos > 0) ? `${renderIcon("users", { size: 12, color: "#94A3B8" })} ${room.adultos || 0} / ${room.ninos || 0}` : ""}</div>
       ${obsChips}
 
       <div class="roomDetails">

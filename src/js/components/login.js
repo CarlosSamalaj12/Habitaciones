@@ -10,6 +10,7 @@ import { loadLoginUsers, apiPOST, requireOnline } from "../api/client.js";
 import { toast } from "../notifications/toast.js";
 import { unsubscribeFromPush, requestNotifPermission } from "../notifications/push.js";
 import { $ } from "../utils/helpers.js";
+import { renderIcon } from "./icons.js";
 
 export function showLogin() {
   const overlay = $("loginOverlay");
@@ -128,12 +129,18 @@ export function updateMenuUser() {
     const role = roleOf(sess);
     const roleLabels = { ADMIN: "Administrador", GERENCIA: "Gerencia", REPORTES: "Reportes", AMA_LLAVES: "Ama de Llaves", RECEPCION: "Recepcion" };
     roleEl.textContent = roleLabels[role] || role;
-    const avatars = { ADMIN: "⚙️", GERENCIA: "📋", REPORTES: "📊", AMA_LLAVES: "🧹", RECEPCION: "🔑" };
-    if (avatarEl) avatarEl.textContent = avatars[role] || "👤";
+    const avatars = {
+      ADMIN: renderIcon("settings", { size: 22, color: "#94A3B8" }),
+      GERENCIA: renderIcon("clipboard", { size: 22, color: "#FBBF24" }),
+      REPORTES: renderIcon("chart", { size: 22, color: "#38BDF8" }),
+      AMA_LLAVES: renderIcon("broom", { size: 22, color: "#C084FC" }),
+      RECEPCION: renderIcon("key", { size: 22, color: "#34D399" })
+    };
+    if (avatarEl) avatarEl.innerHTML = avatars[role] || renderIcon("user", { size: 22, color: "#F472B6" });
   } else {
     nameEl.textContent = "Sin sesion";
     roleEl.textContent = "-";
-    if (avatarEl) avatarEl.textContent = "👤";
+    if (avatarEl) avatarEl.innerHTML = renderIcon("user", { size: 22, color: "#94A3B8" });
   }
 }
 

@@ -21,7 +21,7 @@
           <div class="hint" id="pageSub">Selecciona fechas y genera reportes</div>
         </div>
       </div>
-      <button id="btnBack" type="button">&larr; Regresar</button>
+      <button id="btnBack" class="btn-pill" type="button"><svg class="miniIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Regresar</button>
     </div>
 
     <div class="tabs">
@@ -60,7 +60,7 @@
             </select>
           </div>
           <button class="primary" id="btnGenerarPagos" type="button" style="height:38px">Generar Reporte</button>
-          <button id="btnExportarExcel" class="success" type="button" style="height:38px;display:none;border-color:rgba(46,229,157,.45);background:linear-gradient(135deg,rgba(46,229,157,.85),rgba(72,240,170,.75));color:#0a1a14">📥 Exportar Excel</button>
+          <button id="btnExportarExcel" class="success btn-pill" type="button" style="height:38px;display:none;color:#0a1a14"><svg class="miniIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0a1a14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar Excel</button>
         </div>
 
         <div id="pagosResumen" class="resumenRow" style="display:none"></div>
@@ -70,7 +70,7 @@
         <div id="pagosChartSection" style="display:none;margin-bottom:16px">
           <div class="panelHeader" style="padding:10px 14px;cursor:pointer" id="pagosChartToggle">
             <h2 style="font-size:13px;display:flex;align-items:center;gap:8px">
-              <span id="pagosChartArrow">▶</span> 📊 Comparativa de Pagos entre Camareras
+              <span id="pagosChartArrow">▶</span> <svg class="miniIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Comparativa de Pagos entre Camareras
             </h2>
             <span style="font-size:11px;color:var(--muted)">Click para mostrar/ocultar</span>
           </div>
@@ -80,11 +80,11 @@
             <!-- Panel de personalizacion de colores -->
             <div id="pagosChartColors" style="margin-top:16px;border-top:1px solid rgba(255,255,255,.08);padding-top:14px;display:none">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-                <span style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">🎨 Colores del chart</span>
+                <span style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:inline-flex;align-items:center;gap:6px"><svg class="miniIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C084FC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="8" r="1.5"/><circle cx="8" cy="12" r="1.5"/><circle cx="16" cy="12" r="1.5"/></svg> Colores del chart</span>
                 <button id="btnResetChartColors" type="button" style="font-size:11px;padding:5px 10px">Restaurar defaults</button>
               </div>
               <div id="pagosChartColorGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px"></div>
-              <div style="font-size:10px;color:var(--muted);margin-top:8px">💡 Los colores se guardan automaticamente en tu navegador.</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:4px"><svg class="miniIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Los colores se guardan automaticamente en tu navegador.</div>
             </div>
           </div>
         </div>
@@ -191,22 +191,22 @@
     <div class="obsModalCard">
       <div class="obsModalHead">
         <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:22px">💬</span>
+          <svg class="miniIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C084FC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <div>
             <div class="obsModalTitle" id="obsModalTitle">Observación de Inspección</div>
             <div class="obsModalSub" id="obsModalSub">Habitación ...</div>
           </div>
         </div>
-        <button class="obsModalClose" onclick="closeObsModal()" type="button">✕</button>
+        <button class="obsModalClose" onclick="closeObsModal()" type="button"><svg class="miniIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="obsModalBody">
         <div class="obsModalMeta" id="obsModalMeta"></div>
         <div class="obsModalText" id="obsModalText"></div>
       </div>
       <div class="obsModalFoot" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-        <button class="primary" id="btnEditarDesdeObs" type="button" style="font-size:12px;padding:8px 14px;background:linear-gradient(135deg, rgba(34,211,238,.85), rgba(6,182,212,.75));border-color:rgba(34,211,238,.5);color:#070A12;font-weight:700">✏️ Editar Registro</button>
+        <button class="primary btn-pill" id="btnEditarDesdeObs" type="button" style="font-size:12px;padding:8px 16px;background:linear-gradient(135deg, rgba(34,211,238,.85), rgba(6,182,212,.75));border-color:rgba(34,211,238,.5);color:#070A12;font-weight:700"><svg class="miniIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#070A12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg> Editar Registro</button>
         <div style="display:flex;gap:8px">
-          <button class="primary" id="btnVerChecklistDesdeObs" type="button" style="font-size:12px;padding:8px 14px">📋 Ver Checklist Completo</button>
+          <button class="primary btn-pill" id="btnVerChecklistDesdeObs" type="button" style="font-size:12px;padding:8px 16px"><svg class="miniIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Ver Checklist Completo</button>
           <button type="button" onclick="closeObsModal()" style="font-size:12px;padding:8px 14px">Cerrar</button>
         </div>
       </div>
@@ -214,7 +214,7 @@
   </div>
 
   <script type="module">
-    import { $, escHtml, apiGET, toast } from "./src/js/common.js";
+    import { $, escHtml, apiGET, toast, renderIcon } from "./src/js/common.js";
 
     const qs = new URLSearchParams(window.location.search);
 
@@ -504,7 +504,7 @@
         <div class="resumenCard obsCard${filterSoloObservaciones ? ' active' : ''}" id="cardFiltroObs" title="Haz clic para alternar filtro: mostrar solo habitaciones con comentarios u observaciones">
           <div class="label">Con Observación</div>
           <div class="value" style="color:#C4B0FF">${totalObs}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px;font-weight:700">${filterSoloObservaciones ? '✕ Quitar filtro' : '🔍 Filtrar notas'}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px;font-weight:700">${filterSoloObservaciones ? `${renderIcon('close', { size: 12, color: '#94A3B8' })} Quitar filtro` : `${renderIcon('search', { size: 12, color: '#94A3B8' })} Filtrar notas`}</div>
         </div>
       `;
 
@@ -540,8 +540,8 @@
         const avatarColor = avatars[i % avatars.length];
         const facturaSI = Boolean(d.factura);
         const badgeHtml = facturaSI
-          ? '<span style="font-size:10px;padding:2px 7px;border-radius:999px;font-weight:700;background:rgba(46,229,157,.15);color:#2EE59D;border:1px solid rgba(46,229,157,.25);white-space:nowrap">🧾 SI factura</span>'
-          : '<span style="font-size:10px;padding:2px 7px;border-radius:999px;font-weight:700;background:rgba(255,176,32,.12);color:#FFB020;border:1px solid rgba(255,176,32,.2);white-space:nowrap">🚫 NO factura</span>';
+          ? `<span style="font-size:10px;padding:2px 8px;border-radius:9999px;font-weight:700;background:rgba(46,229,157,.15);color:#2EE59D;border:1px solid rgba(46,229,157,.25);white-space:nowrap;display:inline-flex;align-items:center;gap:4px">${renderIcon('receipt', { size: 11, color: '#2EE59D' })} SI factura</span>`
+          : `<span style="font-size:10px;padding:2px 8px;border-radius:9999px;font-weight:700;background:rgba(255,176,32,.12);color:#FFB020;border:1px solid rgba(255,176,32,.2);white-space:nowrap;display:inline-flex;align-items:center;gap:4px">${renderIcon('closeCircle', { size: 11, color: '#FFB020' })} NO factura</span>`;
 
         const isActive = selectedCamarera === nombre;
         html += `<div class="camResumenCard${isActive ? ' active' : ''}" data-camarera="${escHtml(nombre)}" onclick="setFiltroCamarera(this.dataset.camarera)">
@@ -556,7 +556,7 @@
             <div class="camResumenItem"><div class="lbl">Extra</div><div class="val yellow">Q${Number(extra).toFixed(2)}</div></div>
             <div class="camResumenItem"><div class="lbl">Pago Final</div><div class="val purple">Q${Number(d.pagoFinal || 0).toFixed(2)}</div></div>
           </div>
-          <div class="camResumenReg">📋 ${cnt} registro${cnt !== 1 ? 's' : ''}</div>
+          <div class="camResumenReg" style="display:flex;align-items:center;gap:4px">${renderIcon('clipboard', { size: 12, color: '#FBBF24' })} ${cnt} registro${cnt !== 1 ? 's' : ''}</div>
         </div>`;
       });
 
@@ -567,7 +567,7 @@
         const todasChip = document.createElement('div');
         todasChip.className = 'camResumenCard';
         todasChip.style.cssText = 'flex:0 0 110px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px;border-color:rgba(124,58,237,.4);background:rgba(124,58,237,.08)';
-        todasChip.innerHTML = '<span style="font-size:18px;font-weight:800;color:#C4B0FF">✕</span><span style="font-size:12px;font-weight:700;color:#C4B0FF">Todas</span>';
+        todasChip.innerHTML = `${renderIcon('close', { size: 14, color: '#C4B0FF' })}<span style="font-size:12px;font-weight:700;color:#C4B0FF">Todas</span>`;
         todasChip.onclick = function() { setFiltroCamarera(''); };
         container.insertBefore(todasChip, container.firstChild);
       }
@@ -608,7 +608,7 @@
       }
       const otherCamareras = list.filter(n => n !== myName);
       const shareInfo = otherCamareras.length > 0
-        ? ` <span title="Compartido con: ${otherCamareras.join(', ')}" style="color:#FBBF24;font-size:10px">🔗con ${otherCamareras.join(', ')}</span>`
+        ? ` <span title="Compartido con: ${otherCamareras.join(', ')}" style="color:#FBBF24;font-size:10px;display:inline-flex;align-items:center;gap:2px">${renderIcon('link', { size: 10, color: '#FBBF24' })} con ${otherCamareras.join(', ')}</span>`
         : '';
       return escHtml(myName) + shareInfo;
     }
@@ -682,7 +682,7 @@
         <th class="numCol">X</th>
         <th class="numCol">NA</th>
         <th>Puntuacion</th>
-        <th style="width:58px;text-align:center" title="Observaciones y Edición rápida">Obs / ✏️</th>
+        <th style="width:58px;text-align:center" title="Observaciones y Edición rápida">Obs / Edit</th>
         <th class="numCol">Pago Base (Q)</th>
         <th class="numCol" title="Si la camarera tiene factura activa: se aplica este % sobre el total de Pago Base. Si NO factura: 0%.">% Aplicado</th>
         <th class="numCol" title="Monto fijo adicional que se suma al total. Q46 si factura, Q36 si no factura (valores configurables en Admin &gt; Config Pago).">Extra (Q)</th>
@@ -715,8 +715,8 @@
         const det = detallePagos[camarera] || {};
         const facturaSI = Boolean(det.factura);
         const facturaBadge = facturaSI
-          ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(46,229,157,.15);color:#2EE59D;border:1px solid rgba(46,229,157,.3)">🧾 SI factura</span>'
-          : '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(255,176,32,.12);color:#FFB020;border:1px solid rgba(255,176,32,.25)">🚫 NO factura</span>';
+          ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:9999px;font-size:11px;font-weight:800;background:rgba(46,229,157,.15);color:#2EE59D;border:1px solid rgba(46,229,157,.3)">${renderIcon('receipt', { size: 12, color: '#2EE59D' })} SI factura</span>`
+          : `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:9999px;font-size:11px;font-weight:800;background:rgba(255,176,32,.12);color:#FFB020;border:1px solid rgba(255,176,32,.25)">${renderIcon('closeCircle', { size: 12, color: '#FFB020' })} NO factura</span>`;
 
         // Fila de grupo: camarera
         const sharedCount = items.filter(r => {
@@ -724,7 +724,7 @@
           return list.length > 1;
         }).length;
         const sharedBadge = sharedCount > 0
-          ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:rgba(251,191,36,.15);color:#FBBF24;border:1px solid rgba(251,191,36,.3)">🔗 ${sharedCount} compartido${sharedCount !== 1 ? 's' : ''}</span>`
+          ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:700;background:rgba(251,191,36,.15);color:#FBBF24;border:1px solid rgba(251,191,36,.3)">${renderIcon('link', { size: 10, color: '#FBBF24' })} ${sharedCount} compartido${sharedCount !== 1 ? 's' : ''}</span>`
           : '';
         html += `<tr class="groupHeader">
           <td colspan="16">
@@ -758,9 +758,9 @@
           // Indicador compacto de Observaciones y Atajo a Edición
           const obsTrimmed = r.observaciones ? String(r.observaciones).trim() : "";
           const obsBtnHtml = obsTrimmed
-            ? `<button type="button" class="obsIconBtn" title="Ver observación: ${escHtml(obsTrimmed)}" onclick="event.stopPropagation(); openObsModal(${r.id})">💬</button>`
+            ? `<button type="button" class="obsIconBtn btn-pill-icon" style="width:28px;height:28px" title="Ver observación: ${escHtml(obsTrimmed)}" onclick="event.stopPropagation(); openObsModal(${r.id})">${renderIcon("chat", { size: 14, color: "#C084FC" })}</button>`
             : '';
-          const editBtnHtml = `<button type="button" class="editRowBtn" title="Editar inspección #${r.id} (${escHtml(r.habitacion_etiqueta || '')})" onclick="event.stopPropagation(); irAEditar(${r.id})">✏️</button>`;
+          const editBtnHtml = `<button type="button" class="editRowBtn btn-pill-icon" style="width:28px;height:28px" title="Editar inspección #${r.id} (${escHtml(r.habitacion_etiqueta || '')})" onclick="event.stopPropagation(); irAEditar(${r.id})">${renderIcon("edit", { size: 14, color: "#38BDF8" })}</button>`;
           const actionsHtml = `<div style="display:inline-flex;align-items:center;justify-content:center;gap:3px">${obsBtnHtml}${editBtnHtml}</div>`;
 
           html += `<tr class="clickRow" data-inspeccion-id="${r.id}" title="Clic para ver detalle de la inspección y observaciones">
@@ -862,14 +862,14 @@
 
       // Seccion 1: Pago Final
       let html = `<div class="compSection">
-        <div class="compSectionTitle">💰 Pago Final por Camarera</div>`;
+        <div class="compSectionTitle" style="display:flex;align-items:center;gap:6px">${renderIcon("dollar", { size: 16, color: "#2EE59D" })} Pago Final por Camarera</div>`;
 
       sorted.forEach((s) => {
         const pct = Math.min(Math.round((s.pagoFinal / maxPago) * 100), 100);
         const color = getChartColorForCamarera(s.nombre, s.index);
         const badge = s.factura
-          ? '<span style="font-size:9px;padding:1px 5px;border-radius:999px;font-weight:700;background:rgba(46,229,157,.15);color:#2EE59D">🧾</span>'
-          : '<span style="font-size:9px;padding:1px 5px;border-radius:999px;font-weight:700;background:rgba(255,176,32,.12);color:#FFB020">🚫</span>';
+          ? `<span style="font-size:9px;padding:2px 6px;border-radius:9999px;font-weight:700;background:rgba(46,229,157,.15);color:#2EE59D;display:inline-flex;align-items:center">${renderIcon('receipt', { size: 10, color: '#2EE59D' })}</span>`
+          : `<span style="font-size:9px;padding:2px 6px;border-radius:9999px;font-weight:700;background:rgba(255,176,32,.12);color:#FFB020;display:inline-flex;align-items:center">${renderIcon('closeCircle', { size: 10, color: '#FFB020' })}</span>`;
         html += `<div class="compRow">
           <span class="compLabel" style="min-width:100px">${escHtml(s.nombre)} ${badge}</span>
           <div class="compTrack">
@@ -883,7 +883,7 @@
 
       // Seccion 2: Desglose Base vs Extra
       const maxBase = Math.max(...sorted.map(s => s.base), 1);        html += `<div class="compSection" style="margin-top:18px">
-        <div class="compSectionTitle">📊 Desglose: Pago Base + Extra</div>`;
+        <div class="compSectionTitle" style="display:flex;align-items:center;gap:6px">${renderIcon("chart", { size: 16, color: "#38BDF8" })} Desglose: Pago Base + Extra</div>`;
 
       sorted.forEach((s) => {
         const basePct = Math.min(Math.round((s.base / maxBase) * 100), 100);
@@ -911,7 +911,7 @@
 
       // Seccion 3: Datos raw en tabla compacta
       html += `<div class="compSection" style="margin-top:12px">
-        <div class="compSectionTitle">📋 Datos completos</div>
+        <div class="compSectionTitle" style="display:flex;align-items:center;gap:6px">${renderIcon("clipboard", { size: 16, color: "#FBBF24" })} Datos completos</div>
         <div style="overflow-x:auto">
           <table style="font-size:11px">
             <thead><tr>
@@ -930,7 +930,7 @@
         const pctOfTotal = totalPagos > 0 ? ((s.pagoFinal / totalPagos) * 100).toFixed(1) : 0;
         html += `<tr>
           <td style="font-weight:700">${escHtml(s.nombre)}</td>
-          <td class="numCol">${s.factura ? '🧾 SI' : '🚫 NO'}</td>
+          <td class="numCol">${s.factura ? `${renderIcon('receipt', { size: 11, color: '#2EE59D' })} SI` : `${renderIcon('closeCircle', { size: 11, color: '#FFB020' })} NO`}</td>
           <td class="numCol" style="color:var(--muted)">Q${s.base.toFixed(2)}</td>
           <td class="numCol">${s.pct > 0 ? s.pct + '%' : '<span style="color:var(--muted)">-</span>'}</td>
           <td class="numCol" style="color:#FFB020">Q${s.extra.toFixed(2)}</td>
@@ -1258,7 +1258,7 @@
 
       let textHtml = escHtml(r.observaciones || "Sin observaciones");
       if (Number(r.rectificado)) {
-        textHtml += `<div style="margin-top:10px;padding-top:8px;border-top:1px dashed rgba(255,77,109,.4);color:#FF8096;font-size:12px"><strong>⚠️ Rectificado:</strong> ${escHtml(r.motivo_rectificacion || '')}</div>`;
+        textHtml += `<div style="margin-top:10px;padding-top:8px;border-top:1px dashed rgba(255,77,109,.4);color:#FF8096;font-size:12px;display:flex;align-items:center;gap:4px"><strong>${renderIcon('alertTriangle', { size: 14, color: '#FF8096' })} Rectificado:</strong> ${escHtml(r.motivo_rectificacion || '')}</div>`;
       }
       $("obsModalText").innerHTML = textHtml;
 
@@ -1376,7 +1376,7 @@
             </div>
             <div class="detMetaItem" style="margin-left:auto">
               <a href="javascript:void(0)" onclick="irAEditar(${data.id})" class="btnEditShortcut" title="Abrir en editor de registros con retorno al reporte">
-                ✏️ Editar este registro
+                Editar este registro
               </a>
             </div>
           </div>
@@ -1389,7 +1389,7 @@
             <div class="detObsBox">
               <div class="detObsHeader">
                 <span style="display:flex;align-items:center;gap:6px">
-                  <span style="font-size:15px">💬</span>
+                  <svg class="miniIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C084FC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                   <span>Comentarios / Observaciones de Inspección:</span>
                 </span>
                 <span style="font-size:11px;opacity:.8;font-weight:600">Registrado en inspección</span>
@@ -1400,7 +1400,7 @@
         } else {
           html += `
             <div class="detObsEmpty">
-              <span>💬 Sin comentarios u observaciones registradas en esta inspección.</span>
+              <span>Sin comentarios u observaciones registradas en esta inspección.</span>
             </div>
           `;
         }
@@ -1409,7 +1409,7 @@
         if (Number(data.rectificado)) {
           html += `
             <div class="detRectBox">
-              <strong>⚠️ Registro Rectificado (Pago Q0.00):</strong>
+              <strong><span style="display:inline-flex;align-items:center;gap:4px">${renderIcon("alertTriangle", { size: 14, color: "#FF8096" })} Registro Rectificado (Pago Q0.00):</span></strong>
               <div style="margin-top:2px">${escHtml(data.motivo_rectificacion || "Sin motivo especificado")}</div>
             </div>
           `;
@@ -1432,10 +1432,10 @@
 
         // Resumen
         html += `<div class="detResumen">
-          <span class="detResumenItem" style="border-color:rgba(46,229,157,.3)">✅ ${totalOk} Cumple</span>
-          <span class="detResumenItem" style="border-color:rgba(255,77,109,.3)">❌ ${totalNo} No Cumple</span>
-          <span class="detResumenItem" style="border-color:rgba(255,176,32,.3)">➖ ${totalNa} N/A</span>
-          <span class="detResumenItem" style="border-color:rgba(124,58,237,.3)">📊 ${pct}% Puntuacion</span>
+          <span class="detResumenItem" style="border-color:rgba(46,229,157,.3);display:inline-flex;align-items:center;gap:4px">${renderIcon("check", { size: 12, color: "#2EE59D" })} ${totalOk} Cumple</span>
+          <span class="detResumenItem" style="border-color:rgba(255,77,109,.3);display:inline-flex;align-items:center;gap:4px">${renderIcon("close", { size: 12, color: "#FF4D6D" })} ${totalNo} No Cumple</span>
+          <span class="detResumenItem" style="border-color:rgba(255,176,32,.3);display:inline-flex;align-items:center;gap:4px">${renderIcon("minus", { size: 12, color: "#FFB020" })} ${totalNa} N/A</span>
+          <span class="detResumenItem" style="border-color:rgba(124,58,237,.3);display:inline-flex;align-items:center;gap:4px">${renderIcon("chart", { size: 12, color: "#C084FC" })} ${pct}% Puntuacion</span>
         </div>`;
 
         body.innerHTML = html;
@@ -2150,11 +2150,11 @@
 
       // Secciones
       const sections = [
-        { title: "🏠 Habitaciones Limpiadas", key: "total_inspecciones", max: maxRooms, suffix: "", color: "#38BDF8" },
+        { title: "Habitaciones Limpiadas", icon: "bed", key: "total_inspecciones", max: maxRooms, suffix: "", color: "#38BDF8" },
         { title: "⭐ Puntuacion Promedio", key: "promedio_pct", max: 100, suffix: "%", color: "#2EE59D" },
-        { title: "💰 Total Pagado (Q)", key: "total_pago", max: maxPago, suffix: "", color: "#B794F4", fmt: v => `Q${Number(v).toFixed(2)}` },
+        { title: "Total Pagado (Q)", icon: "dollar", key: "total_pago", max: maxPago, suffix: "", color: "#B794F4", fmt: v => `Q${Number(v).toFixed(2)}` },
         { title: "⏱ Tiempo Prom Limpieza", key: "promedio_minutos", max: maxMin, suffix: " min", color: "#FBBF24" },
-        { title: "🔍 Tiempo Prom Inspeccion", key: "promedio_inspeccion_min", max: Math.max(...data.map(r => Number(r.promedio_inspeccion_min || 0)), 1), suffix: " min", color: "#F472B6" }
+        { title: "Tiempo Prom Inspeccion", icon: "clock", key: "promedio_inspeccion_min", max: Math.max(...data.map(r => Number(r.promedio_inspeccion_min || 0)), 1), suffix: " min", color: "#F472B6" }
       ];
 
       let html = '';
@@ -2355,7 +2355,7 @@
         const circumference = 2 * Math.PI * 22;
         const dash = (pct / 100) * circumference;
         const gap = circumference - dash;
-        const sharedBadge = shared > 0 ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:999px;font-size:9px;font-weight:700;background:rgba(255,107,138,.15);color:#FF6B8A;border:1px solid rgba(255,107,138,.25);margin-left:4px">🔗${shared}</span>` : '';
+        const sharedBadge = shared > 0 ? `<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:9999px;font-size:9px;font-weight:700;background:rgba(255,107,138,.15);color:#FF6B8A;border:1px solid rgba(255,107,138,.25);margin-left:4px">${renderIcon('link', { size: 9, color: '#FF6B8A' })}${shared}</span>` : '';
         html += `<div style="display:flex;align-items:center;gap:16px;padding:8px 0">
           <svg viewBox="0 0 50 50" style="width:60px;height:60px;transform:rotate(-90deg);flex-shrink:0">
             <circle cx="25" cy="25" r="22" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5"/>

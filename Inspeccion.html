@@ -98,7 +98,7 @@
 
       <div class="content">
         <div class="checklistCounter" id="checklistCounter" style="display:none">
-          <span>📋 Progreso:</span>
+          <span style="display:inline-flex;align-items:center;gap:4px"><svg class="miniIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Progreso:</span>
           <span class="num" id="counterPending">0</span>
           <span>pendientes</span>
           <span style="color:rgba(255,255,255,.15)">·</span>
@@ -162,7 +162,7 @@
   </style>
 
   <script type="module">
-    import { $, apiPOST, getActor, isReadOnlyRole, toast } from "./src/js/common.js";
+    import { $, apiPOST, getActor, isReadOnlyRole, toast, renderIcon } from "./src/js/common.js";
 
     /* =========================
        CONTEXTO DESDE INDEX (m, r, u, d)
@@ -860,7 +860,7 @@
         if (ocupacionEl) {
           if (adultos > 0 || ninos > 0) {
             const total = adultos + ninos;
-            ocupacionEl.innerHTML = `🛏️ Ocupación: ${adultos} Adulto${adultos !== 1 ? 's' : ''}${ninos > 0 ? ` / ${ninos} Niño${ninos !== 1 ? 's' : ''}` : ''} &mdash; <strong>${total} huésped${total !== 1 ? 'es' : ''}</strong>`;
+            ocupacionEl.innerHTML = `<span style="display:inline-flex;align-items:center;gap:4px">${renderIcon("bed", { size: 14, color: "#38BDF8" })} Ocupación:</span> ${adultos} Adulto${adultos !== 1 ? 's' : ''}${ninos > 0 ? ` / ${ninos} Niño${ninos !== 1 ? 's' : ''}` : ''} &mdash; <strong>${total} huésped${total !== 1 ? 'es' : ''}</strong>`;
             ocupacionEl.style.display = "block";
           } else {
             ocupacionEl.style.display = "none";
@@ -918,8 +918,8 @@
       btnStart.disabled = started;
       btnEnd.disabled = !started || ended;
 
-      btnStart.textContent = started ? `✔ ${fmtTimeFromMySQL(startAtDT)}` : "Empezar limpieza";
-      btnEnd.textContent = ended ? `✔ ${fmtTimeFromMySQL(endAtDT)}` : "Terminar limpieza";
+      btnStart.innerHTML = started ? `<span style="display:inline-flex;align-items:center;gap:4px">${renderIcon("check", { size: 14, color: "#2EE59D" })} ${fmtTimeFromMySQL(startAtDT)}</span>` : "Empezar limpieza";
+      btnEnd.innerHTML = ended ? `<span style="display:inline-flex;align-items:center;gap:4px">${renderIcon("check", { size: 14, color: "#2EE59D" })} ${fmtTimeFromMySQL(endAtDT)}</span>` : "Terminar limpieza";
 
       const txtFecha = $("fecha");
       const selTipo = $("tipoLimpieza");
@@ -1341,7 +1341,7 @@
         return;
       }
       isSavingInspection = true;
-      setGuardarLoading(true, "📤 Guardando checklist...");
+      setGuardarLoading(true, "Guardando checklist...");
       if (isBrowserOffline()) {
         isSavingInspection = false;
         setGuardarLoading(false);
@@ -1425,7 +1425,7 @@
         detalles
       };
 
-      setGuardarStatus("📤 Guardando inspección y actualizando habitación...");
+      setGuardarStatus("Guardando inspección y actualizando habitación...");
       try {
         toast("Guardando", "Procesando inspección en el servidor...", true, 2000);
 
