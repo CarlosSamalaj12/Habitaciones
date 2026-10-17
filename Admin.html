@@ -274,56 +274,14 @@
     </div>
   </div>
 
-  <script>
-    const $ = (id) => document.getElementById(id);
-    const APP_BASE = window.location.pathname.replace(/\/[^/]*$/, "/").replace(/\/+$/, "");
-    const API_BASE = `${window.location.origin}${APP_BASE}`;
+  <script type="module">
+    import { $, escHtml, apiGetData as apiGET, apiPOST, toast } from "./src/js/common.js";
     const qs = new URLSearchParams(window.location.search);
 
     let CAMARERAS = [];
     let CATEGORIAS = [];
     let CHECK_ITEMS = [];
     let TIPOS = [];
-
-    function toast(msg, ok = true, ms = 3200) {
-      const t = document.createElement("div");
-      t.className = "toast " + (ok ? "ok" : "err");
-      t.textContent = msg;
-      $("toasts").appendChild(t);
-      setTimeout(() => t.remove(), ms);
-    }
-
-    // Leer token de sesion guardado por app.js
-    function getAuthToken() {
-      try {
-        const sess = JSON.parse(localStorage.getItem("hk_session_v3") || "null");
-        if (sess?.token) return sess.token;
-      } catch (e) {}
-      return null;
-    }
-
-    async function apiGET(path) {
-      const headers = {};
-      const token = getAuthToken();
-      if (token) headers["Authorization"] = "Bearer " + token;
-      const r = await fetch(`${API_BASE}${path}`, { headers });
-      const j = await r.json().catch(() => null);
-      if (!r.ok || !j?.ok) throw new Error(j?.error || `GET ${path} failed`);
-      return j.data || [];
-    }
-    async function apiPOST(path, body) {
-      const headers = { "Content-Type": "application/json" };
-      const token = getAuthToken();
-      if (token) headers["Authorization"] = "Bearer " + token;
-      const r = await fetch(`${API_BASE}${path}`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(body || {})
-      });
-      const j = await r.json().catch(() => null);
-      if (!r.ok || !j?.ok) throw new Error(j?.error || `POST ${path} failed`);
-      return j;
-    }
 
     // ===== TABS =====
     document.querySelectorAll(".tab").forEach(tab => {
@@ -373,9 +331,6 @@
       });
       html += `</tbody></table>`;
       container.innerHTML = html;
-    }
-    function escHtml(s) {
-      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
     async function deleteCam(id) {
       const c = CAMARERAS.find(c => c.id === id);
@@ -1185,6 +1140,15 @@
         }
       }
     });
+
+    // Exponer handlers para onclicks inline en tablas
+    window.deleteCam = deleteCam;
+    window.deleteTipo = deleteTipo;
+    window.deleteCat = deleteCat;
+    window.deleteCheck = deleteCheck;
+    window.deleteUsuario = deleteUsuario;
+    window.deleteMod = deleteMod;
+    window.deleteHab = deleteHab;
 
     // ===== INIT =====
     (async function init() {

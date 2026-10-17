@@ -213,10 +213,9 @@
     </div>
   </div>
 
-  <script defer>
-    const $ = (id) => document.getElementById(id);
-    const APP_BASE = window.location.pathname.replace(/\/[^/]*$/, "/").replace(/\/+$/, "");
-    const API_BASE = `${window.location.origin}${APP_BASE}`;
+  <script type="module">
+    import { $, escHtml, apiGET, toast } from "./src/js/common.js";
+
     const qs = new URLSearchParams(window.location.search);
 
     let CAMARERAS = [];
@@ -239,14 +238,6 @@
       '#F472B6', '#34D399', '#818CF8', '#FB923C', '#A78BFA'
     ];
 
-    function toast(msg, ok = true, ms = 3200) {
-      const t = document.createElement("div");
-      t.className = "toast " + (ok ? "ok" : "err");
-      t.textContent = msg;
-      $("toasts").appendChild(t);
-      setTimeout(() => t.remove(), ms);
-    }
-
     function setToday() {
       const now = new Date();
       const yyyy = now.getFullYear();
@@ -266,18 +257,6 @@
       });
     }
     setToday();
-
-    async function apiGET(path) {
-      const headers = {};
-      try {
-        const sess = JSON.parse(localStorage.getItem("hk_session_v3") || "null");
-        if (sess?.token) headers["Authorization"] = "Bearer " + sess.token;
-      } catch {}
-      const r = await fetch(`${API_BASE}${path}`, { headers });
-      const j = await r.json().catch(() => null);
-      if (!r.ok || !j?.ok) throw new Error(j?.error || `GET ${path} failed`);
-      return j;
-    }
 
     async function loadCamareras() {
       try {
@@ -2841,6 +2820,13 @@
         if (sub === "list" && typeof renderAmaDetalle === "function") renderAmaDetalle();
       });
     });
+    // Exponer handlers para onclicks inline en tablas y modales
+    window.closeDetalle = closeDetalle;
+    window.closeObsModal = closeObsModal;
+    window.setFiltroCamarera = setFiltroCamarera;
+    window.toggleFiltroObservaciones = toggleFiltroObservaciones;
+    window.openObsModal = openObsModal;
+    window.irAEditar = irAEditar;
   </script>
 </body>
 </html>

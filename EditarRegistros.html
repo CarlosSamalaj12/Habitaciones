@@ -95,10 +95,8 @@
     </div>
   </div>
 
-  <script>
-    const $ = (id) => document.getElementById(id);
-    const APP_BASE = window.location.pathname.replace(/\/[^/]*$/, "/").replace(/\/+$/, "");
-    const API_BASE = `${window.location.origin}${APP_BASE}`;
+  <script type="module">
+    import { $, escHtml, apiGET, apiPOST, toast } from "./src/js/common.js";
 
     // Parámetros de URL para atajo bidireccional con Reportes
     const urlParams = new URLSearchParams(window.location.search);
@@ -134,19 +132,6 @@
     const CYCLE_LABELS = { "CUMPLE": "OK", "NO_CUMPLE": "NO", "NO_APLICA": "NA" };
     const CYCLE_CLASSES = { "CUMPLE": "ok", "NO_CUMPLE": "no", "NO_APLICA": "na" };
 
-    // ===== HELPERS =====
-    function toast(msg, ok = true, ms = 3200) {
-      const t = document.createElement("div");
-      t.className = "toast " + (ok ? "ok" : "err");
-      t.textContent = msg;
-      $("toasts").appendChild(t);
-      setTimeout(() => t.remove(), ms);
-    }
-
-    function escHtml(s) {
-      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
     function setToday() {
       const now = new Date();
       const y = now.getFullYear();
@@ -156,23 +141,6 @@
       const firstDay = `${y}-${m}-01`;
       if (!$("filtroDesde").value) $("filtroDesde").value = firstDay;
       if (!$("filtroHasta").value) $("filtroHasta").value = today;
-    }
-
-    async function apiGET(path) {
-      const r = await fetch(`${API_BASE}${path}`);
-      const j = await r.json().catch(() => null);
-      if (!r.ok || !j?.ok) throw new Error(j?.error || `GET ${path} failed`);
-      return j;
-    }
-    async function apiPOST(path, body) {
-      const r = await fetch(`${API_BASE}${path}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body || {})
-      });
-      const j = await r.json().catch(() => null);
-      if (!r.ok || !j?.ok) throw new Error(j?.error || `POST ${path} failed`);
-      return j;
     }
 
     // ===== LOAD DATA =====
@@ -838,6 +806,12 @@
         window.location.href = "./Admin.html";
       }
     });
+
+    // Exponer handlers para onclicks inline
+    window.volverAlReporte = volverAlReporte;
+    window.closeEditor = closeEditor;
+    window.openEditor = openEditor;
+    window.toggleDetalleEstado = toggleDetalleEstado;
 
     // ===== INIT =====
     (async function init() {

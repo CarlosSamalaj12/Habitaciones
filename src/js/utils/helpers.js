@@ -26,3 +26,12 @@ export function isDuplicate(key, windowMs) {
   _dedupCache.set(key, now);
   return false;
 }
+
+export function escHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}

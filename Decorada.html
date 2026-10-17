@@ -41,26 +41,13 @@
       </div>
     </div>
   </div>
-  <script>
-    const $ = (id) => document.getElementById(id);
-    const APP_BASE = window.location.pathname.replace(/\/[^/]*$/, "/").replace(/\/+$/, "");
-    const API_BASE = window.location.origin + APP_BASE;
-    let TIME_OFFSET_MS = 0, MODULES = [], ROOMS_BY_MODULE = new Map(), CAMARERAS = [], TIPOS_LIMPIEZA = [];
+  <script type="module">
+    import { $, apiGetData as apiGET, apiPOST, toast, nowServerMs, syncServerTime, isReadOnlyRole } from "./src/js/common.js";
+
+    let MODULES = [], ROOMS_BY_MODULE = new Map(), CAMARERAS = [], TIPOS_LIMPIEZA = [];
     const qs = new URLSearchParams(window.location.search);
     const CTX = { moduleId: (qs.get("m") || "").trim(), user: (qs.get("u") || "").trim(), dept: (qs.get("d") || "").trim() };
 
-    function nowServerMs() { return Date.now() + TIME_OFFSET_MS; }
-    function toast(msg, ok = true, ms = 3200) {
-      const t = document.createElement("div");
-      t.className = "toast " + (ok ? "ok" : "err");
-      t.textContent = msg;
-      $("toasts").appendChild(t);
-      setTimeout(() => t.remove(), ms);
-    }
-    function isReadOnlyRole() {
-      const d = (CTX.dept || "").toLowerCase();
-      return d.includes("gerencia") || d.includes("reportes");
-    }
     const FMT_DEC_DATE = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Guatemala", year: "numeric", month: "2-digit", day: "2-digit" });
     const FMT_DEC_TIME = new Intl.DateTimeFormat("es-GT", { timeZone: "America/Guatemala", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
     function normalizeRoom(v) {
@@ -79,21 +66,6 @@
       const p = FMT_DEC_TIME.formatToParts(d);
       const g = t => p.find(x => x.type === t)?.value || "00";
       return g("hour") + ":" + g("minute") + ":" + g("second");
-    }
-    async function syncServerTime() {
-      try { const r = await fetch(API_BASE + "/api/time", { cache: "no-store" }); const j = await r.json(); const ms = Number(j?.serverMs); if (Number.isFinite(ms)) TIME_OFFSET_MS = ms - Date.now(); } catch {}
-    }
-    async function apiGET(path) {
-      const r = await fetch(API_BASE + path);
-      const j = await r.json();
-      if (!r.ok || !j?.ok) throw new Error(j?.error || "GET " + path + " failed");
-      return j.data || [];
-    }
-    async function apiPOST(path, body) {
-      const r = await fetch(API_BASE + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
-      const j = await r.json();
-      if (!r.ok || !j?.ok) throw new Error(j?.error || "POST " + path + " failed");
-      return j;
     }
 
     function renderModules() {

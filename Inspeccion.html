@@ -161,7 +161,9 @@
     .camTag button { background:none;border:none;color:inherit;cursor:pointer;padding:0;margin-left:4px;font-size:14px;line-height:1 }
   </style>
 
-  <script>
+  <script type="module">
+    import { $, apiPOST, getActor, isReadOnlyRole, toast } from "./src/js/common.js";
+
     /* =========================
        CONTEXTO DESDE INDEX (m, r, u, d)
     ========================= */
@@ -263,34 +265,6 @@
     }
     if (CTX.usuario) {
       hintUser.textContent = `Inspector (login): ${CTX.usuario}${CTX.dept ? " - " + CTX.dept : ""}  -  Tip: toca una tarjeta . -> OK -> X -> NA`;
-    }
-
-    // ===== API =====
-    const APP_BASE = window.location.pathname
-      .replace(/\/[^/]*$/, "/")
-      .replace(/\/+$/, "");
-    const API_BASE = `${window.location.origin}${APP_BASE}`;
-
-    // ===== API MariaDB =====
-
-    async function apiPOST(path, body) {
-      const r = await fetch(`${API_BASE}${path}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body || {})
-      });
-      const j = await r.json().catch(() => null);
-      if (!r.ok || !j) throw new Error(j?.error || `POST ${path} failed`);
-      if (j.ok === false) throw new Error(j.error || `POST ${path} failed`);
-      return j;
-    }
-
-    function getActor() {
-      try {
-        const s = JSON.parse(localStorage.getItem("hk_session_v3") || "null");
-        if (s?.name) return { id: s.id || null, name: s.name, dept: s.dept || "" };
-      } catch { }
-      return null;
     }
 
     async function updateRoomDB(modulo_id, etiqueta, patch) {

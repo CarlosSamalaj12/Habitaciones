@@ -1,4 +1,4 @@
-const CACHE_NAME = "hk-cache-v1.3.42";
+const CACHE_NAME = "hk-cache-v1.3.43";
 const ASSETS = [
   "./",
   "./index.html",
@@ -32,7 +32,11 @@ const ASSETS = [
   "./src/js/components/login.js",
   "./src/js/components/modules.js",
   "./src/js/components/timers.js",
-  "./src/js/components/rooms.js"
+  "./src/js/components/rooms.js",
+  "./src/js/common.js",
+  "./src/js/utils/api.js",
+  "./src/js/utils/auth.js",
+  "./src/js/utils/toast.js"
 ];
 
 // Pagina offline generada inline

@@ -50,7 +50,11 @@ function autoIncrementVersion() {
       "../../src/js/components/login.js",
       "../../src/js/components/modules.js",
       "../../src/js/components/timers.js",
-      "../../src/js/components/rooms.js"
+      "../../src/js/components/rooms.js",
+      "../../src/js/common.js",
+      "../../src/js/utils/api.js",
+      "../../src/js/utils/auth.js",
+      "../../src/js/utils/toast.js"
     ];
 
     const currentHash = crypto.createHash("sha256");
