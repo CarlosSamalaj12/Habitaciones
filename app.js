@@ -17,7 +17,7 @@ window.TIME_OFFSET_MS = 0;
 /* =========================
    VERSION CONTROL
    ========================= */
-window.APP_VERSION = "1.3.40";
+window.APP_VERSION = "1.3.41";
 window.__swReg = null;
 window.__updateChecked = false;
 window.LS_SW_UPDATE_DISMISSED = "hk_sw_update_dismissed_v1";
@@ -2072,6 +2072,15 @@ function renderRooms() {
       const bFree = btn.querySelector('[data-action="liberar"]');
       if (bFree) bFree.classList.add("hidden");
     }
+    if (room.estado === "inspeccion" && !isAdmin(role)) {
+      const bFree = btn.querySelector('[data-action="liberar"]');
+      if (bFree) {
+        bFree.disabled = true;
+        bFree.title = "En inspección (solo Administrador puede liberar desde aquí)";
+        bFree.style.opacity = "0.35";
+        bFree.style.cursor = "not-allowed";
+      }
+    }
     if (!canReception(role)) {
       const bPrio = btn.querySelector('[data-action="prio"]');
       const bRep = btn.querySelector('[data-action="repaso"]');
@@ -2334,12 +2343,12 @@ async function doLiberar(room, btn) {
     toast("err", "No permitido", "Solo Administrador puede liberar si esta en LIMPIEZA.");
     return;
   }
-  if (st === "inspeccion" && !isAdminRole && !isAmaLlavesRole) {
-    toast("err", "No permitido", "Solo Administrador o Ama de llaves puede liberar desde INSPECCION.");
+  if (st === "inspeccion" && !isAdminRole) {
+    toast("err", "En Inspección", "No se puede liberar la habitación mientras está en inspección. Solo un Administrador puede liberarla desde aquí.");
     return;
   }
-  if (isAmaLlavesRole && st !== "mantenimiento" && st !== "inspeccion") {
-    toast("err", "No permitido", "Ama de llaves solo puede liberar si esta en MANTENIMIENTO o INSPECCION.");
+  if (isAmaLlavesRole && st !== "mantenimiento") {
+    toast("err", "No permitido", "Ama de llaves solo puede liberar si esta en MANTENIMIENTO.");
     return;
   }
   if (isReceptionRole && !["ocupado", "ocupada limpia", "mantenimiento", "lista"].includes(st)) {

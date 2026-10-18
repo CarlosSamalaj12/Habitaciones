@@ -369,17 +369,47 @@
       if (!$("filtroHasta").value) $("filtroHasta").value = today;
     }
 
+    function getAuthContext() {
+      let token = "";
+      let name = "";
+      let dept = "";
+      try {
+        const sess = JSON.parse(localStorage.getItem("hk_session_v1") || "null");
+        if (sess) {
+          token = sess.token || "";
+          name = sess.name || "";
+          dept = sess.dept || "";
+        }
+      } catch {}
+      if (!name) name = localStorage.getItem("hk_logged_user") || "";
+      if (!dept) dept = localStorage.getItem("hk_logged_user_dept") || "";
+      return { token, name, dept };
+    }
+
     async function apiGET(path) {
-      const r = await fetch(`${API_BASE}${path}`);
+      const auth = getAuthContext();
+      const headers = {};
+      if (auth.token) headers["Authorization"] = `Bearer ${auth.token}`;
+      const r = await fetch(`${API_BASE}${path}`, { headers });
       const j = await r.json().catch(() => null);
       if (!r.ok || !j?.ok) throw new Error(j?.error || `GET ${path} failed`);
       return j;
     }
     async function apiPOST(path, body) {
+      const auth = getAuthContext();
+      const headers = { "Content-Type": "application/json" };
+      if (auth.token) headers["Authorization"] = `Bearer ${auth.token}`;
+      if (auth.name) headers["X-Actor-Name"] = auth.name;
+      if (auth.dept) headers["X-Actor-Dept"] = auth.dept;
+
+      const payload = Object.assign({}, body || {});
+      if (!payload.actor_name && auth.name) payload.actor_name = auth.name;
+      if (!payload.actor_dept && auth.dept) payload.actor_dept = auth.dept;
+
       const r = await fetch(`${API_BASE}${path}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body || {})
+        headers,
+        body: JSON.stringify(payload)
       });
       const j = await r.json().catch(() => null);
       if (!r.ok || !j?.ok) throw new Error(j?.error || `POST ${path} failed`);
@@ -798,6 +828,10 @@
       payload.es_familiar = es_familiar;
       payload.rectificado = rectificado;
       payload.motivo_rectificacion = motivo || '';
+
+      const auth = getAuthContext();
+      if (auth.name) payload.actor_name = auth.name;
+      if (auth.dept) payload.actor_dept = auth.dept;
 
       const btn = $("btnGuardarEdit");
       const btnGyV = $("btnGuardarYVolver");

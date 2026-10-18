@@ -2320,6 +2320,11 @@ app.post("/api/inspecciones/actualizar", requireAuthIfEnabled, async (req,res)=>
     const targetModuloId = req.body.modulo_id !== undefined ? String(req.body.modulo_id).trim() : currentIns.modulo_id;
     const targetHabEtiqueta = req.body.habitacion_etiqueta !== undefined ? String(req.body.habitacion_etiqueta).trim() : currentIns.habitacion_etiqueta;
 
+    // 1. REGLA DE FECHA: Solo se sincroniza el estado en vivo si la inspección editada es del día de HOY
+    const todayStr = toMySQLDatetime(new Date()).slice(0, 10);
+    const inspFechaStr = String(req.body.fecha || currentIns.fecha || '').slice(0, 10);
+    const isToday = (inspFechaStr === todayStr);
+
     const [latestRows] = await conn.query(
       "SELECT id FROM inspecciones WHERE modulo_id = ? AND habitacion_etiqueta = ? ORDER BY fecha DESC, created_at DESC LIMIT 1",
       [targetModuloId, targetHabEtiqueta]
@@ -2334,9 +2339,12 @@ app.post("/api/inspecciones/actualizar", requireAuthIfEnabled, async (req,res)=>
       console.warn("No se pudo obtener roomId:", e.message);
     }
 
-    if (isLatest && roomId) {
+    // 2. REGLA DE CAMBIO REAL: Solo evaluar cambio de estado si el tipo de limpieza REALMENTE cambió y es de HOY
+    const targetTipoId = req.body.tipo_limpieza_id !== undefined ? req.body.tipo_limpieza_id : currentIns.tipo_limpieza_id;
+    const tipoCambio = (req.body.tipo_limpieza_id !== undefined && Number(req.body.tipo_limpieza_id) !== Number(currentIns.tipo_limpieza_id));
+
+    if (isToday && isLatest && roomId && tipoCambio) {
       // Determinamos el nuevo estado de la habitación en base al tipo de limpieza
-      const targetTipoId = req.body.tipo_limpieza_id !== undefined ? req.body.tipo_limpieza_id : currentIns.tipo_limpieza_id;
       let newRoomEstado = "libre";
       let tipoLimpiezaNombre = null;
 
@@ -2353,7 +2361,13 @@ app.post("/api/inspecciones/actualizar", requireAuthIfEnabled, async (req,res)=>
 
       // Verificamos el estado actual de la habitación en base de datos
       const [roomRow] = await conn.query("SELECT estado FROM estados_habitacion WHERE habitacion_id = ?", [roomId]);
-      if (roomRow.length && roomRow[0].estado !== newRoomEstado) {
+      const currentRoomEstado = String(roomRow[0]?.estado || "").toLowerCase();
+
+      // 3. REGLA DE PROTECCIÓN: Si la habitación ya está ocupada por huéspedes, o en lista/limpieza/mantenimiento,
+      // NUNCA revertir a 'libre' por la edición de una inspección.
+      const noRevertirALibre = ["ocupado", "lista", "limpieza", "mantenimiento"].includes(currentRoomEstado) && newRoomEstado === "libre";
+
+      if (roomRow.length && roomRow[0].estado !== newRoomEstado && !noRevertirALibre) {
         const prevEstado = roomRow[0].estado;
 
         if (newRoomEstado === "ocupada limpia") {
@@ -2384,8 +2398,9 @@ app.post("/api/inspecciones/actualizar", requireAuthIfEnabled, async (req,res)=>
           );
         }
 
-        // Insertar log en estados_habitacion_log
-        const actorName = req.body.inspector_nombre || currentIns.inspector_nombre || 'Administrador';
+        // Insertar log en estados_habitacion_log con el actor real en sesión
+        const actorName = req.user?.name || req.body?.actor_name || req.headers['x-actor-name'] || req.body?.modificado_por || 'Usuario';
+        const actorDept = req.user?.dept || req.body?.actor_dept || req.headers['x-actor-dept'] || req.body?.modificado_dept || 'Reportes';
         await conn.query(`
           INSERT INTO estados_habitacion_log 
             (habitacion_id, modulo_id, etiqueta, actor_name, actor_dept, source, evento, estado_prev, estado_new, patch_json)
@@ -2395,7 +2410,7 @@ app.post("/api/inspecciones/actualizar", requireAuthIfEnabled, async (req,res)=>
           targetModuloId,
           targetHabEtiqueta,
           actorName,
-          'Administración',
+          actorDept,
           'inspeccion',
           `estado_${newRoomEstado}`,
           prevEstado,
@@ -2956,10 +2971,10 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
       if (curEstado === "libre") {
         // OK (Evita fallos por envío doble o reintentos)
       } else {
-        // INSPECCION: ADMIN o AMA_LLAVES pueden liberar (o desde el flujo de inspeccion)
+        // INSPECCION: La habitación está siendo inspeccionada. Solo un Administrador puede liberar desde afuera, o completarse desde la hoja de inspección
         if (curEstado === "inspeccion") {
-          if (role !== "ADMIN" && role !== "AMA_LLAVES" && !fromInspeccion) {
-            return res.status(403).json({ ok:false, error:"Solo el Administrador o Ama de llaves puede liberar desde inspección." });
+          if (!fromInspeccion && role !== "ADMIN") {
+            return res.status(403).json({ ok:false, error:"La habitación está en proceso de inspección. Solo un Administrador puede liberarla desde aquí." });
           }
         }
 
@@ -2968,13 +2983,13 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
         }
 
         if (role === "AMA_LLAVES") {
-          // ✅ AMA DE LLAVES puede liberar desde: mantenimiento, inspeccion, repaso, y tambien limpieza (si viene del flujo de inspeccion)
-          const estadosPermitidos = ["mantenimiento", "inspeccion", "repaso"];
+          // ✅ AMA DE LLAVES puede liberar desde: mantenimiento, repaso, y tambien inspeccion/limpieza si viene del flujo de inspección
+          const estadosPermitidos = ["mantenimiento", "repaso"];
           if (fromInspeccion) {
-            estadosPermitidos.push("limpieza");
+            estadosPermitidos.push("inspeccion", "limpieza");
           }
           if (!estadosPermitidos.includes(curEstado)) {
-            return res.status(403).json({ ok:false, error:"Ama de llaves solo puede liberar habitaciones en MANTENIMIENTO, INSPECCIÓN, REPASO o LIMPIEZA." });
+            return res.status(403).json({ ok:false, error:"Ama de llaves solo puede liberar habitaciones en MANTENIMIENTO o REPASO (o completando la hoja de inspección)." });
           }
         } else if (role === "RECEPCION") {
           const allowed = new Set(["ocupado", "ocupada limpia", "mantenimiento", "lista", "repaso"]);
