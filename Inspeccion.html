@@ -891,6 +891,7 @@
     .camTag button { background:none;border:none;color:inherit;cursor:pointer;padding:0;margin-left:4px;font-size:14px;line-height:1 }
   </style>
 
+  <script src="./socket.io/socket.io.js"></script>
   <script>
     /* =========================
        CONTEXTO DESDE INDEX (m, r, u, d)
@@ -963,6 +964,110 @@
     function isReadOnlyRole() {
       const d = String(CTX?.dept || "").toLowerCase();
       return d.includes("gerencia") || d.includes("reportes");
+    }
+
+    function isAdminRole() {
+      const d = String(CTX?.dept || "").toLowerCase().trim();
+      return d === "administrador" || d === "admin";
+    }
+
+    let inspectionSocket = null;
+    let inspectionLockAcquired = false;
+
+    function releaseInspectionLock() {
+      if (!CTX.modulo || !CTX.habitacion) return;
+      if (inspectionSocket && inspectionSocket.connected) {
+        try {
+          inspectionSocket.emit("inspection:leave", {
+            modulo_id: CTX.modulo,
+            etiqueta: CTX.habitacion,
+            usuario: CTX.usuario
+          });
+        } catch (e) {}
+      }
+      try {
+        const payload = JSON.stringify({
+          modulo_id: CTX.modulo,
+          etiqueta: CTX.habitacion,
+          usuario: CTX.usuario
+        });
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(`${API_BASE}/api/inspections/leave`, new Blob([payload], { type: 'application/json' }));
+        } else {
+          fetch(`${API_BASE}/api/inspections/leave`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: payload,
+            keepalive: true
+          }).catch(() => {});
+        }
+      } catch (e) {}
+    }
+
+    function initInspectionSocket() {
+      if (typeof window.io !== "function") return;
+      try {
+        const ioUrl = API_BASE.replace(/^http/, "ws");
+        inspectionSocket = window.io(ioUrl, {
+          transports: ["websocket"],
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000
+        });
+
+        inspectionSocket.on("connect", () => {
+          if (CTX.modulo && CTX.habitacion) {
+            inspectionSocket.emit("inspection:enter", {
+              modulo_id: CTX.modulo,
+              etiqueta: CTX.habitacion,
+              usuario: CTX.usuario || "Ama de llaves",
+              dept: CTX.dept || ""
+            }, (res) => {
+              if (res && res.ok === false) {
+                inspectionLockAcquired = false;
+                showConcurrentInspectionModal(res.occupiedBy || "Otro usuario");
+              } else {
+                inspectionLockAcquired = true;
+              }
+            });
+          }
+        });
+
+        inspectionSocket.on("inspection:active_change", (data) => {
+          if (!data) return;
+          if (String(data.modulo_id) === String(CTX.modulo) &&
+              String(data.etiqueta).toUpperCase() === String(CTX.habitacion).toUpperCase()) {
+            if (data.active && data.usuario && CTX.usuario &&
+                data.usuario.trim().toLowerCase() !== CTX.usuario.trim().toLowerCase() &&
+                !isAdminRole()) {
+              showConcurrentInspectionModal(data.usuario);
+            }
+          }
+        });
+      } catch (e) {
+        console.warn("Socket no disponible en Inspeccion.html:", e);
+      }
+    }
+
+    window.addEventListener("beforeunload", releaseInspectionLock);
+    window.addEventListener("pagehide", releaseInspectionLock);
+
+    let hasShownConcurrentNotice = false;
+    function showConcurrentInspectionModal(inspector) {
+      if (hasShownConcurrentNotice) return;
+      hasShownConcurrentNotice = true;
+
+      // Notificación flotante
+      toast("Habitación en Inspección", `La habitación ya está siendo inspeccionada por: ${inspector}`, false, 3500);
+
+      ["btnStart", "btnEnd", "btnGuardar", "btnSelectCamareras"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = true;
+      });
+
+      setTimeout(() => {
+        releaseInspectionLock();
+        window.location.href = "./index.html";
+      }, 1800);
     }
     localStorage.setItem("hk_inspeccion_ctx", JSON.stringify({ ...CTX, at: Date.now() }));
 
@@ -1609,6 +1714,22 @@
         const estado = String(target.estado || "").trim().toLowerCase();
         currentRoomObservaciones = String(target.observaciones || "");
 
+        // Validar concurrencia en tiempo real: verificar si otro usuario está en esta inspección en este instante
+        try {
+          const actRes = await fetch(`${API_BASE}/api/inspections/active`, { cache: "no-store" }).then(r => r.json());
+          if (actRes && actRes.ok && Array.isArray(actRes.data)) {
+            const k = `${CTX.modulo}::${String(CTX.habitacion).toUpperCase()}`;
+            const activeNow = actRes.data.find(x => `${x.modulo_id}::${String(x.etiqueta).toUpperCase()}` === k);
+            const myName = String(CTX.usuario || "").trim().toLowerCase();
+            if (activeNow && activeNow.usuario && activeNow.usuario.trim().toLowerCase() !== myName && !isAdminRole()) {
+              showConcurrentInspectionModal(activeNow.usuario);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn("No se pudo verificar inspecciones activas vía REST:", e);
+        }
+
         // Mostrar ocupacion al camarera (adultos/ninos que dejo recepcion)
         const adultos = Number(target.adultos);
         const ninos = Number(target.ninos);
@@ -1625,7 +1746,11 @@
 
         if (estado === "limpieza" || estado === "inspeccion") {
           if (!startAtDT && target.inicio_limpieza) startAtDT = target.inicio_limpieza;
-          if (!endAtDT && target.fin_limpieza) {
+          if (estado === "limpieza") {
+            // Si la base de datos indica que sigue en LIMPIEZA, la limpieza no ha concluido en BD;
+            // asegurar que endAtDT no quede bloqueado con datos locales obsoletos
+            endAtDT = null;
+          } else if (!endAtDT && target.fin_limpieza) {
             const iniMs = toEpochMsFromAnyDate(target.inicio_limpieza);
             const finMs = toEpochMsFromAnyDate(target.fin_limpieza);
             if (iniMs != null && finMs != null && finMs >= iniMs) {
@@ -1653,6 +1778,9 @@
           startAtDT = null;
           endAtDT = null;
         }
+
+        _lastSyncedCamarera = getCamarerasNombres().join(", ") || null;
+        _lastSyncedTipo = $("tipoLimpieza").value || null;
 
         updateStartEndUI();
         renderAllNABtn();
@@ -2010,6 +2138,8 @@
     window.addEventListener("beforeunload", saveSession);
     window.addEventListener("pagehide", saveSession);
 
+    let _lastSyncedCamarera = null;
+    let _lastSyncedTipo = null;
     let isSyncingLimpieza = false;
     async function syncLimpiezaMeta() {
       if (isRestoring) return; // Omitir sincronizaciones automáticas durante la carga de la página
@@ -2019,6 +2149,7 @@
       const camareraSel = getCamarerasNombres().join(", ") || null;
       const tipoSel = $("tipoLimpieza").value || null;
       if (!camareraSel && !tipoSel) return;
+      if (camareraSel === _lastSyncedCamarera && tipoSel === _lastSyncedTipo) return;
       isSyncingLimpieza = true;
       try {
         // NO mandar `estado: "limpieza"` en el patch: la habitacion ya esta
@@ -2032,6 +2163,8 @@
           tipo_limpieza: tipoSel,
           inspector_asignado: CTX.usuario || null
         });
+        _lastSyncedCamarera = camareraSel;
+        _lastSyncedTipo = tipoSel;
       } catch { }
       finally { isSyncingLimpieza = false; }
     }
@@ -2079,11 +2212,13 @@
       restoreFromDB();
     });
     loadChecklistItems();
+    initInspectionSocket();
 
     renderFamiliarUI();
     renderAllNABtn();
     $("btnBack").addEventListener("click", () => {
       saveSession();
+      releaseInspectionLock();
       window.location.href = "./index.html";
     });
 
@@ -2206,6 +2341,7 @@
           localStorage.setItem("hk_cleaned_rooms_v1", JSON.stringify(map));
         } catch { }
 
+        releaseInspectionLock();
         localStorage.removeItem(SESSION_KEY);
         resetAll();
         window.location.href = "./index.html?done=1";

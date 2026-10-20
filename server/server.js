@@ -204,6 +204,28 @@ app.use(express.static(path.join(__dirname, ".."), {
 
 const io = new Server(server, { cors: corsOptions });
 
+// ===== CONTROL DE CONCURRENCIA DE INSPECCIÓN EN TIEMPO REAL =====
+const activeInspections = new Map(); // roomKey -> { socketId, modulo_id, etiqueta, usuario, dept, startedAt }
+const socketInspections = new Map(); // socketId -> Set<roomKey>
+
+function clearActiveInspection(modulo_id, etiqueta) {
+  if (!modulo_id || !etiqueta) return;
+  const k = `${String(modulo_id)}::${String(etiqueta).toUpperCase()}`;
+  if (activeInspections.has(k)) {
+    const item = activeInspections.get(k);
+    if (item && item.socketId && socketInspections.has(item.socketId)) {
+      socketInspections.get(item.socketId).delete(k);
+    }
+    activeInspections.delete(k);
+    io.emit("inspection:active_change", {
+      modulo_id: String(modulo_id),
+      etiqueta: String(etiqueta),
+      active: false
+    });
+    console.log(`🔓 [LOCK LIBERADO AUTOMÁTICAMENTE] ${k}`);
+  }
+}
+
 
 function signAccessToken(user){
   return jwt.sign(
@@ -1441,6 +1463,7 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
     // ✅ EMITIR EVENTOS DE SOCKET Y PUSH DESPUÉS DEL COMMIT EXITOSO
     if (updatedRoom) {
       io.emit("room_update", updatedRoom);
+      clearActiveInspection(data.modulo_id, data.habitacion_etiqueta);
       
       const oldEstado = cur?.estado || "";
       const newEstado = updatedRoom?.estado || "";
@@ -2518,6 +2541,45 @@ app.get("/api/inspecciones/:id", async (req,res)=>{
   }
 });
 
+// GET /api/inspections/active - Listar inspecciones activas en tiempo real
+app.get("/api/inspections/active", requireAuthIfEnabled, (req, res) => {
+  const result = [];
+  for (const [key, item] of activeInspections.entries()) {
+    result.push({
+      modulo_id: item.modulo_id,
+      etiqueta: item.etiqueta,
+      usuario: item.usuario,
+      dept: item.dept,
+      startedAt: item.startedAt
+    });
+  }
+  res.json({ ok: true, data: result });
+});
+
+// POST /api/inspections/leave - Liberar lock de inspección activa (beacon / exit)
+app.post("/api/inspections/leave", requireAuthIfEnabled, (req, res) => {
+  const modulo_id = String(req.body?.modulo_id || "").trim();
+  const etiqueta  = String(req.body?.etiqueta || "").trim();
+  const usuario   = String(req.body?.usuario || "").trim();
+  if (modulo_id && etiqueta) {
+    const k = `${modulo_id}::${etiqueta.toUpperCase()}`;
+    const existing = activeInspections.get(k);
+    if (existing && (!usuario || existing.usuario.toLowerCase().trim() === usuario.toLowerCase().trim())) {
+      if (existing.socketId && socketInspections.has(existing.socketId)) {
+        socketInspections.get(existing.socketId).delete(k);
+      }
+      activeInspections.delete(k);
+      io.emit("inspection:active_change", {
+        modulo_id,
+        etiqueta,
+        active: false
+      });
+      console.log(`🔓 [LOCK LIBERADO POR BEACON/POST] ${k}`);
+    }
+  }
+  res.json({ ok: true });
+});
+
 // ===== ROOMS =====
 
 // POST /api/habitaciones/precio-especial - Actualizar precio especial de una habitacion
@@ -2856,6 +2918,12 @@ async function upsertEstadoByRoomId(habitacion_id, patch, conn){
   const skipTipo = (patch && "tipo_limpieza" in patch) ? 0 : 1;
   const skipInspector = (patch && "inspector_asignado" in patch) ? 0 : 1;
   const skipPrioridad = (patch && "prioridad_limpieza" in patch) ? 0 : 1;
+  const skipDesde = (patch && "desde" in patch) ? 0 : 1;
+  const skipInicioLimpieza = (patch && "inicio_limpieza" in patch) ? 0 : 1;
+  const skipFinLimpieza = (patch && "fin_limpieza" in patch) ? 0 : 1;
+  const skipInicioRepaso = (patch && "inicio_repaso" in patch) ? 0 : 1;
+  const skipRepaso = (patch && "repaso" in patch) ? 0 : 1;
+  const skipHoraListo = (patch && "hora_listo_limpieza" in patch) ? 0 : 1;
 
   await executor.query(`
     INSERT INTO estados_habitacion
@@ -2867,17 +2935,17 @@ async function upsertEstadoByRoomId(habitacion_id, patch, conn){
       adultos = COALESCE(VALUES(adultos), adultos),
       ninos = COALESCE(VALUES(ninos), ninos),
       observaciones = COALESCE(VALUES(observaciones), observaciones),
-      desde = COALESCE(VALUES(desde), desde),
-      inicio_limpieza = COALESCE(VALUES(inicio_limpieza), inicio_limpieza),
-      fin_limpieza = COALESCE(VALUES(fin_limpieza), fin_limpieza),
-      inicio_repaso = COALESCE(VALUES(inicio_repaso), inicio_repaso),
-      repaso = COALESCE(VALUES(repaso), repaso),
+      desde = CASE WHEN ? = 1 THEN desde ELSE VALUES(desde) END,
+      inicio_limpieza = CASE WHEN ? = 1 THEN inicio_limpieza ELSE VALUES(inicio_limpieza) END,
+      fin_limpieza = CASE WHEN ? = 1 THEN fin_limpieza ELSE VALUES(fin_limpieza) END,
+      inicio_repaso = CASE WHEN ? = 1 THEN inicio_repaso ELSE VALUES(inicio_repaso) END,
+      repaso = CASE WHEN ? = 1 THEN repaso ELSE VALUES(repaso) END,
       camarera_asignada = CASE WHEN ? = 1 THEN camarera_asignada ELSE VALUES(camarera_asignada) END,
       tipo_limpieza = CASE WHEN ? = 1 THEN tipo_limpieza ELSE VALUES(tipo_limpieza) END,
       decorada = CASE WHEN ? IS NULL THEN decorada ELSE VALUES(decorada) END,
       inspector_asignado = CASE WHEN ? = 1 THEN inspector_asignado ELSE VALUES(inspector_asignado) END,
       prioridad_limpieza = CASE WHEN ? = 1 THEN prioridad_limpieza ELSE VALUES(prioridad_limpieza) END,
-      hora_listo_limpieza = COALESCE(VALUES(hora_listo_limpieza), hora_listo_limpieza),
+      hora_listo_limpieza = CASE WHEN ? = 1 THEN hora_listo_limpieza ELSE VALUES(hora_listo_limpieza) END,
       actualizado = CURRENT_TIMESTAMP
   `, [
     habitacion_id,
@@ -2897,11 +2965,17 @@ async function upsertEstadoByRoomId(habitacion_id, patch, conn){
     p.prioridad_limpieza,
     p.hora_listo_limpieza,
     p._skipEstadoUpdate ? 1 : 0,
+    skipDesde,
+    skipInicioLimpieza,
+    skipFinLimpieza,
+    skipInicioRepaso,
+    skipRepaso,
     skipCamarera,
     skipTipo,
     p.decorada,
     skipInspector,
-    skipPrioridad
+    skipPrioridad,
+    skipHoraListo
   ]);
 }
 
@@ -3024,11 +3098,16 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
     const updated = await fetchOneRoom(roomId);
     await logRoomEvent({ before: cur, after: updated, patch, actor, source });
 
-    io.emit("room_update", updated);
-
-    // Enviar push notifications segun el tipo de cambio
     const oldEstado = cur?.estado || "";
     const newEstado = updated?.estado || "";
+
+    io.emit("room_update", updated);
+
+    if (newEstado === "libre" || newEstado === "ocupada limpia") {
+      clearActiveInspection(modulo_id, etiqueta);
+    }
+
+    // Enviar push notifications segun el tipo de cambio
     const oldPrio = cur?.prioridad_limpieza || "";
     const newPrio = updated?.prioridad_limpieza || "";
     const src = String(source || "").trim().toLowerCase();
@@ -3044,6 +3123,10 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
         tienePrio ? "🔴 PRIORIDAD ALTA - Habitacion marcada como prioridad" : "Prioridad removida",
         "./index.html"
       ).catch(() => {});
+    }
+    // Si NO hubo cambio de estado, NO enviar notificación push de estado
+    else if (oldEstado === newEstado) {
+      // No-op: Evitar notificaciones falsas al actualizar metadata o cerrar pantalla
     }
     // OCUPADO → Notificar a todos
     else if (newEstado === "ocupado") {
@@ -3069,7 +3152,7 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
         "./index.html"
       ).catch(() => {});
     }
-    // Otros cambios: notificar a todos
+    // Otros cambios de estado reales: notificar a todos
     else {
       sendRoomPushNotification(updated).catch(() => {});
     }
@@ -3176,6 +3259,121 @@ async function sendRoomPushNotification(updatedRow) {
 
 io.on("connection", (s)=> {
   console.log("🔌 socket conectado", s.id);
+
+  // Intentar adquirir lock de inspección en tiempo real
+  s.on("inspection:enter", (data, callback) => {
+    const modulo_id = String(data?.modulo_id || "").trim();
+    const etiqueta = String(data?.etiqueta || "").trim();
+    const usuario = String(data?.usuario || "Ama de llaves").trim();
+    const dept = String(data?.dept || "").trim();
+
+    if (!modulo_id || !etiqueta) {
+      if (typeof callback === "function") callback({ ok: false, error: "Datos incompletos" });
+      return;
+    }
+
+    const k = `${modulo_id}::${etiqueta.toUpperCase()}`;
+    const existing = activeInspections.get(k);
+
+    if (existing) {
+      // Verificar si el socket anterior sigue conectado
+      const prevSocket = io.sockets.sockets.get(existing.socketId);
+      const isSameUser = existing.usuario && usuario && existing.usuario.toLowerCase().trim() === usuario.toLowerCase().trim();
+
+      if (prevSocket && prevSocket.connected && !isSameUser) {
+        // Habitación ocupada por otro usuario en este preciso instante
+        console.log(`⛔ [LOCK RECHAZADO] ${k} ya está siendo inspeccionada por ${existing.usuario}`);
+        if (typeof callback === "function") {
+          callback({
+            ok: false,
+            occupiedBy: existing.usuario,
+            dept: existing.dept,
+            startedAt: existing.startedAt
+          });
+        }
+        return;
+      }
+
+      // Si el socket anterior ya no existe o es el mismo usuario refrescando pantalla:
+      if (existing.socketId && socketInspections.has(existing.socketId)) {
+        socketInspections.get(existing.socketId).delete(k);
+      }
+    }
+
+    // Conceder lock
+    activeInspections.set(k, {
+      socketId: s.id,
+      modulo_id,
+      etiqueta,
+      usuario,
+      dept,
+      startedAt: Date.now()
+    });
+
+    if (!socketInspections.has(s.id)) {
+      socketInspections.set(s.id, new Set());
+    }
+    socketInspections.get(s.id).add(k);
+
+    console.log(`🔒 [LOCK ADQUIRIDO] ${k} por ${usuario} (socket: ${s.id})`);
+
+    // Notificar a todos los clientes que la habitación está en inspección activa
+    io.emit("inspection:active_change", {
+      modulo_id,
+      etiqueta,
+      usuario,
+      dept,
+      active: true
+    });
+
+    if (typeof callback === "function") {
+      callback({ ok: true });
+    }
+  });
+
+  // Salir de inspección explícitamente
+  s.on("inspection:leave", (data) => {
+    const modulo_id = String(data?.modulo_id || "").trim();
+    const etiqueta = String(data?.etiqueta || "").trim();
+    if (!modulo_id || !etiqueta) return;
+
+    const k = `${modulo_id}::${etiqueta.toUpperCase()}`;
+    const existing = activeInspections.get(k);
+
+    if (existing && existing.socketId === s.id) {
+      activeInspections.delete(k);
+      if (socketInspections.has(s.id)) {
+        socketInspections.get(s.id).delete(k);
+      }
+      io.emit("inspection:active_change", {
+        modulo_id,
+        etiqueta,
+        active: false
+      });
+      console.log(`🔓 [LOCK LIBERADO SOCKET LEAVE] ${k} por ${existing.usuario}`);
+    }
+  });
+
+  // Al desconectarse el socket, liberar automáticamente cualquier habitación que estuviese inspeccionando
+  s.on("disconnect", () => {
+    console.log("🔌 socket desconectado", s.id);
+    const rooms = socketInspections.get(s.id);
+    if (rooms && rooms.size > 0) {
+      for (const k of rooms) {
+        const item = activeInspections.get(k);
+        if (item && item.socketId === s.id) {
+          activeInspections.delete(k);
+          io.emit("inspection:active_change", {
+            modulo_id: item.modulo_id,
+            etiqueta: item.etiqueta,
+            active: false
+          });
+          console.log(`🔓 [LOCK LIBERADO POR DESCONEXION] ${k} (era ${item.usuario})`);
+        }
+      }
+      socketInspections.delete(s.id);
+    }
+  });
 });
 
 // ===== START =====

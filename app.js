@@ -17,7 +17,7 @@ window.TIME_OFFSET_MS = 0;
 /* =========================
    VERSION CONTROL
    ========================= */
-window.APP_VERSION = "1.3.41";
+window.APP_VERSION = "1.3.49";
 window.__swReg = null;
 window.__updateChecked = false;
 window.LS_SW_UPDATE_DISMISSED = "hk_sw_update_dismissed_v1";
@@ -470,6 +470,28 @@ function stopFallbackSync() {
   fallbackSyncTimer = null;
 }
 
+const activeInspectionsMap = new Map(); // key `${modulo_id}::${etiqueta.toUpperCase()}` -> { usuario, dept, startedAt }
+
+async function loadActiveInspections() {
+  try {
+    const res = await apiFetch("/api/inspections/active");
+    if (res && res.ok && Array.isArray(res.data)) {
+      activeInspectionsMap.clear();
+      for (const item of res.data) {
+        const k = `${String(item.modulo_id)}::${String(item.etiqueta).toUpperCase()}`;
+        activeInspectionsMap.set(k, {
+          usuario: item.usuario,
+          dept: item.dept,
+          startedAt: item.startedAt
+        });
+      }
+      renderRooms();
+    }
+  } catch (e) {
+    console.warn("No se pudieron cargar inspecciones activas:", e);
+  }
+}
+
 function initSocket() {
   const ioUrl = API_BASE.replace(/^http/, "ws");
   try {
@@ -490,11 +512,27 @@ function initSocket() {
     if (activeModuleId) {
       socket.emit("join", { modulo_id: String(activeModuleId) });
     }
+    loadActiveInspections().catch(() => {});
   });
 
   socket.on("disconnect", (reason) => {
     console.warn("🔌 [Socket.io] Desconectado del servidor (razón:", reason, ")");
     startFallbackSync();
+  });
+
+  socket.on("inspection:active_change", (data) => {
+    if (!data || !data.modulo_id || !data.etiqueta) return;
+    const k = `${String(data.modulo_id)}::${String(data.etiqueta).toUpperCase()}`;
+    if (data.active) {
+      activeInspectionsMap.set(k, {
+        usuario: data.usuario || "Ama de llaves",
+        dept: data.dept || "",
+        startedAt: data.startedAt || Date.now()
+      });
+    } else {
+      activeInspectionsMap.delete(k);
+    }
+    renderRooms();
   });
 
   socket.on("room_update", (data) => {
@@ -1963,6 +2001,19 @@ function renderRooms() {
     const decoradaTagHTML = Number(room.decorada) === 1
       ? `<div class="decoradaTag" title="Habitacion decorada"><span class="decoradaEmoji" aria-hidden="true">*</span><span class="decoradaText">DECORADA</span></div>`
       : "";
+    const activeInsp = activeInspectionsMap.get(k);
+    let inspectorTagHTML = "";
+    const myUserName = String(getSession()?.name || "").trim().toLowerCase();
+    if (room.estado === "inspeccion") {
+      // Solo mostrar si alguien más está dentro en ese preciso momento
+      if (activeInsp && activeInsp.usuario) {
+        const inspName = String(activeInsp.usuario).trim();
+        if (inspName.toLowerCase() !== myUserName) {
+          inspectorTagHTML = `<div class="inspectorTag live" title="Inspeccionando en este momento">🔴 ${inspName}</div>`;
+        }
+      }
+      // Si ya salió del formulario o es el propio usuario, no se muestra ningún nombre
+    }
     const prioHigh = !!room.prioAlta;
     const badgeText = (prioHigh && (room.estado === "libre" || room.estado === "lista")) ? "PRIORIDAD" : badge;
     const prioTagHTML = "";
@@ -2029,6 +2080,7 @@ function renderRooms() {
       <div class="badge">${badgeText}</div>
       ${cleanTagHTML}
       ${decoradaTagHTML}
+      ${inspectorTagHTML}
       <div class="roomNum">${room.etiqueta}</div>
       <div class="roomState">${roomModuleName}</div>
       <div class="roomOcc">${(showOccupied) && (room.adultos > 0 || room.ninos > 0) ? `&#128101; ${room.adultos || 0} / ${room.ninos || 0}` : ""}</div>
@@ -2145,7 +2197,7 @@ async function doLimpieza(room, btn) {
   const current = normalizeRoom(room);
   const role2 = roleOf(getSession());
 
-  if (canReception(role2)) {
+  if (role2 === "RECEPCION" || (role2 === "ADMIN" && (current.estado === "ocupado" || current.estado === "ocupada limpia"))) {
     if (current.estado !== "ocupado" && current.estado !== "ocupada limpia") {
       toast("err", "No permitido", "Solo podes poner LISTA cuando estaba OCUPADO.");
       return;
@@ -2177,7 +2229,7 @@ async function doLimpieza(room, btn) {
     return;
   }
 
-  if (role2 === "AMA_LLAVES") {
+  if (role2 === "AMA_LLAVES" || role2 === "ADMIN") {
     if (current.estado === "repaso") {
       const ok = await confirmDialog(`¿Seguro de liberar la habitación ${current.etiqueta}?`, "Sí, liberar", true);
       if (!ok) return;
@@ -2206,6 +2258,20 @@ async function doLimpieza(room, btn) {
       toast("err", "No disponible", "Recepcion debe poner LISTA primero.");
       return;
     }
+
+    // Bloqueo de concurrencia en tiempo real:
+    // Permite que cualquier Ama de llaves ingrese a inspeccionar, pero NUNCA al mismo tiempo.
+    // Solo se bloquea si alguien más tiene la pantalla de inspección abierta en este preciso instante.
+    if (current.estado === "inspeccion") {
+      const k = `${String(current.modulo_id)}::${String(current.etiqueta).toUpperCase()}`;
+      const activeInsp = activeInspectionsMap.get(k);
+      const myUser = String(getSession()?.name || "").trim().toLowerCase();
+      if (activeInsp && activeInsp.usuario && activeInsp.usuario.trim().toLowerCase() !== myUser && !isAdmin(role2)) {
+        toast("warn", "Habitación en Inspección", `La habitación ya está siendo inspeccionada por: ${activeInsp.usuario}`);
+        return;
+      }
+    }
+
     try {
       openInspeccion(current.modulo_id, current.etiqueta);
     } catch (err) {
@@ -2622,7 +2688,10 @@ async function loadRooms(modulo_id) {
 async function bootData() {
   await loadModules();
   const moduleIds = MODULES.map(m => String(m.id));
-  await Promise.all(moduleIds.map(id => loadRooms(id)));
+  await Promise.all([
+    ...moduleIds.map(id => loadRooms(id)),
+    loadActiveInspections()
+  ]);
 }
 
 /* =========================
