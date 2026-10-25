@@ -1418,11 +1418,15 @@
     }
     async function syncServerTime() {
       try {
+        const t0 = Date.now();
         const r = await fetch(`${API_BASE}/api/time`, { method: "GET", cache: "no-store" });
         const j = await r.json().catch(() => null);
+        const t1 = Date.now();
+        const rtt = t1 - t0;
         const serverMs = Number(j?.serverMs);
-        if (Number.isFinite(serverMs)) {
-          TIME_OFFSET_MS = serverMs - Date.now();
+        // Solo actualizar TIME_OFFSET_MS si el request no quedó suspendido en segundo plano (< 5s).
+        if (Number.isFinite(serverMs) && rtt >= 0 && rtt < 5000) {
+          TIME_OFFSET_MS = serverMs - Math.round((t0 + t1) / 2);
         }
       } catch (e) {
         // no bloquear si falla
@@ -1467,22 +1471,35 @@
       });
     }
 
-    function setToday() {
-      const now = new Date(nowServerMs());
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, "0");
-      const dd = String(now.getDate()).padStart(2, "0");
-      $("fecha").value = `${yyyy}-${mm}-${dd}`;
-    }
-    function todayYMD() {
-      const now = new Date(nowServerMs());
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, "0");
-      const dd = String(now.getDate()).padStart(2, "0");
+    function dateYMDFromMs(ms) {
+      const gt = new Date(ms - 6 * 60 * 60 * 1000);
+      const yyyy = gt.getUTCFullYear();
+      const mm = String(gt.getUTCMonth() + 1).padStart(2, "0");
+      const dd = String(gt.getUTCDate()).padStart(2, "0");
       return `${yyyy}-${mm}-${dd}`;
     }
-    syncServerTime().then(setToday);
+    function todayYMD() {
+      return dateYMDFromMs(nowServerMs());
+    }
+    function setToday() {
+      $("fecha").value = todayYMD();
+    }
+    syncServerTime().then(() => {
+      if (!startAtDT) setToday();
+    });
     setInterval(syncServerTime, 5 * 60 * 1000);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        syncServerTime().then(() => {
+          if (!startAtDT) setToday();
+        });
+      }
+    });
+    window.addEventListener("pageshow", () => {
+      syncServerTime().then(() => {
+        if (!startAtDT) setToday();
+      });
+    });
 
     // ===== Enviar ISO (UTC) para que backend convierta a Guatemala =====
     function nowLocalMySQL() {
@@ -1773,10 +1790,19 @@
             renderCamarerasTags();
           }
           if (!$("tipoLimpieza").value && target.tipo_limpieza) $("tipoLimpieza").value = target.tipo_limpieza;
+          // Sincronizar siempre el campo fecha con la fecha real de la limpieza en BD (evita que otra ama de llaves guarde con fecha del día anterior)
+          const dbRefDT = endAtDT || startAtDT;
+          const dbRefMs = toEpochMsFromAnyDate(dbRefDT);
+          if (dbRefMs != null) {
+            $("fecha").value = dateYMDFromMs(dbRefMs);
+          } else if (typeof dbRefDT === "string" && /^\d{4}-\d{2}-\d{2}/.test(dbRefDT.trim())) {
+            $("fecha").value = dbRefDT.trim().slice(0, 10);
+          }
         } else {
           // Para un nuevo ciclo (lista/ocupada limpia/etc), iniciar sin bloqueo de horas anteriores.
           startAtDT = null;
           endAtDT = null;
+          setToday();
         }
 
         _lastSyncedCamarera = getCamarerasNombres().join(", ") || null;
@@ -2242,10 +2268,16 @@
       }
       clearFieldErrors();
 
+      await syncServerTime();
+      const dbRefMs = toEpochMsFromAnyDate(endAtDT || startAtDT);
+      if (dbRefMs != null) {
+        $("fecha").value = dateYMDFromMs(dbRefMs);
+      }
+
       const modulo = CTX.modulo;
       const habitacion = CTX.habitacion;
 
-      const fecha = $("fecha").value;
+      const fecha = $("fecha").value || todayYMD();
       const camareraSel = $("camarera").value;
       const tipoSel = $("tipoLimpieza").value;
       const obsGeneral = $("obsGeneral").value;

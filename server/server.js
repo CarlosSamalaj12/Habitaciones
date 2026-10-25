@@ -1247,9 +1247,23 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
 
     await conn.beginTransaction();
 
-    const inicio = toMySQLDatetime(data.inicio_limpieza);
-    const fin = toMySQLDatetime(data.fin_limpieza);
-    const horaChk = toMySQLDatetime(data.hora_checklist);
+    const serverNow = toMySQLDatetime(new Date());
+    let inicio = toMySQLDatetime(data.inicio_limpieza);
+    let fin = toMySQLDatetime(data.fin_limpieza);
+    let horaChk = toMySQLDatetime(data.hora_checklist);
+
+    // Blindaje de fecha y hora_checklist contra reloj/offset desfasado en teléfonos móviles (ej. pestaña suspendida del día anterior)
+    if (!Number(data.es_decorada)) {
+      const refDate = (fin || inicio || serverNow).slice(0, 10);
+      if (!horaChk || (fin && horaChk < fin) || (inicio && horaChk < inicio) || horaChk.slice(0, 10) !== refDate) {
+        console.warn(`[INSPECCION TIME FIX] Corrigiendo hora_checklist desfasada (${horaChk}) -> ${serverNow} para hab ${data.habitacion_etiqueta}`);
+        horaChk = serverNow;
+      }
+      if (String(data.fecha || "").slice(0, 10) !== refDate) {
+        console.warn(`[INSPECCION DATE FIX] Corrigiendo fecha desfasada (${data.fecha}) -> ${refDate} para hab ${data.habitacion_etiqueta}`);
+        data.fecha = refDate;
+      }
+    }
 
     // Soportar camarera_ids (array) o camarera_id (legacy unico)
     let camareraIds = [];
@@ -3090,6 +3104,24 @@ app.post("/api/room/update", requireAuthIfEnabled, async (req,res)=>{
           ok: false,
           error: "Solo Ama de llaves o Administrador puede marcar como decorada."
         });
+      }
+    }
+
+    // Blindaje de inicio_limpieza y fin_limpieza contra reloj/offset desfasado en teléfonos móviles
+    const serverNow = toMySQLDatetime(new Date());
+    if (patch?.inicio_limpieza) {
+      const iniMysql = toMySQLDatetime(patch.inicio_limpieza);
+      if (!iniMysql || iniMysql.slice(0, 10) !== serverNow.slice(0, 10)) {
+        console.warn(`[ROOM UPDATE TIME FIX] Corrigiendo inicio_limpieza desfasada (${patch.inicio_limpieza}) -> ${serverNow}`);
+        patch.inicio_limpieza = serverNow;
+      }
+    }
+    if (patch?.fin_limpieza) {
+      const finMysql = toMySQLDatetime(patch.fin_limpieza);
+      const iniRef = toMySQLDatetime(patch.inicio_limpieza || cur?.inicio_limpieza);
+      if (!finMysql || finMysql.slice(0, 10) !== serverNow.slice(0, 10) || (iniRef && finMysql < iniRef)) {
+        console.warn(`[ROOM UPDATE TIME FIX] Corrigiendo fin_limpieza desfasada (${patch.fin_limpieza}) -> ${serverNow}`);
+        patch.fin_limpieza = serverNow;
       }
     }
 
