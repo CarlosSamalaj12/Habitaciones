@@ -2312,11 +2312,30 @@
       try {
         const rTipos = await fetch(`${API_BASE}/api/tipos-limpieza`);
         const jTipos = await rTipos.json();
-        if (jTipos?.ok) {
+        if (jTipos?.ok && Array.isArray(jTipos.data)) {
           const found = jTipos.data.find(t => normalizeLabel(t.nombre) === normalizeLabel(tipoSel));
           if (found) tipoLimpiezaId = found.id;
         }
       } catch {}
+
+      if (!tipoLimpiezaId) {
+        // Mapeo de respaldo por si falló la red temporalmente
+        const fallbackMap = {
+          "estadia": 1,
+          "media estadia": 2,
+          "limpieza profunda": 3,
+          "cliente no quiere limpieza": 4,
+          "salida": 5
+        };
+        tipoLimpiezaId = fallbackMap[normalizeLabel(tipoSel)] || null;
+      }
+
+      if (!tipoLimpiezaId) {
+        isSavingInspection = false;
+        setGuardarLoading(false);
+        toast("Tipo inválido", "No se pudo identificar el tipo de limpieza. Vuelve a seleccionarlo.", false, 4200);
+        return highlightAndFocus("tipoLimpieza");
+      }
 
       const detalles = CHECKLIST_ITEMS_DB.map(it => ({
         item_id: it.id,

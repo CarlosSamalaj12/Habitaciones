@@ -1245,6 +1245,52 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
       return res.status(400).json({ ok:false, error:"Faltan datos requeridos" });
     }
 
+    // ===== SEGURO Y VALIDACIÓN ESTRICTA DE INTEGRIDAD DE DATOS =====
+    if (!Number(data.es_decorada)) {
+      // 1. Validar Camarera obligatoria
+      const tieneCamarera = (Array.isArray(data.camarera_ids) && data.camarera_ids.length > 0) || !!data.camarera_id;
+      if (!tieneCamarera) {
+        conn.release();
+        return res.status(400).json({ ok: false, error: "Falta asignar la camarera responsable de la limpieza." });
+      }
+
+      // 2. Validar Tiempos de Limpieza obligatorios
+      if (!data.inicio_limpieza || !data.fin_limpieza) {
+        conn.release();
+        return res.status(400).json({ ok: false, error: "La limpieza debe tener registrados inicio y fin." });
+      }
+
+      // 3. Validar Tipo de Limpieza obligatorio (con auto-recuperación de respaldo desde estados_habitacion)
+      if (!data.tipo_limpieza_id) {
+        try {
+          const [roomRows] = await conn.query("SELECT id FROM habitaciones WHERE modulo_id=? AND etiqueta=? LIMIT 1", [data.modulo_id, data.habitacion_etiqueta]);
+          if (roomRows.length) {
+            const [estRows] = await conn.query("SELECT tipo_limpieza FROM estados_habitacion WHERE habitacion_id=?", [roomRows[0].id]);
+            if (estRows.length && estRows[0].tipo_limpieza) {
+              const [tRows] = await conn.query("SELECT id FROM tipos_limpieza WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?)) LIMIT 1", [estRows[0].tipo_limpieza]);
+              if (tRows.length) {
+                data.tipo_limpieza_id = tRows[0].id;
+                console.log("[INSPECCION AUTO-RESOLVE] Tipo de limpieza auto-recuperado de estados_habitacion: " + estRows[0].tipo_limpieza + " (ID: " + data.tipo_limpieza_id + ")");
+              }
+            }
+          }
+        } catch (errRec) {
+          console.warn("No se pudo auto-recuperar tipo_limpieza_id:", errRec.message);
+        }
+
+        if (!data.tipo_limpieza_id) {
+          conn.release();
+          return res.status(400).json({ ok: false, error: "El tipo de limpieza es obligatorio para guardar la inspección." });
+        }
+      }
+
+      // 4. Validar que vengan los detalles del checklist
+      if (!Array.isArray(data.detalles) || !data.detalles.length) {
+        conn.release();
+        return res.status(400).json({ ok: false, error: "El checklist no puede enviarse vacío." });
+      }
+    }
+
     await conn.beginTransaction();
 
     const serverNow = toMySQLDatetime(new Date());
