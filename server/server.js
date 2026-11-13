@@ -1247,11 +1247,15 @@ app.post("/api/inspecciones/guardar", async (req,res)=>{
 
     // ===== SEGURO Y VALIDACIÓN ESTRICTA DE INTEGRIDAD DE DATOS =====
     if (!Number(data.es_decorada)) {
-      // 1. Validar Camarera obligatoria
-      const tieneCamarera = (Array.isArray(data.camarera_ids) && data.camarera_ids.length > 0) || !!data.camarera_id;
-      if (!tieneCamarera) {
+      // 1. Validar Camarera obligatoria (máximo 3 camareras)
+      const numCamareras = Array.isArray(data.camarera_ids) ? data.camarera_ids.filter(Boolean).length : (data.camarera_id ? 1 : 0);
+      if (numCamareras === 0) {
         conn.release();
         return res.status(400).json({ ok: false, error: "Falta asignar la camarera responsable de la limpieza." });
+      }
+      if (numCamareras > 3) {
+        conn.release();
+        return res.status(400).json({ ok: false, error: "Solo se permite un máximo de 3 camareras por habitación." });
       }
 
       // 2. Validar Tiempos de Limpieza obligatorios

@@ -866,7 +866,7 @@
   <div id="camarerasModal" class="overlay hidden" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center">
     <div style="background:var(--bg1,#0B1024);border:1px solid rgba(255,255,255,.12);border-radius:18px;width:90%;max-width:400px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.6)">
       <div style="padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between">
-        <h3 style="margin:0;font-size:16px;color:#EAF0FF">Seleccionar Camareras</h3>
+        <h3 style="margin:0;font-size:16px;color:#EAF0FF">Seleccionar Camareras <span style="font-size:13px;color:#A9B3D0;font-weight:normal">(Máx. 3)</span></h3>
         <button id="btnCloseCamarerasModal" type="button" style="background:rgba(255,255,255,.08);border:none;color:#A9B3D0;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;line-height:1">X</button>
       </div>
       <div id="camarerasModalList" style="padding:12px;overflow-y:auto;flex:1">
@@ -1354,9 +1354,15 @@
         `).join("");
         list.querySelectorAll(".camCheckboxItem").forEach(item => {
           item.addEventListener("click", (e) => {
-            // Si hizo clic en el INPUT o en el LABEL, el navegador ya togglea el checkbox
-            // natively — solo necesitamos actualizar la clase .selected aqui
             const cb = item.querySelector("input");
+            // Validar límite máximo de 3 camareras
+            const checkedCount = list.querySelectorAll(".camCheckboxItem input:checked").length;
+            if (cb.checked && checkedCount > 3) {
+              cb.checked = false;
+              item.classList.remove("selected");
+              toast("Límite alcanzado", "Solo se permite un máximo de 3 camareras por habitación.", false, 3200);
+              return;
+            }
             item.classList.toggle("selected", cb.checked);
           });
         });
@@ -1373,8 +1379,13 @@
 
     function confirmCamarerasSelection() {
       const list = $("camarerasModalList");
+      const checkedBoxes = Array.from(list.querySelectorAll(".camCheckboxItem input:checked"));
+      if (checkedBoxes.length > 3) {
+        toast("Límite excedido", "Solo puedes seleccionar un máximo de 3 camareras.", false, 3200);
+        return;
+      }
       _selectedCamareras = [];
-      list.querySelectorAll(".camCheckboxItem input:checked").forEach(cb => {
+      checkedBoxes.forEach(cb => {
         const id = Number(cb.value);
         const nombre = CAMARERAS.find(c => c.id === id)?.nombre || cb.nextElementSibling?.textContent || "";
         _selectedCamareras.push({ id, nombre });
@@ -2290,6 +2301,7 @@
       if (!fecha) { isSavingInspection = false; setGuardarLoading(false); toast("Falta Fecha", "Elige la fecha de la limpieza.", false); return highlightAndFocus("fecha"); }
       const camarerasSeleccionadas = getSelectedCamareras();
       if (!camarerasSeleccionadas.length) { isSavingInspection = false; setGuardarLoading(false); toast("Falta Camarera", "Selecciona al menos una camarera.", false); return highlightAndFocus("camarera"); }
+      if (camarerasSeleccionadas.length > 3) { isSavingInspection = false; setGuardarLoading(false); toast("Máximo 3 Camareras", "Solo se permite un máximo de 3 camareras por habitación.", false, 4200); return highlightAndFocus("btnSelectCamareras"); }
       for (const c of camarerasSeleccionadas) {
         if (!isCamareraValida(c)) { isSavingInspection = false; setGuardarLoading(false); toast("Camarera invalida", `"${c}" no esta permitida.`, false, 5200); return highlightAndFocus("camarera"); }
       }
