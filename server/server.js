@@ -1578,7 +1578,8 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
     // Obtener inspecciones con sus camareras (relacion multiple)
     const sqlInspecciones = `
       SELECT
-        i.id, i.modulo_nombre, i.habitacion_etiqueta, i.fecha,
+        i.id, i.modulo_nombre, i.habitacion_etiqueta,
+        DATE_FORMAT(i.fecha, '%Y-%m-%d') AS fecha,
         i.inicio_limpieza, i.fin_limpieza, i.hora_checklist,
         i.es_familiar, i.observaciones,
         i.camarera_id, i.rectificado, i.motivo_rectificacion,
@@ -1619,19 +1620,6 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
     const [camarerasRows] = await pool.query("SELECT id, nombre, factura FROM camareras WHERE activo=1");
     camarerasRows.forEach(c => { camarerasMap[c.id] = c; });
 
-    // Contar habitaciones validas (no rectificadas) por camarera por dia
-    const countPorDia = {};
-    inspecciones.forEach(insp => {
-      if (!insp.camareras_list) return;
-      if (Number(insp.rectificado) === 1) return; // Las habitaciones rectificadas no cuentan para el bono
-      const camarerasIds = String(insp.camareras_list).split(",").map(Number).filter(id => id);
-      camarerasIds.forEach(cid => {
-        if (!countPorDia[cid]) countPorDia[cid] = {};
-        const dia = String(insp.fecha).slice(0, 10);
-        countPorDia[cid][dia] = (countPorDia[cid][dia] || 0) + 1;
-      });
-    });
-
     // Obtener configuracion de pagos
     let pct = 30, extraSi = 46, extraNo = 36;
     try {
@@ -1643,12 +1631,11 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
       }
     } catch (e) {}
 
-    // Construir filas expandidas (una por cada camarera de cada inspeccion)
-    const filasExpandidas = [];
+    // Paso 1: Acumular totales diarios por camarera (validas para >6, total filas, base acumulada)
+    const statsDia = {};
     inspecciones.forEach(insp => {
       if (!insp.camareras_list) return;
       let camarerasIds = String(insp.camareras_list).split(",").map(Number).filter(id => id);
-      // Filtrar por camarera si se especifico
       if (filtro_camarera_id) {
         camarerasIds = camarerasIds.filter(id => id === filtro_camarera_id);
       }
@@ -1656,19 +1643,60 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
 
       const numCamareras = camarerasIds.length;
       const pagoBaseDividido = (Number(insp.pago_base) || 0) / numCamareras;
-      const dia = String(insp.fecha).slice(0, 10);
+      const dia = String(insp.fecha || "").slice(0, 10);
+      const isRect = Number(insp.rectificado) === 1;
+
+      camarerasIds.forEach(cid => {
+        if (!statsDia[cid]) statsDia[cid] = {};
+        if (!statsDia[cid][dia]) {
+          statsDia[cid][dia] = { countValidas: 0, totalFilas: 0, baseTotal: 0 };
+        }
+        statsDia[cid][dia].totalFilas += 1;
+        statsDia[cid][dia].baseTotal += pagoBaseDividido;
+        if (!isRect) {
+          statsDia[cid][dia].countValidas += 1;
+        }
+      });
+    });
+
+    // Paso 2: Construir filas expandidas con prorrateo exacto diario por habitación
+    const filasExpandidas = [];
+    inspecciones.forEach(insp => {
+      if (!insp.camareras_list) return;
+      let camarerasIds = String(insp.camareras_list).split(",").map(Number).filter(id => id);
+      if (filtro_camarera_id) {
+        camarerasIds = camarerasIds.filter(id => id === filtro_camarera_id);
+      }
+      if (!camarerasIds.length) return;
+
+      const numCamareras = camarerasIds.length;
+      const pagoBaseDividido = (Number(insp.pago_base) || 0) / numCamareras;
+      const dia = String(insp.fecha || "").slice(0, 10);
+      const isRect = Number(insp.rectificado) === 1;
 
       camarerasIds.forEach(cid => {
         const cam = camarerasMap[cid];
         if (!cam) return;
-        const isRect = Number(insp.rectificado) === 1;
-        const countDia = countPorDia[cid]?.[dia] || 0;
-        const aplicaExtra = !isRect && (countDia > 6);
+
+        const st = statsDia[cid]?.[dia] || { countValidas: 0, totalFilas: 1, baseTotal: pagoBaseDividido };
+        const nFilas = st.totalFilas || 1;
+        const countDia = st.countValidas;
+        const aplicaExtra = countDia > 6;
+        const facturaSI = Number(cam.factura) === 1;
+
+        // Distribución equitativa por habitación del día
+        const extraDiaMonto = aplicaExtra ? (facturaSI ? extraSi : extraNo) : 0;
+        const pctDiaMonto = facturaSI ? (st.baseTotal * (pct / 100)) : 0;
+
+        const montoPctFila = pctDiaMonto / nFilas;
+        const montoExtraFila = extraDiaMonto / nFilas;
+        const pagoFinalFila = pagoBaseDividido + montoPctFila + montoExtraFila;
+
         filasExpandidas.push({
           id: insp.id,
           modulo_nombre: insp.modulo_nombre,
           habitacion_etiqueta: insp.habitacion_etiqueta,
-          fecha: insp.fecha,
+          fecha: dia,
           inicio_limpieza: insp.inicio_limpieza,
           fin_limpieza: insp.fin_limpieza,
           hora_checklist: insp.hora_checklist,
@@ -1689,85 +1717,79 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
           no_cumplen: insp.no_cumplen,
           no_aplica: insp.no_aplica,
           total_items: insp.total_items,
-          pago_base: pagoBaseDividido,
+          pago_base: Math.round(pagoBaseDividido * 100) / 100,
           count_habitaciones_dia: countDia,
+          total_habitaciones_dia: nFilas,
           aplica_extra: aplicaExtra,
-          pago_final: Math.round(pagoBaseDividido * 100) / 100
+          pct_config: facturaSI ? pct : 0,
+          monto_pct: Math.round(montoPctFila * 1e8) / 1e8,
+          monto_extra: Math.round(montoExtraFila * 1e8) / 1e8,
+          pago_final: Math.round(pagoFinalFila * 100) / 100,
+          pago_final_exacto: Math.round(pagoFinalFila * 1e8) / 1e8
         });
       });
     });
 
-    // Agrupar por camarera para resumen
+    // Paso 3: Agrupar por camarera para resumen y subtotales exactos
     const grupoPagos = {};
     filasExpandidas.forEach(r => {
       const cid = r.camarera_id;
-      const dia = String(r.fecha).slice(0, 10);
+      const dia = r.fecha;
       if (!grupoPagos[cid]) {
         grupoPagos[cid] = {
           factura: Number(r.camarera_factura),
           nombre: r.camarera_nombre,
-          por_dia: {}
+          totalBase: 0,
+          totalMontoPct: 0,
+          totalMontoExtra: 0,
+          diasExtraCount: 0,
+          diasVistos: new Set()
         };
       }
-      if (!grupoPagos[cid].por_dia[dia]) {
-        grupoPagos[cid].por_dia[dia] = { base: 0, count: 0 };
-      }
-      grupoPagos[cid].por_dia[dia].base += r.pago_base;
-      if (!Number(r.rectificado)) {
-        grupoPagos[cid].por_dia[dia].count++;
+      grupoPagos[cid].totalBase += Number(r.pago_base || 0);
+      grupoPagos[cid].totalMontoPct += Number(r.monto_pct || 0);
+      grupoPagos[cid].totalMontoExtra += Number(r.monto_extra || 0);
+
+      if (!grupoPagos[cid].diasVistos.has(dia)) {
+        grupoPagos[cid].diasVistos.add(dia);
+        if (r.aplica_extra) {
+          grupoPagos[cid].diasExtraCount += 1;
+        }
       }
     });
 
     let totalPagoFinal = 0;
+    const detallePagos = {};
+    const porCamarera = {};
+
     Object.keys(grupoPagos).forEach(cid => {
       const g = grupoPagos[cid];
-      let totalBase = 0;
-      let totalExtra = 0;
-      Object.keys(g.por_dia).forEach(dia => {
-        const day = g.por_dia[dia];
-        totalBase += day.base;
-        if (day.count > 6) {
-          totalExtra += (g.factura ? extraSi : extraNo);
-        }
-      });
-      const actualPct = g.factura ? pct : 0;
-      const pagoTotal = totalBase * (1 + actualPct / 100) + totalExtra;
-      const rounded = Math.round(pagoTotal * 100) / 100;
-      grupoPagos[cid].pagoFinal = rounded;
-      totalPagoFinal += rounded;
+      const nombre = g.nombre;
+      const subTotalBase = Math.round(g.totalBase * 100) / 100;
+      const subTotalPct = g.factura ? Math.round(subTotalBase * (pct / 100) * 100) / 100 : 0;
+      const subTotalExtra = Math.round(g.diasExtraCount * (g.factura ? extraSi : extraNo) * 100) / 100;
+      const subPagoFinal = Math.round((subTotalBase + subTotalPct + subTotalExtra) * 100) / 100;
+
+      g.pagoFinal = subPagoFinal;
+      totalPagoFinal += subPagoFinal;
+
+      detallePagos[nombre] = {
+        factura: g.factura,
+        dias_extra: g.diasExtraCount,
+        pct: g.factura ? pct : 0,
+        monto_pct: subTotalPct,
+        extra: subTotalExtra,
+        pagoFinal: subPagoFinal,
+        base: subTotalBase,
+        count_registros: filasExpandidas.filter(r => String(r.camarera_id) === String(cid)).length
+      };
+      porCamarera[nombre] = subPagoFinal;
     });
 
     const globalOk = filasExpandidas.reduce((sum, r) => sum + (Number(r.cumplen) || 0), 0);
     const globalNo = filasExpandidas.reduce((sum, r) => sum + (Number(r.no_cumplen) || 0), 0);
     const globalNa = filasExpandidas.reduce((sum, r) => sum + (Number(r.no_aplica) || 0), 0);
     const totalPagoBase = filasExpandidas.reduce((sum, r) => sum + (Number(r.pago_base) || 0), 0);
-
-    // Construir detalle_pagos keyed por nombre de camarera
-    const detallePagos = {};
-    const porCamarera = {};
-    Object.keys(grupoPagos).forEach(cid => {
-      const g = grupoPagos[cid];
-      const nombre = g.nombre;
-      const totalBase = Object.values(g.por_dia).reduce((s, d) => s + d.base, 0);
-      let totalExtra = 0;
-      let extraDays = 0;
-      Object.values(g.por_dia).forEach(d => {
-        if (d.count > 6) {
-          extraDays++;
-          totalExtra += (g.factura ? extraSi : extraNo);
-        }
-      });
-      detallePagos[nombre] = {
-        factura: g.factura,
-        dias_extra: extraDays,
-        pct: g.factura ? pct : 0,
-        extra: Math.round(totalExtra * 100) / 100,
-        pagoFinal: g.pagoFinal,
-        base: Math.round(totalBase * 100) / 100,
-        count_registros: filasExpandidas.filter(r => String(r.camarera_id) === String(cid)).length
-      };
-      porCamarera[nombre] = g.pagoFinal;
-    });
 
     res.json({
       ok: true,
