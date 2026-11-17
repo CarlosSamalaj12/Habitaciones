@@ -1605,6 +1605,18 @@
       return s;
     }
 
+    function fmtMonto(val, maxDec = 6) {
+      const n = Number(val || 0);
+      if (n === 0) return '-';
+      const hasExtraDecimals = Math.abs(Math.round(n * 100) / 100 - n) > 0.000001;
+      if (!hasExtraDecimals) return 'Q' + n.toFixed(2);
+      let s = n.toFixed(maxDec);
+      while (s.length > 4 && s.endsWith('0') && s.charAt(s.length - 2) !== '.') {
+        s = s.slice(0, -1);
+      }
+      return 'Q' + s;
+    }
+
     function renderPagosTable(rows, resumen, filterCamarera) {
       const wrap = $("pagosTableWrap");
       if (!rows.length) {
@@ -1649,7 +1661,7 @@
       }
 
       // Totales globales
-      let globalPago = 0, globalOk = 0, globalNo = 0, globalNa = 0, globalPagoBase = 0;
+      let globalPago = 0, globalOk = 0, globalNo = 0, globalNa = 0, globalPagoBase = 0, globalMontoPct = 0, globalMontoExtra = 0;
 
       let html = `<table><thead><tr>
         <th>Fecha</th>
@@ -1666,35 +1678,43 @@
         <th style="width:58px;text-align:center" title="Observaciones y Edición rápida">Obs / ✏️</th>
         <th class="numCol">Pago Base (Q)</th>
         <th class="numCol" title="Si la camarera tiene factura activa: se aplica este % sobre el total de Pago Base. Si NO factura: 0%.">% Aplicado</th>
-        <th class="numCol" title="Monto fijo adicional que se suma al total. Q46 si factura, Q36 si no factura (valores configurables en Admin &gt; Config Pago).">Extra (Q)</th>
-        <th class="numCol" title="Pago Final = (Pago Base &times; (1 + %/100)) + Extra, o Pago Base + Extra si no factura.">Pago Final (Q)</th>
+        <th class="numCol" title="Monto fijo adicional por día superando 6 habitaciones (Q46 con factura, Q36 sin factura), distribuido equitativamente entre las habitaciones del día.">Hora Extra</th>
+        <th class="numCol" title="Pago Final = Pago Base + % Aplicado + Hora Extra">Pago Final (Q)</th>
       </tr></thead><tbody>`;
 
       Object.keys(groups).forEach((camarera, gi) => {
         const items = groups[camarera];
 
-        const subPagoCalculado = Number(porCamarera[camarera]) || 0;
-        globalPago += subPagoCalculado;
-
-        let subOk = 0, subNo = 0, subNa = 0, subPagoBase = 0;
+        let subOk = 0, subNo = 0, subNa = 0, subPagoBase = 0, subMontoPct = 0, subMontoExtra = 0, subPagoFinal = 0;
         items.forEach(r => {
           subOk += Number(r.cumplen || 0);
           subNo += Number(r.no_cumplen || 0);
           subNa += Number(r.no_aplica || 0);
           subPagoBase += Number(r.pago_base || 0);
+          subMontoPct += Number(r.monto_pct || 0);
+          subMontoExtra += Number(r.monto_extra || 0);
+          subPagoFinal += Number(r.pago_final || 0);
         });
+
+        // Subtotales consolidados exactos desde servidor (para evitar acumulación de redondeo)
+        const det = detallePagos[camarera] || {};
+        const facturaSI = Boolean(det.factura);
+        const camMontoPct = (det.monto_pct !== undefined) ? Number(det.monto_pct) : subMontoPct;
+        const camMontoExtra = (det.extra !== undefined) ? Number(det.extra) : subMontoExtra;
+        const pagoFinalCam = Number(det.pagoFinal) || (subPagoBase + camMontoPct + camMontoExtra);
+
         globalOk += subOk;
         globalNo += subNo;
         globalNa += subNa;
         globalPagoBase += subPagoBase;
+        globalMontoPct += camMontoPct;
+        globalMontoExtra += camMontoExtra;
+        globalPago += pagoFinalCam;
 
         const subTotal = subOk + subNo + subNa;
         const subPct = subTotal > 0 ? Math.round((subOk / subTotal) * 100) : 0;
         const avatarColor = CHART_COLORS[gi % CHART_COLORS.length];
 
-        // Badge factura
-        const det = detallePagos[camarera] || {};
-        const facturaSI = Boolean(det.factura);
         const facturaBadge = facturaSI
           ? '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(46,229,157,.15);color:#2EE59D;border:1px solid rgba(46,229,157,.3)">🧾 SI factura</span>'
           : '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;background:rgba(255,176,32,.12);color:#FFB020;border:1px solid rgba(255,176,32,.25)">🚫 NO factura</span>';
@@ -1763,16 +1783,11 @@
             </td>
             <td style="text-align:center;padding:4px 2px">${actionsHtml}</td>
             <td class="numCol">Q${Number(r.pago_base || 0).toFixed(2)}</td>
-            <td class="numCol">${(r.aplica_extra && facturaSI) ? (det.pct || 30) + '%' : '-'}</td>
-            <td class="numCol">${r.aplica_extra ? (Number(r.camarera_factura) === 1 ? 'Q46' : 'Q36') : '-'}</td>
+            <td class="numCol">${fmtMonto(r.monto_pct)}</td>
+            <td class="numCol">${fmtMonto(r.monto_extra)}</td>
             <td class="numCol" style="font-weight:800;color:#2EE59D">Q${pago}</td>
           </tr>`;
         });
-
-        // Ya tenemos `det` declarado arriba (en la fila de grupo)
-        const pctAplicado = det.pct || 0;
-        const extraAplicado = det.extra || 0;
-        const pagoFinalCam = det.pagoFinal || subPagoCalculado;
 
         // Fila de subtotal
         html += `<tr class="subtotalRow">
@@ -1787,8 +1802,8 @@
           <td><span style="font-weight:700">${subPct}%</span></td>
           <td></td>
           <td class="numCol" style="color:var(--muted);font-size:12px">Q${subPagoBase.toFixed(2)}</td>
-          <td class="numCol" style="font-weight:700">${pctAplicado > 0 ? pctAplicado + '%' : '<span style="color:var(--muted)">-</span>'}</td>
-          <td class="numCol" style="font-weight:700;color:#FFB020">${extraAplicado > 0 ? 'Q' + extraAplicado.toFixed(2) : '<span style="color:var(--muted)">-</span>'}</td>
+          <td class="numCol" style="font-weight:700">${camMontoPct > 0 ? 'Q' + camMontoPct.toFixed(2) : '<span style="color:var(--muted)">-</span>'}</td>
+          <td class="numCol" style="font-weight:700;color:#FFB020">${camMontoExtra > 0 ? 'Q' + camMontoExtra.toFixed(2) : '<span style="color:var(--muted)">-</span>'}</td>
           <td class="numCol" style="font-weight:800;color:#2EE59D">Q${pagoFinalCam.toFixed(2)}</td>
         </tr>`;
       });
@@ -1808,8 +1823,8 @@
         <td><span style="font-weight:800">${globalPct}%</span></td>
         <td></td>
         <td class="numCol" style="color:var(--muted);font-size:13px">Q${globalPagoBase.toFixed(2)}</td>
-        <td class="numCol"><span style="color:var(--muted)">-</span></td>
-        <td class="numCol"><span style="color:var(--muted)">-</span></td>
+        <td class="numCol" style="font-weight:700">Q${globalMontoPct.toFixed(2)}</td>
+        <td class="numCol" style="font-weight:700;color:#FFB020">Q${globalMontoExtra.toFixed(2)}</td>
         <td class="numCol" style="font-weight:1000;font-size:15px;color:#2EE59D">Q${globalPago.toFixed(2)}</td>
       </tr>`;
 
@@ -2058,7 +2073,7 @@
       // Obtener detalle de pagos (desglose por camarera) para el pago final
       const detPagos = (PAGOS_RESUMEN && PAGOS_RESUMEN.detalle_pagos) || {};
 
-      // Tabla de datos
+      // Tabla de datos (17 columnas idénticas al formato consolidado)
       html += `<table class="data"><thead><tr>
         <th>#</th>
         <th>Fecha</th>
@@ -2074,29 +2089,39 @@
         <th class="center">Punt %</th>
         <th>Observaciones</th>
         <th class="center">Pago Base (Q)</th>
+        <th class="center">% Aplicado</th>
+        <th class="center">Hora Extra</th>
         <th class="center">Pago Final (Q)</th>
       </tr></thead><tbody>`;
 
-      let globalPagoBase = 0, globalPagoFinal = 0, globalOk = 0, globalNo = 0, globalNa = 0;
+      let globalPagoBase = 0, globalMontoPct = 0, globalMontoExtra = 0, globalPagoFinal = 0, globalOk = 0, globalNo = 0, globalNa = 0;
       let rowIdx = 0;
 
       Object.keys(groups).forEach((camarera, gi) => {
         const items = groups[camarera];
 
-        // Obtener datos de pago final de esta camarera
+        // Obtener datos consolidados exactos de esta camarera desde el servidor
         const detCam = detPagos[camarera] || {};
-        const pagoFinalCam = detCam.pagoFinal || 0;
-        const pagoBaseCamTotal = items.reduce((sum, r) => sum + Number(r.pago_base || 0), 0);
 
         // Subtotal del grupo
-        let subPagoBase = 0, subOk = 0, subNo = 0, subNa = 0;
+        let subPagoBase = 0, subMontoPct = 0, subMontoExtra = 0, subPagoFinal = 0, subOk = 0, subNo = 0, subNa = 0;
         items.forEach(r => {
           subPagoBase += Number(r.pago_base || 0);
+          subMontoPct += Number(r.monto_pct || 0);
+          subMontoExtra += Number(r.monto_extra || 0);
+          subPagoFinal += Number(r.pago_final || 0);
           subOk += Number(r.cumplen || 0);
           subNo += Number(r.no_cumplen || 0);
           subNa += Number(r.no_aplica || 0);
         });
+
+        const camMontoPct = (detCam.monto_pct !== undefined) ? Number(detCam.monto_pct) : subMontoPct;
+        const camMontoExtra = (detCam.extra !== undefined) ? Number(detCam.extra) : subMontoExtra;
+        const pagoFinalCam = Number(detCam.pagoFinal) || (subPagoBase + camMontoPct + camMontoExtra);
+
         globalPagoBase += subPagoBase;
+        globalMontoPct += camMontoPct;
+        globalMontoExtra += camMontoExtra;
         globalPagoFinal += pagoFinalCam;
         globalOk += subOk;
         globalNo += subNo;
@@ -2108,7 +2133,7 @@
           return list.length > 1;
         }).length;
         const sharedExcelBadge = sharedCountExcel > 0 ? ` (${sharedCountExcel} compartido${sharedCountExcel !== 1 ? 's' : ''})` : '';
-        html += `<tr class="groupHeader"><td colspan="15" style="color:#5b21b6">${escHtml(camarera)}${sharedExcelBadge} &mdash; ${items.length} registros</td></tr>`;
+        html += `<tr class="groupHeader"><td colspan="17" style="color:#5b21b6">${escHtml(camarera)}${sharedExcelBadge} &mdash; ${items.length} registros</td></tr>`;
 
         // Filas individuales
         items.forEach(r => {
@@ -2119,6 +2144,8 @@
           const na = Number(r.no_aplica || 0);
           const pct = Math.round((ok / total) * 100);
           const pagoBase = Number(r.pago_base || 0);
+          const montoPct = Number(r.monto_pct || 0);
+          const montoExtra = Number(r.monto_extra || 0);
           const pagoFinalRow = Number(r.pago_final || 0);
           const fam = Number(r.es_familiar) ? '<span class="familiar">Familiar</span>' : '-';
 
@@ -2137,6 +2164,8 @@
             <td class="center numCol">${pct}%</td>
             <td>${escHtml(r.observaciones || "-")}</td>
             <td class="center pagoCol">Q${pagoBase.toFixed(2)}</td>
+            <td class="center pagoCol">${fmtMonto(montoPct, 8)}</td>
+            <td class="center pagoCol">${fmtMonto(montoExtra, 8)}</td>
             <td class="center pagoCol">Q${pagoFinalRow.toFixed(2)}</td>
           </tr>`;
         });
@@ -2156,6 +2185,8 @@
           <td class="center">${subPct}%</td>
           <td></td>
           <td class="center pagoCol">Q${subPagoBase.toFixed(2)}</td>
+          <td class="center pagoCol">${camMontoPct > 0 ? 'Q' + camMontoPct.toFixed(2) : '-'}</td>
+          <td class="center pagoCol">${camMontoExtra > 0 ? 'Q' + camMontoExtra.toFixed(2) : '-'}</td>
           <td class="center pagoCol" style="font-weight:800;color:#276749">Q${pagoFinalCam.toFixed(2)}</td>
         </tr>`;
       });
@@ -2178,6 +2209,8 @@
         <td class="center">${totalPct}%</td>
         <td></td>
         <td class="center pagoCol">Q${globalPagoBase.toFixed(2)}</td>
+        <td class="center pagoCol">Q${globalMontoPct.toFixed(2)}</td>
+        <td class="center pagoCol">Q${globalMontoExtra.toFixed(2)}</td>
         <td class="center pagoCol" style="font-weight:800;color:#276749">Q${globalPagoFinal.toFixed(2)}</td>
       </tr>`;
 

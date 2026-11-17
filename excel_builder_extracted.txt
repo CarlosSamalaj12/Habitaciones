@@ -1,0 +1,334 @@
+import subprocess
+
+test_script = """
+const ExcelJS = require('exceljs');
+
+async function buildReportExcel(data, meta) {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Hotel Jardines del Lago';
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet('Reporte de Pagos', {
+    views: [{ showGridLines: true }]
+  });
+
+  // Metadatos encabezado
+  ws.mergeCells('A1:Q1');
+  ws.getCell('A1').value = 'Hotel Jardines del Lago';
+  ws.getCell('A1').font = { size: 14, bold: true, color: { argb: 'FF1A365D' } };
+
+  ws.mergeCells('A2:Q2');
+  ws.getCell('A2').value = 'Reporte de Pagos - Control de Limpieza';
+  ws.getCell('A2').font = { size: 11, bold: true, color: { argb: 'FF2B6CB0' } };
+
+  ws.getCell('A4').value = 'Usuario:';
+  ws.getCell('B4').value = meta.usuario || '-';
+  ws.getCell('A5').value = 'Fecha impresion:';
+  ws.getCell('B5').value = meta.fecha_impresion || new Date().toLocaleString('es-GT');
+  ws.getCell('A6').value = 'Periodo:';
+  ws.getCell('B6').value = `${meta.fecha_desde || ''} al ${meta.fecha_hasta || ''}`;
+  ws.getCell('A7').value = 'Modulo:';
+  ws.getCell('B7').value = meta.modulo_nombre || 'Todos';
+  ws.getCell('A8').value = 'Camarera:';
+  ws.getCell('B8').value = meta.camarera_nombre || 'Todas';
+  ws.getCell('A9').value = 'Registros:';
+  ws.getCell('B9').value = data.rows ? data.rows.length : 0;
+
+  for (let r = 4; r <= 9; r++) {
+    ws.getCell(`A${r}`).font = { bold: true, color: { argb: 'FF1A365D' } };
+  }
+
+  // Column definitions & widths
+  const columnsConfig = [
+    { header: '#', width: 6 },
+    { header: 'Fecha', width: 13 },
+    { header: 'Camarera', width: 22 },
+    { header: 'Habitacion', width: 12 },
+    { header: 'Tipo', width: 14 },
+    { header: 'Fam', width: 8 },
+    { header: 'Inicio', width: 9 },
+    { header: 'Fin', width: 9 },
+    { header: 'OK', width: 7 },
+    { header: 'X', width: 7 },
+    { header: 'NA', width: 7 },
+    { header: 'Punt %', width: 10 },
+    { header: 'Observaciones', width: 30 },
+    { header: 'Pago Base (Q)', width: 16 },
+    { header: '% Aplicado', width: 18 },
+    { header: 'Hora Extra', width: 18 },
+    { header: 'Pago Final (Q)', width: 16 }
+  ];
+
+  // Set widths
+  columnsConfig.forEach((col, idx) => {
+    ws.getColumn(idx + 1).width = col.width;
+  });
+
+  const headerRowIdx = 10;
+  const headerRow = ws.getRow(headerRowIdx);
+  headerRow.values = columnsConfig.map(c => c.header);
+  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF2B6CB0' }
+  };
+  headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+  headerRow.height = 24;
+
+  const thinBorder = {
+    top: { style: 'thin', color: { argb: 'FFCBD5E0' } },
+    bottom: { style: 'thin', color: { argb: 'FFCBD5E0' } },
+    left: { style: 'thin', color: { argb: 'FFCBD5E0' } },
+    right: { style: 'thin', color: { argb: 'FFCBD5E0' } }
+  };
+
+  for (let c = 1; c <= 17; c++) {
+    headerRow.getCell(c).border = {
+      top: { style: 'thin', color: { argb: 'FF1A365D' } },
+      bottom: { style: 'thin', color: { argb: 'FF1A365D' } },
+      left: { style: 'thin', color: { argb: 'FF1A365D' } },
+      right: { style: 'thin', color: { argb: 'FF1A365D' } }
+    };
+  }
+
+  // Agrupar filas
+  const groups = {};
+  (data.rows || []).forEach(r => {
+    const key = r.camarera_nombre || 'Sin asignar';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(r);
+  });
+
+  const detPagos = (data.resumen && data.resumen.detalle_pagos) || {};
+
+  let globalRowIdx = 0;
+  let globalPagoBase = 0, globalMontoPct = 0, globalMontoExtra = 0, globalPagoFinal = 0;
+  let globalOk = 0, globalNo = 0, globalNa = 0;
+
+  Object.keys(groups).forEach(camarera => {
+    const items = groups[camarera];
+    const detCam = detPagos[camarera] || {};
+
+    let subPagoBase = 0, subMontoPct = 0, subMontoExtra = 0, subPagoFinal = 0;
+    let subOk = 0, subNo = 0, subNa = 0;
+
+    items.forEach(r => {
+      subPagoBase += Number(r.pago_base || 0);
+      subMontoPct += Number(r.monto_pct_raw || r.monto_pct || 0);
+      subMontoExtra += Number(r.monto_extra_raw || r.monto_extra || 0);
+      subPagoFinal += Number(r.pago_final_raw || r.pago_final || 0);
+      subOk += Number(r.cumplen || 0);
+      subNo += Number(r.no_cumplen || 0);
+      subNa += Number(r.no_aplica || 0);
+    });
+
+    const camMontoPct = (detCam.monto_pct !== undefined) ? Number(detCam.monto_pct) : subMontoPct;
+    const camMontoExtra = (detCam.extra !== undefined) ? Number(detCam.extra) : subMontoExtra;
+    const pagoFinalCam = Number(detCam.pagoFinal) || (subPagoBase + camMontoPct + camMontoExtra);
+
+    globalPagoBase += subPagoBase;
+    globalMontoPct += camMontoPct;
+    globalMontoExtra += camMontoExtra;
+    globalPagoFinal += pagoFinalCam;
+    globalOk += subOk;
+    globalNo += subNo;
+    globalNa += subNa;
+
+    // Fila de grupo
+    const groupRow = ws.addRow([`${camarera} — ${items.length} registros`]);
+    ws.mergeCells(groupRow.number, 1, groupRow.number, 17);
+    groupRow.font = { bold: true, color: { argb: 'FF5B21B6' }, size: 10 };
+    groupRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE8E0FF' }
+    };
+    groupRow.height = 20;
+    for (let c = 1; c <= 17; c++) {
+      groupRow.getCell(c).border = {
+        top: { style: 'medium', color: { argb: 'FF7C3AED' } },
+        bottom: { style: 'thin', color: { argb: 'FFCBD5E0' } }
+      };
+    }
+
+    // Filas individuales
+    items.forEach(r => {
+      globalRowIdx++;
+      const total = Number(r.total_items || 1);
+      const ok = Number(r.cumplen || 0);
+      const no = Number(r.no_cumplen || 0);
+      const na = Number(r.no_aplica || 0);
+      const pct = total > 0 ? (ok / total) : 0;
+      const pagoBase = Number(r.pago_base || 0);
+      const montoPct = Number(r.monto_pct_raw || r.monto_pct || 0);
+      const montoExtra = Number(r.monto_extra_raw || r.monto_extra || 0);
+      const pagoFinalRow = Number(r.pago_final_raw || r.pago_final || 0);
+      const fam = Number(r.es_familiar) ? 'Familiar' : '-';
+      const inicio = r.inicio_limpieza ? String(r.inicio_limpieza).slice(11, 16) : '-';
+      const fin = r.fin_limpieza ? String(r.fin_limpieza).slice(11, 16) : '-';
+
+      const row = ws.addRow([
+        globalRowIdx,
+        r.fecha || '-',
+        r.camareras_nombres || r.camarera_nombre || camarera,
+        r.habitacion_etiqueta || '-',
+        r.tipo_nombre || '-',
+        fam,
+        inicio,
+        fin,
+        ok,
+        no,
+        na,
+        pct,
+        r.observaciones || '-',
+        pagoBase,
+        montoPct,
+        montoExtra,
+        pagoFinalRow
+      ]);
+
+      // Formatos y alineaciones
+      row.getCell(1).alignment = { horizontal: 'center' };
+      row.getCell(2).alignment = { horizontal: 'center' };
+      row.getCell(3).alignment = { horizontal: 'left' };
+      row.getCell(4).alignment = { horizontal: 'center' };
+      row.getCell(4).font = { bold: true };
+      row.getCell(5).alignment = { horizontal: 'left' };
+      row.getCell(6).alignment = { horizontal: 'center' };
+      row.getCell(7).alignment = { horizontal: 'center' };
+      row.getCell(8).alignment = { horizontal: 'center' };
+      row.getCell(9).alignment = { horizontal: 'center' };
+      row.getCell(10).alignment = { horizontal: 'center' };
+      row.getCell(11).alignment = { horizontal: 'center' };
+      row.getCell(12).alignment = { horizontal: 'center' };
+      row.getCell(12).numFmt = '0%';
+      row.getCell(13).alignment = { horizontal: 'left' };
+
+      // Montos con formato moneda
+      row.getCell(14).numFmt = '"Q"#,##0.00';
+      row.getCell(14).alignment = { horizontal: 'right' };
+      row.getCell(15).numFmt = '"Q"#,##0.00######';
+      row.getCell(15).alignment = { horizontal: 'right' };
+      row.getCell(16).numFmt = '"Q"#,##0.00######';
+      row.getCell(16).alignment = { horizontal: 'right' };
+      row.getCell(17).numFmt = '"Q"#,##0.00';
+      row.getCell(17).alignment = { horizontal: 'right' };
+      row.getCell(17).font = { bold: true, color: { argb: 'FF059669' } };
+
+      for (let c = 1; c <= 17; c++) {
+        row.getCell(c).border = thinBorder;
+      }
+    });
+
+    // Subtotal Row
+    const subTotal = subOk + subNo + subNa;
+    const subPctVal = subTotal > 0 ? (subOk / subTotal) : 0;
+    const subRow = ws.addRow([
+      '',
+      `Subtotal ${camarera}`, '', '', '', '',
+      '', '',
+      subOk, subNo, subNa,
+      subPctVal,
+      '',
+      subPagoBase,
+      camMontoPct,
+      camMontoExtra,
+      pagoFinalCam
+    ]);
+
+    ws.mergeCells(subRow.number, 2, subRow.number, 6);
+    subRow.font = { bold: true, size: 10 };
+    subRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFF0F4FF' }
+    };
+    subRow.getCell(2).font = { italic: true, bold: true, color: { argb: 'FF5B21B6' } };
+
+    subRow.getCell(9).alignment = { horizontal: 'center' };
+    subRow.getCell(10).alignment = { horizontal: 'center' };
+    subRow.getCell(11).alignment = { horizontal: 'center' };
+    subRow.getCell(12).alignment = { horizontal: 'center' };
+    subRow.getCell(12).numFmt = '0%';
+
+    subRow.getCell(14).numFmt = '"Q"#,##0.00';
+    subRow.getCell(14).alignment = { horizontal: 'right' };
+    subRow.getCell(15).numFmt = '"Q"#,##0.00';
+    subRow.getCell(15).alignment = { horizontal: 'right' };
+    subRow.getCell(16).numFmt = '"Q"#,##0.00';
+    subRow.getCell(16).alignment = { horizontal: 'right' };
+    subRow.getCell(17).numFmt = '"Q"#,##0.00';
+    subRow.getCell(17).alignment = { horizontal: 'right' };
+    subRow.getCell(17).font = { bold: true, color: { argb: 'FF276749' } };
+
+    for (let c = 1; c <= 17; c++) {
+      subRow.getCell(c).border = {
+        top: { style: 'thin', color: { argb: 'FFCBD5E0' } },
+        bottom: { style: 'thin', color: { argb: 'FFCBD5E0' } }
+      };
+    }
+  });
+
+  // Totales Generales
+  const globalTotalItems = globalOk + globalNo + globalNa;
+  const globalPctVal = globalTotalItems > 0 ? (globalOk / globalTotalItems) : 0;
+  const totalRow = ws.addRow([
+    '',
+    'TOTALES GENERALES', '', '', '', '', '', '',
+    globalOk, globalNo, globalNa,
+    globalPctVal,
+    '',
+    globalPagoBase,
+    globalMontoPct,
+    globalMontoExtra,
+    globalPagoFinal
+  ]);
+
+  ws.mergeCells(totalRow.number, 2, totalRow.number, 8);
+  totalRow.font = { bold: true, size: 11, color: { argb: 'FF1A365D' } };
+  totalRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFE2E8F0' }
+  };
+
+  totalRow.getCell(9).alignment = { horizontal: 'center' };
+  totalRow.getCell(10).alignment = { horizontal: 'center' };
+  totalRow.getCell(11).alignment = { horizontal: 'center' };
+  totalRow.getCell(12).alignment = { horizontal: 'center' };
+  totalRow.getCell(12).numFmt = '0%';
+
+  totalRow.getCell(14).numFmt = '"Q"#,##0.00';
+  totalRow.getCell(14).alignment = { horizontal: 'right' };
+  totalRow.getCell(15).numFmt = '"Q"#,##0.00';
+  totalRow.getCell(15).alignment = { horizontal: 'right' };
+  totalRow.getCell(16).numFmt = '"Q"#,##0.00';
+  totalRow.getCell(16).alignment = { horizontal: 'right' };
+  totalRow.getCell(17).numFmt = '"Q"#,##0.00';
+  totalRow.getCell(17).alignment = { horizontal: 'right' };
+  totalRow.getCell(17).font = { bold: true, color: { argb: 'FF276749' }, size: 11 };
+
+  for (let c = 1; c <= 17; c++) {
+    totalRow.getCell(c).border = {
+      top: { style: 'medium', color: { argb: 'FF2B6CB0' } },
+      bottom: { style: 'double', color: { argb: 'FF1A365D' } }
+    };
+  }
+
+  // Footer
+  ws.addRow([]);
+  const footerRow = ws.addRow([`Reporte generado por Hotel Jardines del Lago © ${new Date().getFullYear()}`]);
+  footerRow.font = { italic: true, size: 9, color: { argb: 'FF718096' } };
+
+  await wb.xlsx.writeFile('test_full_report.xlsx');
+  console.log('test_full_report.xlsx successfully generated!');
+}
+
+test();
+"""
+
+p = subprocess.run(["node", "-e", test_script], capture_output=True, text=True, cwd=r"C:\Users\kevin\Documents\WEB25\JDL\Habitaciones\server")
+print(p.stdout)
+if p.stderr:
+    print(p.stderr)
