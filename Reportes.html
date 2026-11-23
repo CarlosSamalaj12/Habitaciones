@@ -1607,7 +1607,7 @@
 
     function fmtMonto(val, maxDec = 6) {
       const n = Number(val || 0);
-      if (n === 0) return '-';
+      if (n === 0) return 'Q0.00';
       const hasExtraDecimals = Math.abs(Math.round(n * 100) / 100 - n) > 0.000001;
       if (!hasExtraDecimals) return 'Q' + n.toFixed(2);
       let s = n.toFixed(maxDec);
@@ -1802,8 +1802,8 @@
           <td><span style="font-weight:700">${subPct}%</span></td>
           <td></td>
           <td class="numCol" style="color:var(--muted);font-size:12px">Q${subPagoBase.toFixed(2)}</td>
-          <td class="numCol" style="font-weight:700">${camMontoPct > 0 ? 'Q' + camMontoPct.toFixed(2) : '<span style="color:var(--muted)">-</span>'}</td>
-          <td class="numCol" style="font-weight:700;color:#FFB020">${camMontoExtra > 0 ? 'Q' + camMontoExtra.toFixed(2) : '<span style="color:var(--muted)">-</span>'}</td>
+          <td class="numCol" style="font-weight:700">Q${Number(camMontoPct || 0).toFixed(2)}</td>
+          <td class="numCol" style="font-weight:700;color:#FFB020">Q${Number(camMontoExtra || 0).toFixed(2)}</td>
           <td class="numCol" style="font-weight:800;color:#2EE59D">Q${pagoFinalCam.toFixed(2)}</td>
         </tr>`;
       });
@@ -2185,8 +2185,8 @@
           <td class="center">${subPct}%</td>
           <td></td>
           <td class="center pagoCol">Q${subPagoBase.toFixed(2)}</td>
-          <td class="center pagoCol">${camMontoPct > 0 ? 'Q' + camMontoPct.toFixed(2) : '-'}</td>
-          <td class="center pagoCol">${camMontoExtra > 0 ? 'Q' + camMontoExtra.toFixed(2) : '-'}</td>
+          <td class="center pagoCol">Q${Number(camMontoPct || 0).toFixed(2)}</td>
+          <td class="center pagoCol">Q${Number(camMontoExtra || 0).toFixed(2)}</td>
           <td class="center pagoCol" style="font-weight:800;color:#276749">Q${pagoFinalCam.toFixed(2)}</td>
         </tr>`;
       });
