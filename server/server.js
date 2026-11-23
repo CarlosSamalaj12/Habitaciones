@@ -1688,9 +1688,8 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
         const aplicaExtra = countDia > 6;
         const facturaSI = Number(cam.factura) === 1;
 
-        // Distribución equitativa por habitación válida del día
+        // Distribución: % aplicado directamente sobre el pago base de cada habitación; Hora extra dividida equitativamente entre las habitaciones válidas
         const extraDiaMonto = aplicaExtra ? (facturaSI ? extraSi : extraNo) : 0;
-        const pctDiaMonto = facturaSI ? (st.baseTotal * (pct / 100)) : 0;
 
         let montoPctFila = 0;
         let montoExtraFila = 0;
@@ -1698,7 +1697,7 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
         let pagoFinalFila = 0;
 
         if (esValida) {
-          montoPctFila = pctDiaMonto / nFilas;
+          montoPctFila = facturaSI ? (pagoBaseDividido * (pct / 100)) : 0;
           montoExtraFila = extraDiaMonto / nFilas;
           pagoBaseFila = pagoBaseDividido;
           pagoFinalFila = pagoBaseFila + montoPctFila + montoExtraFila;
