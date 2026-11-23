@@ -1589,7 +1589,7 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
         COALESCE(det.no_cumplen, 0) AS no_cumplen,
         COALESCE(det.no_aplica, 0) AS no_aplica,
         COALESCE(det.total_items, 0) AS total_items,
-        IF(i.rectificado = 1, 0, COALESCE(pe.precio, 0)) AS pago_base,
+        IF(i.rectificado = 1 OR i.tipo_limpieza_id = 4, 0, COALESCE(pe.precio, 0)) AS pago_base,
         GROUP_CONCAT(DISTINCT ic.camarera_id ORDER BY ic.camarera_id) AS camareras_list,
         GROUP_CONCAT(DISTINCT cam.nombre ORDER BY cam.id) AS camareras_nombres
       FROM inspecciones i
@@ -1645,15 +1645,17 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
       const pagoBaseDividido = (Number(insp.pago_base) || 0) / numCamareras;
       const dia = String(insp.fecha || "").slice(0, 10);
       const isRect = Number(insp.rectificado) === 1;
+      const isNoQuiere = Number(insp.tipo_limpieza_id) === 4 || /no\s*quiere/i.test(String(insp.tipo_nombre || ""));
+      const esValida = !isRect && !isNoQuiere;
 
       camarerasIds.forEach(cid => {
         if (!statsDia[cid]) statsDia[cid] = {};
         if (!statsDia[cid][dia]) {
           statsDia[cid][dia] = { countValidas: 0, totalFilas: 0, baseTotal: 0 };
         }
-        statsDia[cid][dia].totalFilas += 1;
-        statsDia[cid][dia].baseTotal += pagoBaseDividido;
-        if (!isRect) {
+        if (esValida) {
+          statsDia[cid][dia].totalFilas += 1;
+          statsDia[cid][dia].baseTotal += pagoBaseDividido;
           statsDia[cid][dia].countValidas += 1;
         }
       });
@@ -1673,24 +1675,34 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
       const pagoBaseDividido = (Number(insp.pago_base) || 0) / numCamareras;
       const dia = String(insp.fecha || "").slice(0, 10);
       const isRect = Number(insp.rectificado) === 1;
+      const isNoQuiere = Number(insp.tipo_limpieza_id) === 4 || /no\s*quiere/i.test(String(insp.tipo_nombre || ""));
+      const esValida = !isRect && !isNoQuiere;
 
       camarerasIds.forEach(cid => {
         const cam = camarerasMap[cid];
         if (!cam) return;
 
-        const st = statsDia[cid]?.[dia] || { countValidas: 0, totalFilas: 1, baseTotal: pagoBaseDividido };
+        const st = statsDia[cid]?.[dia] || { countValidas: 0, totalFilas: 0, baseTotal: 0 };
         const nFilas = st.totalFilas || 1;
         const countDia = st.countValidas;
         const aplicaExtra = countDia > 6;
         const facturaSI = Number(cam.factura) === 1;
 
-        // Distribución equitativa por habitación del día
+        // Distribución equitativa por habitación válida del día
         const extraDiaMonto = aplicaExtra ? (facturaSI ? extraSi : extraNo) : 0;
         const pctDiaMonto = facturaSI ? (st.baseTotal * (pct / 100)) : 0;
 
-        const montoPctFila = pctDiaMonto / nFilas;
-        const montoExtraFila = extraDiaMonto / nFilas;
-        const pagoFinalFila = pagoBaseDividido + montoPctFila + montoExtraFila;
+        let montoPctFila = 0;
+        let montoExtraFila = 0;
+        let pagoBaseFila = 0;
+        let pagoFinalFila = 0;
+
+        if (esValida) {
+          montoPctFila = pctDiaMonto / nFilas;
+          montoExtraFila = extraDiaMonto / nFilas;
+          pagoBaseFila = pagoBaseDividido;
+          pagoFinalFila = pagoBaseFila + montoPctFila + montoExtraFila;
+        }
 
         filasExpandidas.push({
           id: insp.id,
@@ -1717,10 +1729,10 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
           no_cumplen: insp.no_cumplen,
           no_aplica: insp.no_aplica,
           total_items: insp.total_items,
-          pago_base: Math.round(pagoBaseDividido * 100) / 100,
+          pago_base: Math.round(pagoBaseFila * 100) / 100,
           count_habitaciones_dia: countDia,
           total_habitaciones_dia: nFilas,
-          aplica_extra: aplicaExtra,
+          aplica_extra: esValida ? aplicaExtra : false,
           pct_config: facturaSI ? pct : 0,
           monto_pct: Math.round(montoPctFila * 1e8) / 1e8,
           monto_extra: Math.round(montoExtraFila * 1e8) / 1e8,
@@ -1752,7 +1764,8 @@ app.get("/api/reportes/pagos", requireAuthIfEnabled, async (req,res)=>{
 
       if (!grupoPagos[cid].diasVistos.has(dia)) {
         grupoPagos[cid].diasVistos.add(dia);
-        if (r.aplica_extra) {
+        const stDia = statsDia[cid]?.[dia];
+        if (stDia && stDia.countValidas > 6) {
           grupoPagos[cid].diasExtraCount += 1;
         }
       }
@@ -1840,7 +1853,7 @@ app.get("/api/reportes/rendimiento", requireAuthIfEnabled, async (req,res)=>{
         c.nombre AS camarera_nombre,
         COUNT(DISTINCT i.id) AS total_inspecciones,
         COALESCE(ROUND(AVG(det.pct_cumple), 1), 0) AS promedio_pct,
-        COALESCE(SUM(IF(i.rectificado = 1, 0, COALESCE(pe.precio, 0)) / NULLIF(cnt_cams.count_camareras, 0)), 0) AS total_pago,
+        COALESCE(SUM(IF(i.rectificado = 1 OR i.tipo_limpieza_id = 4, 0, COALESCE(pe.precio, 0)) / NULLIF(cnt_cams.count_camareras, 0)), 0) AS total_pago,
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza)), 0), 0) AS promedio_minutos,
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.fin_limpieza, i.hora_checklist)), 0), 0) AS promedio_inspeccion_min,
         COUNT(DISTINCT CASE WHEN cnt_cams.count_camareras > 1 THEN i.id END) AS habitaciones_compartidas,
@@ -1971,7 +1984,7 @@ app.get("/api/reportes/rendimiento/daily", requireAuthIfEnabled, async (req,res)
         COUNT(DISTINCT i.id) AS habitaciones,
         COALESCE(ROUND(AVG(det.pct_cumple), 1), 0) AS puntuacion_prom,
         COALESCE(ROUND(AVG(TIMESTAMPDIFF(MINUTE, i.inicio_limpieza, i.fin_limpieza)), 0), 0) AS tiempo_prom_min,
-        COALESCE(SUM(IF(i.rectificado = 1, 0, COALESCE(pe.precio, 0)) / NULLIF(cnt_cams.count_camareras, 0)), 0) AS pago_total,
+        COALESCE(SUM(IF(i.rectificado = 1 OR i.tipo_limpieza_id = 4, 0, COALESCE(pe.precio, 0)) / NULLIF(cnt_cams.count_camareras, 0)), 0) AS pago_total,
         COUNT(DISTINCT CASE WHEN cnt_cams.count_camareras > 1 THEN i.id END) AS habitaciones_compartidas,
         COALESCE(ROUND(AVG(CASE WHEN i.hora_listo_limpieza IS NOT NULL AND i.inicio_limpieza IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, i.hora_listo_limpieza, i.inicio_limpieza) END), 0), 0) AS tiempo_asignacion_min,
         COALESCE(SUM(CASE WHEN i.hora_listo_limpieza IS NOT NULL AND i.inicio_limpieza IS NOT NULL THEN TIMESTAMPDIFF(MINUTE, i.hora_listo_limpieza, i.inicio_limpieza) END), 0) AS tiempo_asignacion_sum
